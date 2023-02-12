@@ -6,7 +6,7 @@
 import { Network } from 'vis-network';
 import { DataSet } from 'vis-data';
 
-import { deployNode } from '../core/api';
+import { getNodes, deployNode } from '../core/api';
 
 export default {
   name: 'NetworkGraph',
@@ -32,9 +32,13 @@ export default {
       }
     }
   },
+  beforeCreate() {
+    this.nodes = getNodes();
+  },
   mounted() {
     console.log("teste")
     const container = document.getElementById('network-graph');
+    console.log(this.nodes)
     const data = {
       nodes: this.nodes,
       edges: this.edges
@@ -62,6 +66,7 @@ export default {
       // width: '70%',
       // height: '20px'
     };
+
     this.network = new Network(container, data, options);
 
     this.network.on('click', async (event) => {
@@ -75,7 +80,6 @@ export default {
           this.nodes.add(node);
         }
       }
-      console.log("foo")
     });
   },
   // Add methods for adding and removing edges here

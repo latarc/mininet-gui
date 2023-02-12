@@ -1,6 +1,5 @@
 <script setup>
     import NetworkGraph from './components/NetworkGraph.vue'
-    // import MenuSidebar from './components/MenuSidebar.vue'
 </script>
 
 <template>

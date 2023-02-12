@@ -1,10 +1,12 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from typing import Dict
+
 from mininet.net import Mininet
 from mininet.node import Controller
 from mininet.link import Link
 from mininet.log import setLogLevel, info, debug
-from typing import Dict
+from mininet.topo import Topo, MinimalTopo
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 
@@ -38,9 +40,18 @@ app.add_middleware(
 
 # Create the Mininet network
 setLogLevel("debug")
-net = Mininet(controller=Controller)
+net = Mininet(controller=Controller, topo=MinimalTopo())
 c0 = net.addController("c0")
 net.build()
+
+
+@app.get("/api/nodes")
+def list_nodes():
+    return {"nodes": net.topo.g.nodes()}
+
+@app.get("/api/edges")
+def list_edges():
+    return net.topo.g.edges()
 
 @app.post("/api/nodes")
 def create_node(node: Node):
