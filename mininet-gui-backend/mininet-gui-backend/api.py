@@ -10,7 +10,8 @@ from pydantic import BaseModel
 
 class Node(BaseModel):
     node_id: int
-    label: str
+    node_type: str
+    name: str
     ip: str
     mac: str
 
@@ -45,11 +46,12 @@ net.build()
 def create_node(node: Node):
     # Create the node in the Mininet network using the node data
     debug(node)
-    #if node["type"] == "host":
-    #net.addHost(node["label"], ip=node["ip"], mac=node["mac"])
-    #elif node["type"] == "switch":
-    switch = net.addSwitch("s"+node.label.split(" ")[1])
-    switch.start([])
+    if node.node_type == "host":
+        net.addHost(node.name, ip=node.ip, mac=node.mac)
+    elif node.node_type == "switch":
+        switch = net.addSwitch(node.name)
+        switch.start([])
+    # h4.setMAC("000000000140")
     # Return an OK status code
     return {"status": "ok"}
 
