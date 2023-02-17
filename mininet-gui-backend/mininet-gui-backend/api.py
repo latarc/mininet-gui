@@ -9,6 +9,18 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+description = """
+Mininet-GUI API to deploy and manage a mininet network instance.
+
+## Deploy
+
+Endpoints to start and stop the network at any point.
+
+## Topology
+
+Endpoints that add, remove and edit nodes and edges in real time.
+"""
+
 
 class Node(BaseModel):
     node_id: int
@@ -23,7 +35,23 @@ class Host(Node):
 class Switch(Node):
     ports: int
 
-app = FastAPI(debug=True)
+app = FastAPI(
+    debug=True,
+    title="Mininet-GUI-API",
+    description=description,
+    version="0.0.1",
+    terms_of_service="http://example.com/terms/",
+    contact={
+        "name": "Lucas Schneider",
+        "url": "https://github.com/schneider8357",
+        "email": "schneider8357@hotmail.com",
+    },
+    # license_info={
+    #     "name": "Apache 2.0",
+    #     "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+    # },
+
+)
 
 origins = [
     "http://localhost.tiangolo.com",
