@@ -1,13 +1,18 @@
+<script setup>
+  import { Network } from 'vis-network';
+  import { DataSet } from 'vis-data';
+  
+  import { getNodes, deployNode } from '../core/api';
+  import Side from './Side.vue'
+</script>
+
+
 <template>
-  <div id="network-graph"></div>
+  <Side />
+  <div id="network-graph" class="network-graph"></div>
 </template>
 
 <script>
-import { Network } from 'vis-network';
-import { DataSet } from 'vis-data';
-
-import { getNodes, deployNode } from '../core/api';
-
 export default {
   name: 'NetworkGraph',
   data() {
@@ -85,3 +90,19 @@ export default {
   // Add methods for adding and removing edges here
 };
 </script>
+
+
+<style>
+
+.network-graph {
+    /* margin-top:auto; */
+    /* position: relative; */
+    background-color: var(--middle-blue);
+    height: inherit;
+    width: inherit;
+    border-radius: 5px;
+    position: absolute;
+    z-index: 1;
+}
+
+</style>
