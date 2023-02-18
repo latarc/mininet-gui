@@ -3,13 +3,14 @@
   import { DataSet } from 'vis-data';
   
   import { getNodes, deployHost } from '../core/api';
+  import { options } from '../core/options';
   import Side from './Side.vue'
 </script>
 
 
 <template>
   <Side />
-  <div id="network-graph" class="network-graph"></div>
+  <div id="network-graph" class="network-graph" @drop.prevent="handleDrop" @dragenter.prevent @dragover.prevent></div>
 </template>
 
 <script>
@@ -24,16 +25,31 @@ export default {
     };
   },
   methods: {
-    createHost() {
-      // Generate unique default values for the node
-      // Create the node object
+    async createHost(position) {
       let host_id = this.next_host_id++;
-      return {
+      let host = {
         node_id: host_id,
         node_type: "host",
         name: `h${host_id}`,
         ip: `192.168.1.${host_id}`,
         mac:  (host_id).toString(16).toUpperCase().padStart(12,'0'),
+        x: position.x,
+        y: position.y
+      };
+      if (await deployHost(host)) {
+        host.label = host.name
+        this.nodes.add(host);
+      } else {
+        throw "Could not create host " + host_id
+      }
+    },
+    handleDrop(event) {
+      event.preventDefault();
+      if (1) {
+        this.createHost(this.network.DOMtoCanvas({x: event.clientX, y: event.clientY}))
+        console.log(this.network.DOMtoCanvas({x: 0, y: 0}))
+        // console.log()
+        console.log(event.dataTransfer.getData("text"))
       }
     }
   },
@@ -48,45 +64,9 @@ export default {
       nodes: this.nodes,
       edges: this.edges
     };
-    const options = {
-      edges: {
-        font: {
-          size: 12,
-        },
-        widthConstraint: {
-          maximum: 90,
-        },
-      },
-      nodes: {
-        shape: "box",
-        margin: 10,
-        widthConstraint: {
-          maximum: 200,
-        },
-      },
-      physics: {
-        enabled: false,
-      },
-      
-      // width: '70%',
-      // height: '20px'
-    };
 
     this.network = new Network(container, data, options);
 
-    this.network.on('drop', async (event) => {
-      console.log(event.dataTransfer)
-      // Check if the drop was on an empty area of the graph
-      // if (event.nodes.length === 0) {
-      let host = this.createHost(); // TODO: Change node_type accordingly
-      // Deploy node in backend via API
-      if (await deployHost(host)) {
-        // Add the node to the graph if the API returns an OK
-        host.label = host.name
-        this.nodes.add(host);
-      }
-      // }
-    });
   },
   // Add methods for adding and removing edges here
 };
@@ -101,7 +81,6 @@ export default {
     background-color: white;
     height: inherit;
     width: inherit;
-    border-radius: 5px;
     position: absolute;
     z-index: 1;
 }

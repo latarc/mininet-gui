@@ -3,8 +3,9 @@
     <div id="side" class="side">
             <p>Mininet Controls</p>
             <button id="button-start-network" class="button-control-network">Start Network</button>
-            <button id="button-create-link" class="button-control-network">Create Link</button>
+            <button id="button-create-link" class="button-control-network" @click="enterCreateLinkMode()">Create Link</button>
             <button id="button-export-network" class="button-control-network">Export Network</button>
+            <img id="draggable-host" draggable="true" text="host" src="https://cdn-icons-png.flaticon.com/512/4703/4703487.png">
     </div>
     <button id="button-hide-side" class="button-hide-side" @click="toggleSide()" ><b>&lt;&lt;</b></button>
 </template>
@@ -20,11 +21,16 @@ export default {
             side = 0
             document.getElementById("side").style.display = "none";
             document.getElementById("button-hide-side").style.marginLeft = 0;
+            document.getElementById("button-hide-side").innerHTML = "<b>>></b>"
         } else {
             side = 1
             document.getElementById("side").style.display = "block";
             document.getElementById("button-hide-side").style.marginLeft = "180px";
+            document.getElementById("button-hide-side").innerHTML = "<b><<</b>"
         }
+    },
+    enterCreateLinkMode () {
+        //todo
     }
   }
 };
@@ -38,9 +44,6 @@ export default {
     width: 180px;
     position: absolute;
     z-index: 2;
-    /* margin: 1%; */
-    margin-top: 0%;
-    border-radius: 4px 0 0 4px;
     overflow-x: hidden;
     overflow-y: auto;
 
@@ -71,13 +74,26 @@ export default {
     padding: 0;
     margin-left: 180px;
     height: inherit;
-    width: 12px;
+    width: 10px;
     font-size: 8pt;
     border: none;
-    border-radius: 0 9px 9px 0;
+    border-radius: 0 2px 2px 0;
     background: rgba(0, 0, 0, .9);
     color: white;
 }
 
+.button-hide-side:hover {
+    cursor: pointer;
+}
+
+#draggable-host {
+    width: 100px;
+    height: auto;
+}
+
+
+#draggable-host:hover {
+    cursor: grab;
+}
 
 </style>

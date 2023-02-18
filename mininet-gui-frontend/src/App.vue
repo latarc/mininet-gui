@@ -1,13 +1,9 @@
 <script setup>
     import NetworkGraph from './components/NetworkGraph.vue'
-    import Header from './components/Header.vue'
 </script>
 
 <template>
-    <Header />
-    <div id="main" class="main">
-        <NetworkGraph />
-    </div>
+    <NetworkGraph />
 </template>
 
 <style>
@@ -39,18 +35,11 @@ body {
 #app {
     /* display: flex;
     flex-direction: column; */
+    display: block;
     height: 100%;
     margin: 0;
     padding: 0;
 }
 
-
-.main {
-    width: 98%;
-    height: 88%;
-    margin: 1%;
-    margin-top: 0.1%;
-    flex: 2;
-}
 
 </style>
