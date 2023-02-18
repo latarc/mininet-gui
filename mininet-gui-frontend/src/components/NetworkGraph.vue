@@ -2,7 +2,7 @@
   import { Network } from 'vis-network';
   import { DataSet } from 'vis-data';
   
-  import { getNodes, deployNode } from '../core/api';
+  import { getNodes, deployHost } from '../core/api';
   import Side from './Side.vue'
 </script>
 
@@ -74,17 +74,18 @@ export default {
 
     this.network = new Network(container, data, options);
 
-    this.network.on('click', async (event) => {
-      // Check if the click was on an empty area of the graph
-      if (event.nodes.length === 0) {
-        let node = this.createHost(); // TODO: Change node_type accordingly
-        // Deploy node in backend via API
-        if (await deployNode(node)) {
-          // Add the node to the graph if the API returns an OK
-          node.label = node.name
-          this.nodes.add(node);
-        }
+    this.network.on('drop', async (event) => {
+      console.log(event.dataTransfer)
+      // Check if the drop was on an empty area of the graph
+      // if (event.nodes.length === 0) {
+      let host = this.createHost(); // TODO: Change node_type accordingly
+      // Deploy node in backend via API
+      if (await deployHost(host)) {
+        // Add the node to the graph if the API returns an OK
+        host.label = host.name
+        this.nodes.add(host);
       }
+      // }
     });
   },
   // Add methods for adding and removing edges here
@@ -97,7 +98,7 @@ export default {
 .network-graph {
     /* margin-top:auto; */
     /* position: relative; */
-    background-color: var(--middle-blue);
+    background-color: white;
     height: inherit;
     width: inherit;
     border-radius: 5px;

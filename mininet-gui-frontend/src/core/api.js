@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-export const deployNode = async (node) => {
+export const deployHost = async (host) => {
   try {
-    console.log(node)
-    const response = await axios.post('http://localhost:8000/api/mininet/nodes', JSON.stringify(node) ,{ headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'application/json'}});
+    console.log(host)
+    const response = await axios.post('http://localhost:8000/api/mininet/host', JSON.stringify(host) ,{ headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'application/json'}});
     return response.status === 200;
   } catch (error) {
     console.error(error);

@@ -95,16 +95,20 @@ def list_nodes():
 def list_edges():
     return net.topo.g.edges()
 
-@app.post("/api/mininet/nodes")
-def create_node(node: Node):
-    # Create the node in the Mininet network using the node data
-    debug(node)
-    if node.node_type == "host":
-        net.addHost(node.name, ip=node.ip, mac=node.mac)
-    elif node.node_type == "switch":
-        switch = net.addSwitch(node.name)
-        switch.start([])
-    # h4.setMAC("000000000140")
+@app.post("/api/mininet/host")
+def create_host(host: Host):
+    # Create host in the Mininet network using the request data
+    debug(host)
+    new_host = net.addHost(host.name, ip=host.ip)
+    # new_host.setMAC(host.mac)
+    # Return an OK status code
+    return {"status": "ok"}
+
+@app.post("/api/mininet/switch")
+def create_switch(switch: Switch):
+    # Create switch in the Mininet network using the request data
+    new_switch = net.addSwitch(switch.name, ports=switch.ports)
+    new_switch.start([])
     # Return an OK status code
     return {"status": "ok"}
 
