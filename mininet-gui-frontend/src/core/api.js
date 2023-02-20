@@ -26,8 +26,10 @@ export const getNodes = async () => {
 
 export const getEdges = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/mininet/edges' ,{ headers: { "Access-Control-Allow-Origin": "*", 'Accept': 'application/json'}});
-    return JSON.parse(response.data);
+    const response = await axios.get('http://localhost:8000/api/mininet/links' ,{ headers: { "Access-Control-Allow-Origin": "*", 'Accept': 'application/json'}});
+    console.log(response.data)
+    // return JSON.parse(response.data);
+    return response.data;
   } catch (error) {
     console.error(error);
     return false;

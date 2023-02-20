@@ -87,7 +87,7 @@ export default {
 }
 
 #draggable-host {
-    width: 100px;
+    width: 70px;
     height: auto;
 }
 

@@ -2,7 +2,7 @@
   import { Network } from 'vis-network';
   import { DataSet } from 'vis-data';
   
-  import { getNodes, deployHost } from '../core/api';
+  import { getNodes, getEdges, deployHost } from '../core/api';
   import { options } from '../core/options';
   import Side from './Side.vue'
 </script>
@@ -16,29 +16,47 @@
 <script>
 export default {
   name: 'NetworkGraph',
+  components: [
+    "Side"
+  ],
   data() {
     return {
-      next_host_id: 1,
-      network: null,
-      nodes: new DataSet(),
-      edges: new DataSet()
+      next_host_id: Number,
+      network: Network,
+      nodes: DataSet,
+      edges: DataSet
     };
+  },
+  async mounted() {
+    this.nodes = new DataSet(await getNodes());
+    this.edges = new DataSet(getEdges());
+    const container = document.getElementById('network-graph');
+    const data = {
+      nodes: this.nodes,
+      edges: this.edges
+    };
+    this.next_host_id = this.nodes.length + 1;
+    this.network = new Network(container, data, options);
+
   },
   methods: {
     async createHost(position) {
-      let host_id = this.next_host_id++;
+      let host_id = this.next_host_id;
       let host = {
-        node_id: host_id,
-        node_type: "host",
+        id: host_id,
+        type: "host",
         name: `h${host_id}`,
+        label: null,       
         ip: `192.168.1.${host_id}`,
         mac:  (host_id).toString(16).toUpperCase().padStart(12,'0'),
         x: position.x,
         y: position.y
       };
+      host.label = host.name
       if (await deployHost(host)) {
-        host.label = host.name
         this.nodes.add(host);
+        console.log(this.nodes)
+        this.next_host_id++;
       } else {
         throw "Could not create host " + host_id
       }
@@ -53,22 +71,6 @@ export default {
       }
     }
   },
-  beforeCreate() {
-    this.nodes = getNodes();
-  },
-  mounted() {
-    console.log("teste")
-    const container = document.getElementById('network-graph');
-    console.log(this.nodes)
-    const data = {
-      nodes: this.nodes,
-      edges: this.edges
-    };
-
-    this.network = new Network(container, data, options);
-
-  },
-  // Add methods for adding and removing edges here
 };
 </script>
 
@@ -76,13 +78,11 @@ export default {
 <style>
 
 .network-graph {
-    /* margin-top:auto; */
-    /* position: relative; */
     background-color: white;
-    height: inherit;
-    width: inherit;
+    height: 100%;
+    width: 100%;
     position: absolute;
-    z-index: 1;
+    z-index: 0;
 }
 
 </style>

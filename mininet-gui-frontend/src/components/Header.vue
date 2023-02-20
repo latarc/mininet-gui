@@ -13,10 +13,9 @@
 <style>
 
 header {
-    position: relative;
-    flex: 1;
+    position: absolute;
     background-color: #0d1317ff;
-    /* width: 95%; */
+    width: 95%;
     /* height: fit-content; */
     margin: 0.5%;
     margin-top: 0%;
