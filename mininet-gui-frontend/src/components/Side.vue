@@ -5,16 +5,20 @@
             <button id="button-start-network" class="button-control-network">Start Network</button>
             <button id="button-create-link" class="button-control-network" @click="enterCreateLinkMode()">Create Link</button>
             <button id="button-export-network" class="button-control-network">Export Network</button>
-            <img id="draggable-host" draggable="true" text="host" src="https://cdn-icons-png.flaticon.com/512/4703/4703487.png">
+            <img id="draggable-host" class="draggable-node" draggable="true" text="host" src="@/assets/host.svg">
+            <img id="draggable-switch" class="draggable-node" draggable="true" text="switch" src="@/assets/switch.svg">
     </div>
     <button id="button-hide-side" class="button-hide-side" @click="toggleSide()" ><b>&lt;&lt;</b></button>
 </template>
 
 <script>
+
 export default {
   props: {
-    side: 1
+    side: 1,
+    createLinkMode: false,
   },
+  emits: ["addEdgeMode"],
   methods: {
     toggleSide() {
         if (side) {
@@ -30,13 +34,16 @@ export default {
         }
     },
     enterCreateLinkMode () {
-        //todo
+        this.$emit('addEdgeMode');
     }
   }
 };
 </script>
 
 <style>
+
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0");
+
 
 .side {
     background: rgba(0, 0, 0, .8);
@@ -86,13 +93,13 @@ export default {
     cursor: pointer;
 }
 
-#draggable-host {
+.draggable-node {
     width: 70px;
     height: auto;
 }
 
 
-#draggable-host:hover {
+.draggable-node:hover {
     cursor: grab;
 }
 

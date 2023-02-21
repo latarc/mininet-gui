@@ -2,48 +2,85 @@
   import { Network } from 'vis-network';
   import { DataSet } from 'vis-data';
   
-  import { getNodes, getEdges, deployHost } from '../core/api';
+  import { getHosts, getSwitches, getEdges, deployHost, deploySwitch } from '../core/api';
   import { options } from '../core/options';
   import Side from './Side.vue'
+
+  import switchImg from "@/assets/switch.svg";
+  import hostImg from "@/assets/host.svg";
 </script>
 
 
 <template>
-  <Side />
-  <div id="network-graph" class="network-graph" @drop.prevent="handleDrop" @dragenter.prevent @dragover.prevent></div>
+  <Side @addEdgeMode="enterAddEdgeMode"/>
+  <div
+    id="network-graph"
+    class="network-graph"
+    @drop.prevent="handleDrop"
+    @dragenter.prevent
+    @dragover.prevent
+  >
+  </div>
 </template>
 
 <script>
 export default {
   name: 'NetworkGraph',
-  components: [
-    "Side"
-  ],
+  components: {
+    Side
+  },
   data() {
     return {
       next_host_id: Number,
+      next_sw_id: Number,
       network: Network,
+      hosts: Object,
+      switches: Object,
+      links: Array,
       nodes: DataSet,
-      edges: DataSet
+      edges: DataSet,
     };
   },
   async mounted() {
-    this.nodes = new DataSet(await getNodes());
-    this.edges = new DataSet(getEdges());
-    const container = document.getElementById('network-graph');
+    this.hosts = await getHosts();
+    this.switches = await getSwitches();
+    Object.values(this.hosts).map(host => { 
+      host.image = hostImg
+      host.shape = "image"
+      return host;
+    });
+    Object.values(this.switches).map(sw => { 
+      sw.image = switchImg
+      sw.shape = "image"
+      return sw;
+    });
+    this.links = await getEdges()
+    this.nodes = new DataSet([...Object.values(this.hosts), ...Object.values(this.switches)]);
+    let edges = []
+    for (var link in this.links) {
+      edges.push({
+        from: this.links[link][0],
+        to: this.links[link][1],
+      })
+    }
+    this.edges = new DataSet(edges)
     const data = {
       nodes: this.nodes,
       edges: this.edges
     };
-    this.next_host_id = this.nodes.length + 1;
+    this.next_host_id = Object.values(this.hosts).length + 1;
+    this.next_sw_id = Object.values(this.switches).length + 1;
+    const container = document.getElementById('network-graph');
     this.network = new Network(container, data, options);
-
   },
   methods: {
     async createHost(position) {
       let host_id = this.next_host_id;
+      while (`h${host_id}` in this.hosts) {
+        host_id++;
+      }
       let host = {
-        id: host_id,
+        id: `h${host_id}`,
         type: "host",
         name: `h${host_id}`,
         label: null,       
@@ -53,22 +90,54 @@ export default {
         y: position.y
       };
       host.label = host.name
+      host.image = hostImg
+      host.shape = "image"
       if (await deployHost(host)) {
         this.nodes.add(host);
-        console.log(this.nodes)
-        this.next_host_id++;
+        this.hosts[host.name] = host
+        this.next_host_id = host_id + 1;
       } else {
         throw "Could not create host " + host_id
       }
     },
+    async createSwitch(position) {
+      let sw_id = this.next_sw_id;
+      while (`s${sw_id}` in this.switches) {
+        sw_id++;
+      }
+      let sw = {
+        id: `s${sw_id}`,
+        type: "sw",
+        name: `s${sw_id}`,
+        label: null,       
+        ports: 4,
+        controller: "c1",
+        x: position.x,
+        y: position.y
+      };
+      sw.label = sw.name
+      sw.image = switchImg
+      sw.shape = "image"
+      if (await deploySwitch(sw)) {
+        this.nodes.add(sw);
+        this.switches[sw.name] = sw
+        this.next_sw_id = sw_id + 1;
+      } else {
+        throw "Could not create sw " + sw_id
+      }
+    },
     handleDrop(event) {
       event.preventDefault();
-      if (1) {
+      var data = event.dataTransfer.getData("text").split("/").slice(-1)[0]
+      if (data === "host.svg") {
         this.createHost(this.network.DOMtoCanvas({x: event.clientX, y: event.clientY}))
-        console.log(this.network.DOMtoCanvas({x: 0, y: 0}))
-        // console.log()
-        console.log(event.dataTransfer.getData("text"))
       }
+      else if (data === "switch.svg") {
+        this.createSwitch(this.network.DOMtoCanvas({x: event.clientX, y: event.clientY}))
+      }
+    },
+    enterAddEdgeMode() {
+      this.network.addEdgeMode();
     }
   },
 };
@@ -84,5 +153,11 @@ export default {
     position: absolute;
     z-index: 0;
 }
+/* 
+.vis-network-graph {
+  height: 100%;
+  width: inherit;
+  position: absolute
+} */
 
 </style>

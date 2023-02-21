@@ -11,10 +11,33 @@ export const deployHost = async (host) => {
   }
 };
 
-
-export const getNodes = async () => {
+export const deploySwitch = async (sw) => {
   try {
-    const response = await axios.get('http://localhost:8000/api/mininet/nodes' ,{ headers: { "Access-Control-Allow-Origin": "*", 'Accept': 'application/json'}});
+    console.log(sw)
+    const response = await axios.post('http://localhost:8000/api/mininet/switch', JSON.stringify(sw) ,{ headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'application/json'}});
+    return response.status === 200;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
+
+export const deployLink = async (src, dst) => {
+  try {
+    console.log(src, dst)
+    const response = await axios.post('http://localhost:8000/api/mininet/link', JSON.stringify([src, dst]) ,{ headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'application/json'}});
+    return response.status === 200;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
+
+
+export const sendGet = async (url) => {
+  try {
+    const response = await axios.get(url ,{ headers: { "Access-Control-Allow-Origin": "*", 'Accept': 'application/json'}});
+    console.log("response.data")
     console.log(response.data)
     // return JSON.parse(response.data);
     return response.data;
@@ -24,14 +47,15 @@ export const getNodes = async () => {
   }
 };
 
+export const getHosts = async () => {
+  return await sendGet('http://localhost:8000/api/mininet/hosts');
+};
+
+export const getSwitches = async () => {
+  return await sendGet('http://localhost:8000/api/mininet/switches');
+};
+
+
 export const getEdges = async () => {
-  try {
-    const response = await axios.get('http://localhost:8000/api/mininet/links' ,{ headers: { "Access-Control-Allow-Origin": "*", 'Accept': 'application/json'}});
-    console.log(response.data)
-    // return JSON.parse(response.data);
-    return response.data;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
+  return await sendGet('http://localhost:8000/api/mininet/links');
 };

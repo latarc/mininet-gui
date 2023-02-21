@@ -23,7 +23,7 @@ from mininet_gui_backend.cli import CLISession
 
 
 class Node(BaseModel):
-    id: int
+    id: str
     type: str
     name: str
     label: str
@@ -120,10 +120,13 @@ def list_nodes():
 
 @app.get("/api/mininet/links")
 def list_edges():
-    return list(net.links)
+    return list(links)
 
 @app.post("/api/mininet/host")
 def create_host(host: Host):
+    if host.id in hosts:
+        hosts[host.id] = host
+        return {"status": "updated"}
     # Create host in the Mininet network using the request data
     debug(host)
     new_host = net.addHost(host.name, ip=host.ip)
@@ -157,7 +160,7 @@ def create_controller(controller: Controller):
     # Return an OK status code
     return {"status": "ok"}
 
-@app.post("/api/mininet/links")
+@app.post("/api/mininet/link")
 def create_link(link: Tuple[str, str]):
     # Create the link in the Mininet network using the link data
     net.addLink(link[0], link[1])
