@@ -1,9 +1,9 @@
 <script setup>
-  import { Network } from 'vis-network';
-  import { DataSet } from 'vis-data';
+  import { Network } from 'vis-network/peer';
+  import { DataSet } from 'vis-data/peer';
   
   import { getHosts, getSwitches, getEdges, deployHost, deploySwitch } from '../core/api';
-  import { options } from '../core/options';
+  import { options } from "../core/options";
   import Side from './Side.vue'
 
   import switchImg from "@/assets/switch.svg";
@@ -14,6 +14,7 @@
 <template>
   <Side @addEdgeMode="enterAddEdgeMode"/>
   <div
+    ref="graph"
     id="network-graph"
     class="network-graph"
     @drop.prevent="handleDrop"
@@ -31,14 +32,13 @@ export default {
   },
   data() {
     return {
-      next_host_id: Number,
-      next_sw_id: Number,
       network: Network,
       hosts: Object,
       switches: Object,
       links: Array,
       nodes: DataSet,
       edges: DataSet,
+      addEdgeMode: Function,
     };
   },
   async mounted() {
@@ -55,27 +55,25 @@ export default {
       return sw;
     });
     this.links = await getEdges()
-    this.nodes = new DataSet([...Object.values(this.hosts), ...Object.values(this.switches)]);
-    let edges = []
+    let links = []
     for (var link in this.links) {
-      edges.push({
+      links.push({
         from: this.links[link][0],
         to: this.links[link][1],
       })
     }
-    this.edges = new DataSet(edges)
-    const data = {
-      nodes: this.nodes,
-      edges: this.edges
-    };
-    this.next_host_id = Object.values(this.hosts).length + 1;
-    this.next_sw_id = Object.values(this.switches).length + 1;
-    const container = document.getElementById('network-graph');
-    this.network = new Network(container, data, options);
+    const nodes = new DataSet([...Object.values(this.hosts), ...Object.values(this.switches)]);
+    this.nodes = nodes
+    const edges = new DataSet(links);
+    this.edges = edges
+    console.log("teste")
+    const net = new Network(this.$refs.graph, {nodes, edges}, options);
+    this.network = net;
+    this.addEdgeMode = this.network.addEdgeMode.bind(net) // why use state when you can bind?
   },
   methods: {
     async createHost(position) {
-      let host_id = this.next_host_id;
+      let host_id = Object.values(this.hosts).length + 1;
       while (`h${host_id}` in this.hosts) {
         host_id++;
       }
@@ -84,7 +82,7 @@ export default {
         type: "host",
         name: `h${host_id}`,
         label: null,       
-        ip: `192.168.1.${host_id}`,
+        ip: `10.0.0.${host_id}/8`,
         mac:  (host_id).toString(16).toUpperCase().padStart(12,'0'),
         x: position.x,
         y: position.y
@@ -101,7 +99,7 @@ export default {
       }
     },
     async createSwitch(position) {
-      let sw_id = this.next_sw_id;
+      let sw_id = Object.values(this.switches).length + 1
       while (`s${sw_id}` in this.switches) {
         sw_id++;
       }
@@ -137,7 +135,7 @@ export default {
       }
     },
     enterAddEdgeMode() {
-      this.network.addEdgeMode();
+      this.addEdgeMode();
     }
   },
 };

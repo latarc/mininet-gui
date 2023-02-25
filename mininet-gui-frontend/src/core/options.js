@@ -9,40 +9,40 @@ export const options = {
   // },
   edges: {
     width: 5,
-      color: {
-        color:'#848484',
-        highlight:'#848484',
-        hover: '#848484',
-        inherit: 'from',
-        opacity:1.0
-      },
-      smooth: false,
-  
+    color: {
+      color:'#848484',
+      highlight:'#848484',
+      hover: '#848484',
+      inherit: 'from',
+      opacity:1.0
     },
-    nodes: {
-      shape: "box",
-      margin: 10,
-      widthConstraint: {
-        maximum: 200,
-      },
+    smooth: false,
+  },
+  nodes: {
+    shape: "box",
+    margin: 10,
+    widthConstraint: {
+      maximum: 200,
     },
-    interaction: {
-      keyboard: true,
-      multiselect: true
-    },
-    physics: {
-      enabled: false,
-    },
-    manipulation: {
-      // initiallyActive: true,
-      enabled: false,
-      addEdge: function (data, callback) {
-        if (data.from == data.to) {
-          confirm("Cannot connect node to itself");
-        } else {
-          deployLink(data.from, data.to)
-          callback(data);
+  },
+  interaction: {
+    keyboard: true,
+    multiselect: true
+  },
+  physics: {
+    enabled: false,
+  },
+  manipulation: {
+    // initiallyActive: true,
+    enabled: false,
+    addEdge: function (data, callback) {
+      if (data.from == data.to) {
+        confirm("Cannot connect node to itself");
+      } else {
+        if (deployLink(data.from, data.to)) {
+          callback(data)
         }
-      },
-    }
-  };
+      }
+    },
+  }
+};
