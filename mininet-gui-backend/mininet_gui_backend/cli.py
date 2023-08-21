@@ -8,13 +8,13 @@ from mininet.cli import CLI
 
 # check if host is connected, test conn
 
+
 class CLISession:
     def __init__(self):
         self.url = ""
         self.detach_and_listen()
 
     def detach_and_listen(self):
-        #listen on self.url
-        #detach from main
+        # listen on self.url
+        # detach from main
         raise NotImplemented
-        

@@ -10,12 +10,15 @@ Endpoints to start and stop the network at any point.
 Endpoints that add, remove and edit nodes and edges in real time.
 """
 from typing import Tuple
+from contextlib import asynccontextmanager
 
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug
 from mininet.topo import Topo, MinimalTopo
+from mininet.clean import cleanup as mn_cleanup
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from mininet_gui_backend.export import export_net_to_script
@@ -40,12 +43,24 @@ class Host(Node):
     ip: str
     mac: str
 
+
 class Switch(Node):
     ports: int
     controller: str
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # cleanup before start
+    mn_cleanup()
+    yield
+    # cleanup after shutdown
+    mn_cleanup()
+
+
 app = FastAPI(
     debug=True,
+    lifespan=lifespan,
     title="Mininet-GUI-API",
     description=__doc__,
     version="0.0.1",
@@ -61,9 +76,18 @@ app = FastAPI(
     # },
 )
 
-cli_sessions = dict()
-
-controllers = dict()
+controllers = dict(
+    c0=Controller(
+        id="c0",
+        type="controller",
+        name="c0",
+        label="default controller",
+        x=0,
+        y=0,
+        remote=False,
+        ip="127.0.0.1",
+    )
+)
 switches = dict()
 hosts = dict()
 links = set()
@@ -74,6 +98,8 @@ origins = [
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:5173",
+    "http://192.168.15.10:8000",
+    "http://192.168.15.10:5173",
 ]
 
 app.add_middleware(
@@ -84,45 +110,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+mn_cleanup()
+
 # Create the Mininet network
 setLogLevel("debug")
 net = Mininet(topo=Topo())
-net.started = False
+net.addController()
+net_is_started = False
 
-@app.post("/api/mininet/start")
-def start_network():
-    """Build network and start nodes"""
-    if net.started is True:
-        raise HTTPException(status_code=400, detail="network already started")
-    net.build()
-    for switch in switches:
-        switch = net.nameToNode[switch]
-        switch.start([switches[switch].controller])
-    net.started = True
-    return {"status": "ok"}
 
-@app.get("/api/mininet/export")
+@app.get("/api/mininet/export", response_class=PlainTextResponse)
 def export_network():
     debug(net)
-    return {"script": export_net_to_script(net)}
+    return export_net_to_script(net).encode("utf-8")
+
 
 @app.get("/api/mininet/hosts")
 def list_hosts():
     return hosts
 
+
 @app.get("/api/mininet/switches")
 def list_switches():
     return switches
 
-@app.get("/api/mininet/nodes")
-def list_nodes():
-    return list(hosts.values()) + list(switches.values())
 
 @app.get("/api/mininet/links")
 def list_edges():
     return list(links)
 
-@app.post("/api/mininet/host")
+
+@app.post("/api/mininet/start")
+def start_network():
+    """Build network and start nodes"""
+    global net_is_started
+    if net_is_started:
+        raise HTTPException(status_code=400, detail="network already started")
+    net.build()
+    for switch in switches:
+        net.nameToNode[switch].start([net.nameToNode[switches[switch]["controller"]]])
+    net_is_started = True
+    return {"status": "ok"}
+
+
+@app.post("/api/mininet/hosts")
 def create_host(host: Host):
     if host.id in hosts:
         hosts[host.id] = host
@@ -138,21 +169,29 @@ def create_host(host: Host):
     # Return an OK status code
     return {"status": "ok"}
 
-@app.post("/api/mininet/switch")
+
+@app.post("/api/mininet/switches")
 def create_switch(switch: Switch):
     # Create switch in the Mininet network using the request data
+    if switch.controller not in controllers:
+        raise HTTPException(
+            status_code=400, detail=f'controller "{switch.controller}" does not exist'
+        )
     new_switch = net.addSwitch(switch.name, ports=switch.ports)
-    if net.started is True:
-        new_switch.start([controllers[switch.controller]])
+    if net_is_started:
+        new_switch.start([net.nameToNode[switch.controller]])
     switches[switch.name] = switch.dict()
     # Return an OK status code
     return {"status": "ok"}
 
-@app.post("/api/mininet/controller")
+
+@app.post("/api/mininet/controllers")
 def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
-    new_controller = net.addController(controller.name, ip=controller.ip, x=controller.x)
+    new_controller = net.addController(
+        controller.name, ip=controller.ip, x=controller.x
+    )
     new_controller.x = controller.x
     new_controller.y = controller.y
     controllers[controller.name] = controller.dict()
@@ -160,7 +199,8 @@ def create_controller(controller: Controller):
     # Return an OK status code
     return {"status": "ok"}
 
-@app.post("/api/mininet/link")
+
+@app.post("/api/mininet/links")
 def create_link(link: Tuple[str, str]):
     # Create the link in the Mininet network using the link data
     net.addLink(link[0], link[1])
@@ -168,8 +208,9 @@ def create_link(link: Tuple[str, str]):
     # Return an OK status code
     return {"status": "ok"}
 
-@app.post("api/mininet/cli")
-def create_cli(session: int):
-    cli_sessions[session] = CLISession()
-    url = cli_sessions[session].url
-    return {"socket_url": url}
+
+# @app.post("/api/mininet/cli")
+# def create_cli(session: int):
+#    cli_sessions[session] = CLISession()
+#    url = cli_sessions[session].url
+#    return {"socket_url": url}
