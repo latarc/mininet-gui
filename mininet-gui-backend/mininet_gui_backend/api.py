@@ -10,7 +10,6 @@ Endpoints to start and stop the network at any point.
 Endpoints that add, remove and edit nodes and edges in real time.
 """
 from typing import Tuple
-from contextlib import asynccontextmanager
 
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug
@@ -49,18 +48,8 @@ class Switch(Node):
     controller: str
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # cleanup before start
-    mn_cleanup()
-    yield
-    # cleanup after shutdown
-    mn_cleanup()
-
-
 app = FastAPI(
     debug=True,
-    lifespan=lifespan,
     title="Mininet-GUI-API",
     description=__doc__,
     version="0.0.1",
@@ -139,6 +128,9 @@ def list_switches():
 def list_edges():
     return list(links)
 
+@app.get("/api/mininet/start")
+def get_network_started():
+    return net_is_started
 
 @app.post("/api/mininet/start")
 def start_network():
@@ -147,11 +139,22 @@ def start_network():
     if net_is_started:
         raise HTTPException(status_code=400, detail="network already started")
     net.build()
+    for controller in controllers:
+        net.nameToNode[controller].start()
     for switch in switches:
         net.nameToNode[switch].start([net.nameToNode[switches[switch]["controller"]]])
     net_is_started = True
     return {"status": "ok"}
 
+@app.post("/api/mininet/pingall")
+def run_pingall():
+    """Build network and start nodes"""
+    global net_is_started
+    if not net_is_started:
+        raise HTTPException(status_code=400, detail="network must be started to run pingall")
+    pingall_results = net.pingFull()
+    debug(pingall_results)
+    return "\n".join([f"{p[0]}->{p[1]}: {p[2][0]}/{p[2][1]}, rtt min/avg/max/mdev {p[2][2]:.3f}/{p[2][3]:.3f}/{p[2][4]:.3f}/{p[2][5]:.3f} ms" for p in pingall_results])
 
 @app.post("/api/mininet/hosts")
 def create_host(host: Host):
@@ -192,6 +195,7 @@ def create_controller(controller: Controller):
     new_controller = net.addController(
         controller.name, ip=controller.ip, x=controller.x
     )
+    new_controller.start()
     new_controller.x = controller.x
     new_controller.y = controller.y
     controllers[controller.name] = controller.dict()

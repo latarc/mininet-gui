@@ -60,7 +60,7 @@ export const deployLink = async (src, dst) => {
   }
 };
 
-export const startNetwork = async () => {
+export const requestStartNetwork = async () => {
   try {
     const response = await axios.post(
       "http://mininet-gui-backend:8000/api/mininet/start",
@@ -77,6 +77,25 @@ export const startNetwork = async () => {
     alert(error.response.data["detail"]);
     return false;
   }
+};
+
+export const requestRunPingall = async () => {
+  try {
+    const response = await axios.post(
+      "http://mininet-gui-backend:8000/api/mininet/pingall",
+      null,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data;
+  } catch (error) {
+    alert(error.response.data["detail"]);
+    return false;
+  }i
 };
 
 export const sendGet = async (url) => {
@@ -107,4 +126,8 @@ export const getSwitches = async () => {
 
 export const getEdges = async () => {
   return await sendGet("http://mininet-gui-backend:8000/api/mininet/links");
+};
+
+export const isNetworkStarted = async () => {
+  return await sendGet("http://mininet-gui-backend:8000/api/mininet/start");
 };

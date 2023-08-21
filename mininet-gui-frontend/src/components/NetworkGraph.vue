@@ -8,6 +8,9 @@ import {
   getEdges,
   deployHost,
   deploySwitch,
+  isNetworkStarted,
+  requestStartNetwork,
+  requestRunPingall,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -17,7 +20,7 @@ import hostImg from "@/assets/host.svg";
 </script>
 
 <template>
-  <Side @addEdgeMode="enterAddEdgeMode" @networkStart="startNetwork" :networkStarted="networkStarted"/>
+  <Side @addEdgeMode="enterAddEdgeMode" @networkStart="startNetwork" :networkStarted="networkStarted" @runPingall="showPingallModal"/>
   <div
     ref="graph"
     id="network-graph"
@@ -25,7 +28,7 @@ import hostImg from "@/assets/host.svg";
     @drop.prevent="handleDrop"
     @dragenter.prevent
     @dragover.prevent
-  ></div>
+></div>
 </template>
 
 <script>
@@ -77,6 +80,7 @@ export default {
     const net = new Network(this.$refs.graph, { nodes, edges }, options);
     this.network = net;
     this.addEdgeMode = this.network.addEdgeMode.bind(net); // why use state when you can bind?
+    this.networkStarted = await isNetworkStarted()
   },
   methods: {
     async createHost(position) {
@@ -147,8 +151,14 @@ export default {
     enterAddEdgeMode() {
       this.addEdgeMode();
     },
-    startNetwork() {
+    async startNetwork() {
+      await requestStartNetwork();
       this.networkStarted = true;
+    },
+    async showPingallModal() {
+      let pingallResults = await requestRunPingall()
+      console.log(pingallResults)
+      //this.showPingallModal = true;
     }
   },
 };

@@ -1,18 +1,18 @@
 <template>
   <div id="side" class="side">
     <p>Mininet Controls</p>
-    <button id="button-start-network" class="button-control-network" @click="startNetwork()" :disabled="networkStarted">
+    <button id="button-start-network" class="button-control-network" @click="this.$emit('networkStart')" :disabled="networkStarted">
       Start Network
     </button>
     <button
       id="button-create-link"
       class="button-control-network"
-      @click="enterCreateLinkMode()"
+      @click="this.$emit('addEdgeMode')"
     >
       Create Link
     </button>
-    <button id="button-pingall" class="button-control-network">
-      Pingall Test
+    <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')" :disabled="!networkStarted">
+      Run Pingall Test
     </button>
     <button id="button-export-network" class="button-control-network">
       Export Network
@@ -38,14 +38,14 @@
 </template>
 
 <script>
-import { startNetwork } from "../core/api";
+import { requestStartNetwork } from "../core/api";
 export default {
   props: {
     side: 1,
     createLinkMode: false,
     networkStarted: false,
   },
-  emits: ["addEdgeMode", "networkStart"],
+  emits: ["addEdgeMode", "networkStart", "runPingall"],
   methods: {
     toggleSide() {
       if (side) {
@@ -60,16 +60,6 @@ export default {
         document.getElementById("button-hide-side").innerHTML = "<b><<</b>";
       }
     },
-    enterCreateLinkMode() {
-      this.$emit("addEdgeMode");
-    },
-    async startNetwork() {
-      if (await startNetwork()) {
-        this.$emit("networkStart");
-      } else {
-        this.$emit("networkStart");
-      }
-    }
   },
 };
 </script>
