@@ -1,5 +1,11 @@
 # mininet-gui
 
+Add this to `/etc/hosts`:
+
+```
+127.0.0.1 mininet-gui-backend
+```
+
 This template should help get you started developing with Vue 3 in Vite.
 
 ## Recommended IDE Setup

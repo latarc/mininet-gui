@@ -10,11 +10,11 @@ export const options = {
   edges: {
     width: 5,
     color: {
-      color:'#848484',
-      highlight:'#848484',
-      hover: '#848484',
-      inherit: 'from',
-      opacity:1.0
+      color: "#848484",
+      highlight: "#848484",
+      hover: "#848484",
+      inherit: "from",
+      opacity: 1.0,
     },
     smooth: false,
   },
@@ -27,7 +27,7 @@ export const options = {
   },
   interaction: {
     keyboard: true,
-    multiselect: true
+    multiselect: true,
   },
   physics: {
     enabled: false,
@@ -40,9 +40,9 @@ export const options = {
         confirm("Cannot connect node to itself");
       } else {
         if (deployLink(data.from, data.to)) {
-          callback(data)
+          callback(data);
         }
       }
     },
-  }
+  },
 };
