@@ -15,13 +15,14 @@ from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
+from mininet.node import RemoteController, Controller
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from mininet_gui_backend.export import export_net_to_script
-from mininet_gui_backend.cli import CLISession
+from export import export_net_to_script
+from cli import CLISession
 
 
 class Node(BaseModel):
@@ -29,8 +30,8 @@ class Node(BaseModel):
     type: str
     name: str
     label: str
-    x: int
-    y: int
+    x: float
+    y: float
 
 
 class Controller(Node):
@@ -87,8 +88,8 @@ origins = [
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:5173",
-    "http://192.168.15.10:8000",
-    "http://192.168.15.10:5173",
+    "http://192.168.1.83:8000",
+    "http://192.168.1.83:5173",
 ]
 
 app.add_middleware(
@@ -99,12 +100,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-mn_cleanup()
+#mn_cleanup()
 
 # Create the Mininet network
 setLogLevel("debug")
 net = Mininet(topo=Topo())
-net.addController()
+#net.addController()
 net_is_started = False
 
 
@@ -192,9 +193,15 @@ def create_switch(switch: Switch):
 def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
-    new_controller = net.addController(
-        controller.name, ip=controller.ip, x=controller.x
-    )
+    if controller.remote:
+        new_controller = net.addController(
+            controller.name, controller=RemoteController, ip=controller.ip
+        )
+    else:
+        new_controller = net.addController(
+            controller.name, controller=Controller
+        )
+
     new_controller.start()
     new_controller.x = controller.x
     new_controller.y = controller.y

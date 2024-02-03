@@ -4,7 +4,7 @@ export const deployHost = async (host) => {
   try {
     console.log(host);
     const response = await axios.post(
-      "http://mininet-gui-backend:8000/api/mininet/hosts",
+      "http://192.168.1.83:8000/api/mininet/hosts",
       JSON.stringify(host),
       {
         headers: {
@@ -24,7 +24,7 @@ export const deploySwitch = async (sw) => {
   try {
     console.log(sw);
     const response = await axios.post(
-      "http://mininet-gui-backend:8000/api/mininet/switches",
+      "http://192.168.1.83:8000/api/mininet/switches",
       JSON.stringify(sw),
       {
         headers: {
@@ -44,7 +44,7 @@ export const deployLink = async (src, dst) => {
   try {
     console.log(src, dst);
     const response = await axios.post(
-      "http://mininet-gui-backend:8000/api/mininet/links",
+      "http://192.168.1.83:8000/api/mininet/links",
       JSON.stringify([src, dst]),
       {
         headers: {
@@ -63,7 +63,7 @@ export const deployLink = async (src, dst) => {
 export const requestStartNetwork = async () => {
   try {
     const response = await axios.post(
-      "http://mininet-gui-backend:8000/api/mininet/start",
+      "http://192.168.1.83:8000/api/mininet/start",
       null,
       {
         headers: {
@@ -82,7 +82,7 @@ export const requestStartNetwork = async () => {
 export const requestRunPingall = async () => {
   try {
     const response = await axios.post(
-      "http://mininet-gui-backend:8000/api/mininet/pingall",
+      "http://192.168.1.83:8000/api/mininet/pingall",
       null,
       {
         headers: {
@@ -117,17 +117,17 @@ export const sendGet = async (url) => {
 };
 
 export const getHosts = async () => {
-  return await sendGet("http://mininet-gui-backend:8000/api/mininet/hosts");
+  return await sendGet("http://192.168.1.83:8000/api/mininet/hosts");
 };
 
 export const getSwitches = async () => {
-  return await sendGet("http://mininet-gui-backend:8000/api/mininet/switches");
+  return await sendGet("http://192.168.1.83:8000/api/mininet/switches");
 };
 
 export const getEdges = async () => {
-  return await sendGet("http://mininet-gui-backend:8000/api/mininet/links");
+  return await sendGet("http://192.168.1.83:8000/api/mininet/links");
 };
 
 export const isNetworkStarted = async () => {
-  return await sendGet("http://mininet-gui-backend:8000/api/mininet/start");
+  return await sendGet("http://192.168.1.83:8000/api/mininet/start");
 };
