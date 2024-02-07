@@ -41,20 +41,24 @@
 import { requestStartNetwork } from "../core/api";
 export default {
   props: {
-    side: 1,
     createLinkMode: false,
     networkStarted: false,
+  },
+  data() {
+    return {
+        sideIsActive: 1
+    };
   },
   emits: ["addEdgeMode", "networkStart", "runPingall"],
   methods: {
     toggleSide() {
-      if (side) {
-        side = 0;
+      if (this.sideIsActive) {
+        this.sideIsActive = 0;
         document.getElementById("side").style.display = "none";
         document.getElementById("button-hide-side").style.marginLeft = 0;
         document.getElementById("button-hide-side").innerHTML = "<b>>></b>";
       } else {
-        side = 1;
+        this.sideIsActive = 1;
         document.getElementById("side").style.display = "block";
         document.getElementById("button-hide-side").style.marginLeft = "180px";
         document.getElementById("button-hide-side").innerHTML = "<b><<</b>";
