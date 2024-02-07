@@ -21,8 +21,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from export import export_net_to_script
-from cli import CLISession
+from mininet_gui_backend.export import export_net_to_script
+from mininet_gui_backend.cli import CLISession
 
 
 class Node(BaseModel):
@@ -83,13 +83,9 @@ hosts = dict()
 links = set()
 
 origins = [
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
     "http://localhost",
     "http://localhost:8080",
     "http://localhost:5173",
-    "http://192.168.1.83:8000",
-    "http://192.168.1.83:5173",
 ]
 
 app.add_middleware(
