@@ -96,7 +96,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#mn_cleanup()
+# Cleanup (mn -c)
+mn_cleanup()
 
 # Create the Mininet network
 setLogLevel("debug")
