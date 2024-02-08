@@ -14,6 +14,7 @@ import {
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
+import Modal from "./Modal.vue";
 
 import switchImg from "@/assets/switch.svg";
 import hostImg from "@/assets/host.svg";
@@ -29,6 +30,16 @@ import hostImg from "@/assets/host.svg";
     @dragenter.prevent
     @dragover.prevent
 ></div>
+<Teleport to="body">
+<modal :show="showModal" @close="showModal = false">
+  <template #header>
+    <h3>{{modalHeader}}</h3>
+  </template>
+  <template #body>
+    <span v-html="modalContents"></span>
+  </template>
+</modal>
+</Teleport>
 </template>
 
 <script>
@@ -47,9 +58,13 @@ export default {
       edges: DataSet,
       addEdgeMode: Function,
       networkStarted: false,
+      showModal: false,
+      modalContents: String,
+      modalHeader: String,
     };
   },
   async mounted() {
+    this.networkStarted = await isNetworkStarted()
     this.hosts = await getHosts();
     this.switches = await getSwitches();
     Object.values(this.hosts).map((host) => {
@@ -80,59 +95,61 @@ export default {
     const net = new Network(this.$refs.graph, { nodes, edges }, options);
     this.network = net;
     this.addEdgeMode = this.network.addEdgeMode.bind(net); // why use state when you can bind?
-    this.networkStarted = await isNetworkStarted()
   },
   methods: {
+    intToDpid (number) {
+      return number.toString(16).padStart(16, '0').replace(/(..)(..)(..)(..)(..)(..)(..)(..)/, '$1:$2:$3:$4:$5:$6:$7:$8');
+    },
     async createHost(position) {
-      let host_id = Object.values(this.hosts).length + 1;
-      while (`h${host_id}` in this.hosts) {
-        host_id++;
+      let hostId = Object.values(this.hosts).length + 1;
+      while (`h${hostId}` in this.hosts) {
+        hostId++;
       }
       let host = {
-        id: `h${host_id}`,
+        id: `h${hostId}`,
         type: "host",
-        name: `h${host_id}`,
+        name: `h${hostId}`,
         label: null,
-        ip: `10.0.0.${host_id}/8`,
-        mac: host_id.toString(16).toUpperCase().padStart(12, "0"),
+        ip: `10.0.0.${hostId}/8`,
+        mac: hostId.toString(16).toUpperCase().padStart(12, "0"),
         x: position.x,
         y: position.y,
       };
-      host.label = host.name;
+      host.label = `${host.name} <${host.ip}>`;
       host.image = hostImg;
       host.shape = "image";
       if (await deployHost(host)) {
         this.nodes.add(host);
         this.hosts[host.name] = host;
-        this.next_host_id = host_id + 1;
+        this.nextHostId = hostId + 1;
       } else {
-        throw "Could not create host " + host_id;
+        throw "Could not create host " + hostId;
       }
     },
     async createSwitch(position) {
-      let sw_id = Object.values(this.switches).length + 1;
-      while (`s${sw_id}` in this.switches) {
-        sw_id++;
+      let swId = Object.values(this.switches).length + 1;
+      while (`s${swId}` in this.switches) {
+        swId++;
       }
       let sw = {
-        id: `s${sw_id}`,
+        id: `s${swId}`,
         type: "sw",
-        name: `s${sw_id}`,
+        name: `s${swId}`,
         label: null,
         ports: 4,
         controller: "c0",
         x: position.x,
         y: position.y,
       };
-      sw.label = sw.name;
+      sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
       sw.image = switchImg;
       sw.shape = "image";
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
-        this.next_sw_id = sw_id + 1;
+        this.nextSwId = swId + 1;
       } else {
-        throw "Could not create sw " + sw_id;
+        throw "Could not create sw " + swId;
       }
     },
     handleDrop(event) {
@@ -158,7 +175,9 @@ export default {
     async showPingallModal() {
       let pingallResults = await requestRunPingall()
       console.log(pingallResults)
-      //this.showPingallModal = true;
+      this.modalHeader = "Pingall Results";
+      this.modalContents = pingallResults.replace("\n", "<br>");
+      this.showModal = true;
     }
   },
 };
