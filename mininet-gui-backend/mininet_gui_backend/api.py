@@ -101,9 +101,9 @@ mn_cleanup()
 
 # Create the Mininet network
 setLogLevel("debug")
-net = Mininet(topo=Topo())
+net = Mininet(autoSetMacs=True, autoStaticArp=True, topo=Topo())
 #net.addController()
-net_is_started = False
+net.is_started = False
 
 
 @app.get("/api/mininet/export", response_class=PlainTextResponse)
@@ -128,27 +128,25 @@ def list_edges():
 
 @app.get("/api/mininet/start")
 def get_network_started():
-    return net_is_started
+    return net.is_started
 
 @app.post("/api/mininet/start")
 def start_network():
     """Build network and start nodes"""
-    global net_is_started
-    if net_is_started:
+    if net.is_started:
         raise HTTPException(status_code=400, detail="network already started")
     net.build()
     for controller in controllers:
         net.nameToNode[controller].start()
     for switch in switches:
         net.nameToNode[switch].start([net.nameToNode[switches[switch]["controller"]]])
-    net_is_started = True
+    net.is_started = True
     return {"status": "ok"}
 
 @app.post("/api/mininet/pingall")
 def run_pingall():
     """Build network and start nodes"""
-    global net_is_started
-    if not net_is_started:
+    if not net.is_started:
         raise HTTPException(status_code=400, detail="network must be started to run pingall")
     pingall_results = net.pingFull()
     debug(pingall_results)
@@ -164,9 +162,9 @@ def create_host(host: Host):
     new_host = net.addHost(host.name, ip=host.ip)
     new_host.x = host.x
     new_host.y = host.y
+    new_host.type = "host"
     hosts[host.name] = host.dict()
     debug(new_host)
-    # new_host.setMAC(host.mac)
     # Return an OK status code
     return {"status": "ok"}
 
@@ -179,8 +177,10 @@ def create_switch(switch: Switch):
             status_code=400, detail=f'controller "{switch.controller}" does not exist'
         )
     new_switch = net.addSwitch(switch.name, ports=switch.ports)
-    if net_is_started:
+    if net.is_started:
         new_switch.start([net.nameToNode[switch.controller]])
+    new_switch.type = "sw"
+    new_switch.controller = switch.controller
     switches[switch.name] = switch.dict()
     # Return an OK status code
     return {"status": "ok"}
@@ -211,7 +211,20 @@ def create_controller(controller: Controller):
 @app.post("/api/mininet/links")
 def create_link(link: Tuple[str, str]):
     # Create the link in the Mininet network using the link data
+    if link[0] not in net.nameToNode or link[1] not in net.nameToNode:
+        return {"error": "node not in net"}
     net.addLink(link[0], link[1])
+    if net.is_started:
+        debug("ADDING LINK TO STARTED NETWORK\n")
+        for node in link:
+            node = net.nameToNode[node]
+            debug("NODE", node, "\n")
+            if node.type == "host":
+                debug(f"RUNNING CONFIGDEFAULT() FOR NODE {node}")
+                node.configDefault()
+            elif node.type == "sw":
+                debug(f"RUNNING START() FOR NODE {node}")
+                node.start([net.nameToNode[node.controller]])
     links.add(link)
     # Return an OK status code
     return {"status": "ok"}
