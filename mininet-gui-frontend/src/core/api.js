@@ -62,6 +62,24 @@ export const deployLink = async (src, dst) => {
   }
 };
 
+export const deleteNode = async (nodeId) => {
+  try {
+    const response = await axios.delete(
+      baseUrl + `/api/mininet/delete_node/${nodeId}`,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response.data["detail"]);
+    return false;
+  }
+};
+
+
 export const requestStartNetwork = async () => {
   try {
     const response = await axios.post(

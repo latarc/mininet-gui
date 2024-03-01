@@ -21,7 +21,13 @@ import hostImg from "@/assets/host.svg";
 </script>
 
 <template>
-  <Side @addEdgeMode="enterAddEdgeMode" @networkStart="startNetwork" :networkStarted="networkStarted" @runPingall="showPingallModal"/>
+  <Side
+    @addEdgeMode="enterAddEdgeMode"
+    @networkStart="startNetwork"
+    @deleteSelected="doDeleteSelected"
+    @runPingall="showPingallModal"
+    :networkStarted="networkStarted"
+  />
   <div
     ref="graph"
     id="network-graph"
@@ -50,7 +56,6 @@ export default {
   },
   data() {
     return {
-      network: Network,
       hosts: Object,
       switches: Object,
       links: Array,
@@ -62,6 +67,11 @@ export default {
       modalContents: String,
       modalHeader: String,
     };
+  },
+  computed: {
+    network() {        
+      return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
+    }
   },
   async mounted() {
     this.networkStarted = await isNetworkStarted()
@@ -92,9 +102,7 @@ export default {
     this.nodes = nodes;
     const edges = new DataSet(links);
     this.edges = edges;
-    const net = new Network(this.$refs.graph, { nodes, edges }, options);
-    this.network = net;
-    this.addEdgeMode = this.network.addEdgeMode.bind(net); // why use state when you can bind?
+    console.log("logging network",this.network)
   },
   methods: {
     intToDpid (number) {
@@ -154,19 +162,23 @@ export default {
     },
     handleDrop(event) {
       event.preventDefault();
-      var data = event.dataTransfer.getData("text").split("/").slice(-1)[0];
-      if (data === "host.svg") {
+      console.log("drop event triggered, text/plain", event.dataTransfer.getData("text/plain"));
+      var data = event.dataTransfer.getData("text/plain");
+      if (data === "draggable-host") {
         this.createHost(
           this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
         );
-      } else if (data === "switch.svg") {
+      } else if (data === "draggable-switch") {
         this.createSwitch(
           this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
         );
       }
     },
     enterAddEdgeMode() {
-      this.addEdgeMode();
+      this.network.addEdgeMode();
+    },
+    doDeleteSelected() {
+      this.network.deleteSelected();
     },
     async startNetwork() {
       await requestStartNetwork();

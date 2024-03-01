@@ -1,5 +1,5 @@
 <template>
-  <div id="side" class="side">
+  <div id="side" class="side" @dragstart="handleDragStart">
     <p>Mininet Controls</p>
     <button id="button-start-network" class="button-control-network" @click="this.$emit('networkStart')" :disabled="networkStarted">
       Start Network
@@ -11,12 +11,24 @@
     >
       Create Link
     </button>
+    <button
+      id="button-delete-selected"
+      class="button-control-network"
+      @click="this.$emit('deleteSelected')"
+    >
+      Delete Selected Nodes
+    </button>
     <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')" :disabled="!networkStarted">
       Run Pingall Test
     </button>
     <button id="button-export-network" class="button-control-network">
       Export Network
     </button>
+    <figure
+      id="draggable-host"
+      class="draggable-node"
+      draggable="true"
+    >
     <img
       id="draggable-host"
       class="draggable-node"
@@ -24,13 +36,20 @@
       text="host"
       src="@/assets/host.svg"
     />
-    <img
+    <figcaption>Host</figcaption>
+    </figure>
+    <figure
       id="draggable-switch"
       class="draggable-node"
       draggable="true"
-      text="switch"
+    >
+    <img
+      alt="switch"
       src="@/assets/switch.svg"
+      draggable="false"
     />
+    <figcaption>Switch</figcaption>
+    </figure>
   </div>
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
     <b>&lt;&lt;</b>
@@ -49,7 +68,7 @@ export default {
         sideIsActive: 1
     };
   },
-  emits: ["addEdgeMode", "networkStart", "runPingall"],
+  emits: ["addEdgeMode", "networkStart", "runPingall", "deleteSelected"],
   methods: {
     toggleSide() {
       if (this.sideIsActive) {
@@ -63,6 +82,10 @@ export default {
         document.getElementById("button-hide-side").style.marginLeft = "180px";
         document.getElementById("button-hide-side").innerHTML = "<b><<</b>";
       }
+    },
+    handleDragStart(event) {
+        console.log("dragstart", event);
+        event.dataTransfer.setData("text", event.target.id);
     },
   },
 };
