@@ -11,6 +11,8 @@ import {
   isNetworkStarted,
   requestStartNetwork,
   requestRunPingall,
+  deployLink,
+  deleteNode,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -22,11 +24,13 @@ import hostImg from "@/assets/host.svg";
 
 <template>
   <Side
-    @addEdgeMode="enterAddEdgeMode"
+    @toggleAddEdgeMode="handleToggleAddEdgeMode"
     @networkStart="startNetwork"
     @deleteSelected="doDeleteSelected"
     @runPingall="showPingallModal"
+    @closeAllActiveModes="closeAllActiveModes"
     :networkStarted="networkStarted"
+    :addEdgeMode="addEdgeMode"
   />
   <div
     ref="graph"
@@ -35,6 +39,7 @@ import hostImg from "@/assets/host.svg";
     @drop.prevent="handleDrop"
     @dragenter.prevent
     @dragover.prevent
+    @keydown.esc="closeAllActiveModes"
 ></div>
 <Teleport to="body">
 <modal :show="showModal" @close="showModal = false">
@@ -56,20 +61,25 @@ export default {
   },
   data() {
     return {
-      hosts: Object,
-      switches: Object,
-      links: Array,
-      nodes: DataSet,
-      edges: DataSet,
-      addEdgeMode: Function,
+      hosts: new Object(),
+      switches: new Object(),
+      links: new Array(),
+      nodes: new DataSet(),
+      edges: new DataSet(),
+      addEdgeMode: false,
       networkStarted: false,
       showModal: false,
-      modalContents: String,
-      modalHeader: String,
+      modalContents: "",
+      modalHeader: "",
     };
   },
   computed: {
-    network() {        
+    network() {
+      console.log("computed ran again");
+      if (this.network) {
+        this.network
+        return this.network;
+      }
       return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
     }
   },
@@ -102,9 +112,34 @@ export default {
     this.nodes = nodes;
     const edges = new DataSet(links);
     this.edges = edges;
-    console.log("logging network",this.network)
+    console.log("network inside mounted, before setup:", this.network);
+    await this.setupNetwork();
   },
   methods: {
+    setupNetwork() {
+      this.network.setOptions({
+        manipulation: {
+          enabled: false,
+          addEdge: async (data, callback) => {
+            console.log("addEdge data, callback:", data, callback);
+            if (data.from == data.to) {
+              confirm("Cannot connect node to itself");
+              return;
+            }
+            if (await deployLink(data.from, data.to)) {
+              callback(data);
+              this.network.addEdgeMode();
+            }
+          },
+          deleteNode: async (data, callback) => {
+            if (data["nodes"]) {
+              await deleteNode(data["nodes"][0]);
+              callback(data);
+            }
+          },
+        },
+      });
+    },
     intToDpid (number) {
       return number.toString(16).padStart(16, '0').replace(/(..)(..)(..)(..)(..)(..)(..)(..)/, '$1:$2:$3:$4:$5:$6:$7:$8');
     },
@@ -123,7 +158,7 @@ export default {
         x: position.x,
         y: position.y,
       };
-      host.label = `${host.name} <${host.ip}>`;
+      host.label = `${host.name}`;
       host.image = hostImg;
       host.shape = "image";
       if (await deployHost(host)) {
@@ -174,22 +209,41 @@ export default {
         );
       }
     },
-    enterAddEdgeMode() {
-      this.network.addEdgeMode();
+    closeAddEdgeMode() {
+        this.addEdgeMode = false;
+        this.network.disableEditMode;
+    },
+    closeModal() {
+      this.modalHeader = "";
+      this.modalContents = "";
+      this.showModal = false;
+    },
+    closeAllActiveModes() {
+      this.closeAddEdgeMode();
+      this.closeModal();
+    },
+    handleToggleAddEdgeMode() {
+      if (!this.addEdgeMode) {
+        this.addEdgeMode = true;
+        this.network.addEdgeMode();
+      } else {
+        this.closeAddEdgeMode();
+      }
     },
     doDeleteSelected() {
       this.network.deleteSelected();
     },
     async startNetwork() {
-      await requestStartNetwork();
-      this.networkStarted = true;
+      if (await requestStartNetwork())
+        this.networkStarted = true;
     },
     async showPingallModal() {
+      this.modalHeader = "Pingall Results";
+      this.modalContents = "Loading...";
+      this.showModal = true;
       let pingallResults = await requestRunPingall()
       console.log(pingallResults)
-      this.modalHeader = "Pingall Results";
       this.modalContents = pingallResults.replace("\n", "<br>");
-      this.showModal = true;
     }
   },
 };

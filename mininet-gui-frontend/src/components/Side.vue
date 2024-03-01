@@ -1,15 +1,20 @@
 <template>
-  <div id="side" class="side" @dragstart="handleDragStart">
+  <div
+    id="side"
+    class="side"
+    @dragstart="handleDragStart"
+    @keydown.esc="this.$emit('closeAllActiveModes')"
+  >
     <p>Mininet Controls</p>
     <button id="button-start-network" class="button-control-network" @click="this.$emit('networkStart')" :disabled="networkStarted">
-      Start Network
+      {{!networkStarted ? "Start Network" : "Network is running"}}
     </button>
     <button
       id="button-create-link"
       class="button-control-network"
-      @click="this.$emit('addEdgeMode')"
+      @click="this.$emit('toggleAddEdgeMode')"
     >
-      Create Link
+      {{!addEdgeMode ? "Create Link" : "Cancel Add Link"}}
     </button>
     <button
       id="button-delete-selected"
@@ -30,11 +35,9 @@
       draggable="true"
     >
     <img
-      id="draggable-host"
-      class="draggable-node"
-      draggable="true"
-      text="host"
+      alt="host"
       src="@/assets/host.svg"
+      draggable="false"
     />
     <figcaption>Host</figcaption>
     </figure>
@@ -62,13 +65,14 @@ export default {
   props: {
     createLinkMode: false,
     networkStarted: false,
+    addEdgeMode: false,
   },
   data() {
     return {
         sideIsActive: 1
     };
   },
-  emits: ["addEdgeMode", "networkStart", "runPingall", "deleteSelected"],
+  emits: ["toggleAddEdgeMode", "networkStart", "runPingall", "deleteSelected", "closeAllActiveModes"],
   methods: {
     toggleSide() {
       if (this.sideIsActive) {

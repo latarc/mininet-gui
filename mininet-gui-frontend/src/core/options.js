@@ -1,4 +1,3 @@
-import { deployLink, deleteNode } from "./api";
 
 export const options = {
   // clickToUse: true,
@@ -31,22 +30,5 @@ export const options = {
   },
   physics: {
     enabled: false,
-  },
-  manipulation: {
-    // initiallyActive: true,
-    enabled: false,
-    addEdge: function (data, callback) {
-      if (data.from == data.to) {
-        confirm("Cannot connect node to itself");
-      } else if (deployLink(data.from, data.to)) {
-        callback(data);
-      }
-    },
-    deleteNode: function(data, callback) {
-      if (data["nodes"]) {
-        deleteNode(data["nodes"][0]);
-        callback(data);
-      }
-    },
   },
 };
