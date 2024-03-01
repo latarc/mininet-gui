@@ -17,7 +17,7 @@ export const deployHost = async (host) => {
     );
     return response.status === 200;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }
 };
@@ -37,7 +37,7 @@ export const deploySwitch = async (sw) => {
     );
     return response.status === 200;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }
 };
@@ -57,7 +57,7 @@ export const deployLink = async (src, dst) => {
     );
     return response.status === 200;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }
 };
@@ -74,7 +74,7 @@ export const deleteNode = async (nodeId) => {
     );
     return response.status === 200;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }
 };
@@ -94,7 +94,7 @@ export const requestStartNetwork = async () => {
     );
     return response.status === 200;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }
 };
@@ -113,7 +113,7 @@ export const requestRunPingall = async () => {
     );
     return response.data;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }i
 };
@@ -131,7 +131,7 @@ export const sendGet = async (url) => {
     // return JSON.parse(response.data);
     return response.data;
   } catch (error) {
-    alert(error.response.data["detail"]);
+    alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
   }
 };

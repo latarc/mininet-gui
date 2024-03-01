@@ -242,8 +242,12 @@ export default {
       this.modalContents = "Loading...";
       this.showModal = true;
       let pingallResults = await requestRunPingall()
-      console.log(pingallResults)
-      this.modalContents = pingallResults.replace("\n", "<br>");
+      if (pingallResults) {
+        console.log(pingallResults)
+        this.modalContents = pingallResults.replace("\n", "<br>");
+      } else {
+        this.showModal = false;
+      }
     }
   },
 };
