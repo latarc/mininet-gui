@@ -55,10 +55,11 @@ export const deployLink = async (src, dst) => {
         },
       },
     );
-    return response.status === 200;
+    if (response.status === 200)
+      return response.data;
   } catch (error) {
     alert(error.response ? error.response.data["detail"] : "Network Error");
-    return false;
+    throw error;
   }
 };
 
@@ -75,10 +76,27 @@ export const deleteNode = async (nodeId) => {
     return response.status === 200;
   } catch (error) {
     alert(error.response ? error.response.data["detail"] : "Network Error");
-    return false;
+    throw error;
   }
 };
 
+export const deleteLink = async (linkId) => {
+  try {
+    console.log("sending deleteLink for edge: ", linkId);
+    const response = await axios.delete(
+      baseUrl + `/api/mininet/delete_link/${linkId}`,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
 
 export const requestStartNetwork = async () => {
   try {

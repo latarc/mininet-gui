@@ -80,7 +80,7 @@ controllers = dict(
 )
 switches = dict()
 hosts = dict()
-links = set()
+links = dict()
 
 origins = [
     "http://localhost",
@@ -124,7 +124,7 @@ def list_switches():
 
 @app.get("/api/mininet/links")
 def list_edges():
-    return list(links)
+    return [e["tuple"] for e in links.values()]
 
 @app.get("/api/mininet/start")
 def get_network_started():
@@ -182,8 +182,7 @@ def create_switch(switch: Switch):
     new_switch.type = "sw"
     new_switch.controller = switch.controller
     switches[switch.name] = switch.dict()
-    # Return an OK status code
-    return {"status": "ok"}
+    return switch
 
 
 @app.post("/api/mininet/controllers")
@@ -213,28 +212,19 @@ def create_link(link: Tuple[str, str]):
     # Create the link in the Mininet network using the link data
     if link[0] not in net.nameToNode or link[1] not in net.nameToNode:
         return {"error": "node not in net"}
-    net.addLink(link[0], link[1])
+    new_link = net.addLink(link[0], link[1])
     if net.is_started:
-        debug("ADDING LINK TO STARTED NETWORK\n")
         for node in link:
             node = net.nameToNode[node]
-            debug("NODE", node, "\n")
             if node.type == "host":
-                debug(f"RUNNING CONFIGDEFAULT() FOR NODE {node}")
                 node.configDefault()
             elif node.type == "sw":
-                debug(f"RUNNING START() FOR NODE {node}")
                 node.start([net.nameToNode[node.controller]])
-    links.add(link)
-    # Return an OK status code
-    return {"status": "ok"}
-
-
-# @app.post("/api/mininet/cli")
-# def create_cli(session: int):
-#    cli_sessions[session] = CLISession()
-#    url = cli_sessions[session].url
-#    return {"socket_url": url}
+    link_name = f"{new_link.intf1.name}_{new_link.intf2.name}"
+    # It is important to store this Link object because
+    # mininet (apparently) doesn't have an easy way to access this
+    links[link_name] = {"tuple": link, "object": new_link}
+    return {"from": link[0], "to": link[1], "id": link_name}
 
 @app.delete("/api/mininet/delete_node/{node_id}")
 def delete_node(node_id: str):
@@ -248,13 +238,20 @@ def delete_node(node_id: str):
         del hosts[node_id]
     return {"message": f"Node {node_id} deleted successfully"}
 
+@app.delete("/api/mininet/delete_link/{link_id}")
+def delete_link(link_id: str):
+    if link_id not in links:
+        raise HTTPException(status_code=404, detail=f"Node not found")
+    net.delLink(links[link_id]["object"])
+    del links[link_id]
+    return {"message": f"Link {link_id} deleted successfully"}
+
 @app.get("/api/mininet/stats/{node_id}")
 def get_node_stats(node_id: str):
     if node_id not in net.nameToNode:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     node = net.nameToNode[node_id]
     result = dict(**(switches.get(node_id) or hosts.get(node_id)))
-    debug(f"GETTING NODE STATS {node_id=} {result=}\n")
     if node.type == "sw":
         ports = node.dpctl("dump-ports")
         ports = ports[ports.find("\n")+1:].replace("\n", " ")

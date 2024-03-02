@@ -14,6 +14,7 @@ import {
   requestRunPingall,
   deployLink,
   deleteNode,
+  deleteLink,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -109,9 +110,8 @@ export default {
       return sw;
     });
     this.links = await getEdges();
-    let links = [];
     for (var link in this.links) {
-      links.push({
+      this.edges.add({
         from: this.links[link][0],
         to: this.links[link][1],
       });
@@ -121,8 +121,6 @@ export default {
       ...Object.values(this.switches),
     ]);
     this.nodes = nodes;
-    const edges = new DataSet(links);
-    this.edges = edges;
     console.log("network inside mounted, before setup:", this.network);
     await this.setupNetwork();
   },
@@ -136,10 +134,10 @@ export default {
               confirm("Cannot connect node to itself");
               return;
             }
-            if (await deployLink(data.from, data.to)) {
-              callback(data);
-              this.enterAddEdgeMode();
-            }
+            let link = await deployLink(data.from, data.to);
+            data.id = link.id;
+            callback(data);
+            this.enterAddEdgeMode();
           },
           deleteNode: async (data, callback) => {
             console.log("node deletion", data);
@@ -150,8 +148,25 @@ export default {
               })
               .catch(error => {
                 console.error("Error deleting nodes:", error);
-              });
-            
+              }); 
+          },
+          deleteEdge: async (data, callback) => {
+            console.log("edge deletion", data);
+            console.log("this is the network:", this.network);
+            console.log("this is the edges dataset:", this.edges.get());
+            try {
+              const results = [];
+              for (const edge of data.edges) {
+                  console.log(edge, "deletion");
+                  const result = await deleteLink(edge);
+                  results.push(edge);
+              }
+              console.log("All edges deleted:", results);
+              data.edges = results
+              callback(data);
+            } catch (error) {
+              console.error("Error deleting edges:", error);
+            }
           },
         },
       });

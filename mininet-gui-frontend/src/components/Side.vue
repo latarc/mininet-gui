@@ -21,7 +21,7 @@
       class="button-control-network"
       @click="this.$emit('deleteSelected')"
     >
-      Delete Selected Nodes
+      Delete Selected
     </button>
     <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')" :disabled="!networkStarted">
       Run Pingall Test
