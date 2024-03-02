@@ -141,6 +141,18 @@ export default {
               this.enterAddEdgeMode();
             }
           },
+          deleteNode: async (data, callback) => {
+            console.log("node deletion", data);
+            Promise.all(data.nodes.map(nodeId => deleteNode(nodeId)))
+              .then(results => {
+                console.log("All nodes deleted:", results);
+                callback(data)
+              })
+              .catch(error => {
+                console.error("Error deleting nodes:", error);
+              });
+            
+          },
         },
       });
       this.network.on("doubleClick", async (event) => {
@@ -255,9 +267,10 @@ export default {
         this.closeAddEdgeMode();
       }
     },
-    doDeleteSelected() {
+    async doDeleteSelected() {
       this.closeAllActiveModes();
       this.network.deleteSelected();
+
     },
     async startNetwork() {
       this.closeAllActiveModes();
