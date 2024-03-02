@@ -101,7 +101,7 @@ mn_cleanup()
 
 # Create the Mininet network
 setLogLevel("debug")
-net = Mininet(autoSetMacs=True, autoStaticArp=True, topo=Topo())
+net = Mininet(autoSetMacs=True, topo=Topo())
 #net.addController()
 net.is_started = False
 
@@ -235,3 +235,29 @@ def create_link(link: Tuple[str, str]):
 #    cli_sessions[session] = CLISession()
 #    url = cli_sessions[session].url
 #    return {"socket_url": url}
+
+@app.delete("/api/mininet/delete_node/{node_id}")
+def delete_node(node_id: str):
+    if node_id not in net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    node = net.nameToNode[node_id]
+    net.delNode(node)
+    if node.type == "sw":
+        del switches[node_id]
+    elif node.type == "host":
+        del hosts[node_id]
+    return {"message": f"Node {node_id} deleted successfully"}
+
+@app.get("/api/mininet/stats/{node_id}")
+def get_node_stats(node_id: str):
+    if node_id not in net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    node = net.nameToNode[node_id]
+    result = dict(**(switches.get(node_id) or hosts.get(node_id)))
+    debug(f"GETTING NODE STATS {node_id=} {result=}\n")
+    if node.type == "sw":
+        ports = node.dpctl("dump-ports")
+        ports = ports[ports.find("\n")+1:].replace("\n", " ")
+        ports = [p for p in ports.split("port") if "LOCAL" not in p]
+        result["ports"] = [p for p in ports if p.strip()]
+    return result

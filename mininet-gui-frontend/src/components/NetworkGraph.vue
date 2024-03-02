@@ -6,6 +6,7 @@ import {
   getHosts,
   getSwitches,
   getEdges,
+  getNodeStats,
   deployHost,
   deploySwitch,
   isNetworkStarted,
@@ -88,13 +89,23 @@ export default {
     this.hosts = await getHosts();
     this.switches = await getSwitches();
     Object.values(this.hosts).map((host) => {
+      host.shape = "circularImage",
+      host.color = {
+        background: "#ffffff00",
+        border: "#ffffff00",
+        highlight: { background: "red", border: "blue" },
+      };
       host.image = hostImg;
-      host.shape = "image";
       return host;
     });
     Object.values(this.switches).map((sw) => {
+      sw.shape = "circularImage",
+      sw.color = {
+        background: "#ffffff00",
+        border: "#ffffff00",
+        highlight: { background: "red", border: "blue" },
+      };
       sw.image = switchImg;
-      sw.shape = "image";
       return sw;
     });
     this.links = await getEdges();
@@ -116,28 +127,26 @@ export default {
     await this.setupNetwork();
   },
   methods: {
-    setupNetwork() {
+    async setupNetwork() {
       this.network.setOptions({
         manipulation: {
           enabled: false,
           addEdge: async (data, callback) => {
-            console.log("addEdge data, callback:", data, callback);
             if (data.from == data.to) {
               confirm("Cannot connect node to itself");
               return;
             }
             if (await deployLink(data.from, data.to)) {
               callback(data);
-              this.network.addEdgeMode();
-            }
-          },
-          deleteNode: async (data, callback) => {
-            if (data["nodes"]) {
-              await deleteNode(data["nodes"][0]);
-              callback(data);
+              this.enterAddEdgeMode();
             }
           },
         },
+      });
+      this.network.on("doubleClick", async (event) => {
+        if (event.nodes.length === 1) {
+          this.showStatsModal(event.nodes[0]);
+        }
       });
     },
     intToDpid (number) {
@@ -157,10 +166,15 @@ export default {
         mac: hostId.toString(16).toUpperCase().padStart(12, "0"),
         x: position.x,
         y: position.y,
+        shape: "circularImage",
+        color: {
+          background: "#ffffff00",
+          border: "#ffffff00",
+          highlight: { background: "red", border: "blue" },
+        },
       };
       host.label = `${host.name}`;
       host.image = hostImg;
-      host.shape = "image";
       if (await deployHost(host)) {
         this.nodes.add(host);
         this.hosts[host.name] = host;
@@ -183,10 +197,16 @@ export default {
         controller: "c0",
         x: position.x,
         y: position.y,
+        shape: "circularImage",
+        color: {
+          background: "#ffffff00",
+          border: "#ffffff00",
+          highlight: { background: "red", border: "blue" },
+        },
       };
       sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
       sw.image = switchImg;
-      sw.shape = "image";
+      //sw.shape = "image";
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
@@ -196,6 +216,7 @@ export default {
       }
     },
     handleDrop(event) {
+      this.closeAllActiveModes();
       event.preventDefault();
       console.log("drop event triggered, text/plain", event.dataTransfer.getData("text/plain"));
       var data = event.dataTransfer.getData("text/plain");
@@ -209,9 +230,13 @@ export default {
         );
       }
     },
+    enterAddEdgeMode() {
+        this.addEdgeMode = true;
+        this.network.addEdgeMode();
+    },
     closeAddEdgeMode() {
         this.addEdgeMode = false;
-        this.network.disableEditMode;
+        this.network.disableEditMode();
     },
     closeModal() {
       this.modalHeader = "";
@@ -223,21 +248,24 @@ export default {
       this.closeModal();
     },
     handleToggleAddEdgeMode() {
+      console.log("addedgemode toggle")
       if (!this.addEdgeMode) {
-        this.addEdgeMode = true;
-        this.network.addEdgeMode();
+        this.enterAddEdgeMode();
       } else {
         this.closeAddEdgeMode();
       }
     },
     doDeleteSelected() {
+      this.closeAllActiveModes();
       this.network.deleteSelected();
     },
     async startNetwork() {
+      this.closeAllActiveModes();
       if (await requestStartNetwork())
         this.networkStarted = true;
     },
     async showPingallModal() {
+      this.closeAllActiveModes();
       this.modalHeader = "Pingall Results";
       this.modalContents = "Loading...";
       this.showModal = true;
@@ -245,6 +273,19 @@ export default {
       if (pingallResults) {
         console.log(pingallResults)
         this.modalContents = pingallResults.replace("\n", "<br>");
+      } else {
+        this.showModal = false;
+      }
+    },
+    async showStatsModal(nodeId) {
+      this.closeAllActiveModes();
+      this.modalHeader = "Node Info";
+      this.modalContents = `<h3>Node ${nodeId}</h3>Loading...`;
+      this.showModal = true;
+      let nodeStats = await getNodeStats(nodeId)
+      if (nodeStats) {
+        console.log(nodeStats)
+        this.modalContents = JSON.stringify(nodeStats);
       } else {
         this.showModal = false;
       }

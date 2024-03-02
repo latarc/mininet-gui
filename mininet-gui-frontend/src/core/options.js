@@ -18,7 +18,6 @@ export const options = {
     smooth: false,
   },
   nodes: {
-    shape: "box",
     margin: 10,
     widthConstraint: {
       maximum: 200,

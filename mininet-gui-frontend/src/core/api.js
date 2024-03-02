@@ -151,3 +151,7 @@ export const getEdges = async () => {
 export const isNetworkStarted = async () => {
   return await sendGet(baseUrl + "/api/mininet/start");
 };
+
+export const getNodeStats = async (nodeId) => {
+  return await sendGet(baseUrl + `/api/mininet/stats/${nodeId}`);
+};
