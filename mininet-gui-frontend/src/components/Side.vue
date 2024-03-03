@@ -53,6 +53,18 @@
     />
     <figcaption>Switch</figcaption>
     </figure>
+    <figure
+      id="draggable-controller"
+      class="draggable-node"
+      draggable="true"
+    >
+    <img
+      alt="controller"
+      src="@/assets/controller.svg"
+      draggable="false"
+    />
+    <figcaption>Controller</figcaption>
+    </figure>
   </div>
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
     <b>&lt;&lt;</b>
@@ -147,6 +159,10 @@ export default {
 .draggable-node {
   width: 70px;
   height: auto;
+}
+
+.draggable-node > img {
+    width: 100%;
 }
 
 .draggable-node:hover {

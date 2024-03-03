@@ -42,6 +42,28 @@ export const deploySwitch = async (sw) => {
   }
 };
 
+export const deployController = async (ctl) => {
+  try {
+    console.log(ctl);
+    const response = await axios.post(
+      baseUrl + "/api/mininet/controllers",
+      JSON.stringify(ctl),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    if (response.status === 200)
+      return response.data;
+    throw new Error("Error deploying controller in mininet");
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
 export const deployLink = async (src, dst) => {
   try {
     console.log(src, dst);
@@ -61,6 +83,27 @@ export const deployLink = async (src, dst) => {
     alert(error.response ? error.response.data["detail"] : "Network Error");
     throw error;
   }
+};
+
+export const assocSwitch = async (sw, ctl) => {
+  try {
+    console.log("assoc",sw, ctl);
+    const response = await axios.post(
+      baseUrl + `/api/mininet/associate`,
+      JSON.stringify({"switch": sw, "controller": ctl}),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    if (response.status === 200)
+      return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+  }
+  throw error;
 };
 
 export const deleteNode = async (nodeId) => {
@@ -160,6 +203,10 @@ export const getHosts = async () => {
 
 export const getSwitches = async () => {
   return await sendGet(baseUrl + "/api/mininet/switches");
+};
+
+export const getControllers = async () => {
+  return await sendGet(baseUrl + "/api/mininet/controllers");
 };
 
 export const getEdges = async () => {

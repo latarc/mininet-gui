@@ -5,14 +5,17 @@ import { DataSet } from "vis-data/peer";
 import {
   getHosts,
   getSwitches,
+  getControllers,
   getEdges,
   getNodeStats,
   deployHost,
+  deployLink,
+  deployController,
   deploySwitch,
+  assocSwitch,
   isNetworkStarted,
   requestStartNetwork,
   requestRunPingall,
-  deployLink,
   deleteNode,
   deleteLink,
 } from "../core/api";
@@ -22,6 +25,7 @@ import Modal from "./Modal.vue";
 
 import switchImg from "@/assets/switch.svg";
 import hostImg from "@/assets/host.svg";
+import controllerImg from "@/assets/controller.svg";
 </script>
 
 <template>
@@ -65,6 +69,7 @@ export default {
     return {
       hosts: new Object(),
       switches: new Object(),
+      controllers: new Array(),
       links: new Array(),
       nodes: new DataSet(),
       edges: new DataSet(),
@@ -89,6 +94,7 @@ export default {
     this.networkStarted = await isNetworkStarted()
     this.hosts = await getHosts();
     this.switches = await getSwitches();
+    this.controllers = await getControllers();
     Object.values(this.hosts).map((host) => {
       host.shape = "circularImage",
       host.color = {
@@ -109,16 +115,32 @@ export default {
       sw.image = switchImg;
       return sw;
     });
+    Object.values(this.controllers).map((ctl) => {
+      ctl.shape = "circularImage",
+      ctl.color = {
+        background: "#ffffff00",
+        border: "#ffffff00",
+        highlight: { background: "red", border: "blue" },
+      };
+      ctl.image = controllerImg;
+      return ctl;
+    });
     this.links = await getEdges();
-    for (var link in this.links) {
+    for (const link of this.links) {
       this.edges.add({
-        from: this.links[link][0],
-        to: this.links[link][1],
+        from: link[0],
+        to: link[1],
       });
+    }
+    for (const sw in this.switches) {
+      let ctl = this.switches[sw].controller;
+      if (ctl)
+        this.edges.add({from: sw, to: ctl, color: "#ff00006f", dashes: [10, 10]})
     }
     const nodes = new DataSet([
       ...Object.values(this.hosts),
       ...Object.values(this.switches),
+      ...Object.values(this.controllers),
     ]);
     this.nodes = nodes;
     console.log("network inside mounted, before setup:", this.network);
@@ -134,8 +156,26 @@ export default {
               confirm("Cannot connect node to itself");
               return;
             }
-            let link = await deployLink(data.from, data.to);
-            data.id = link.id;
+            console.log("network", this.network);
+            let from = this.nodes.get(data.from)
+            let to = this.nodes.get(data.to);
+            if (from.type === "controller" && to.type === "controller") {
+                alert("cannot connect controller with controller");
+                return;
+            } else if (from.type === "controller" || to.type === "controller") {
+                if (from.type === "host" || to.type === "host") {
+                    alert("cannot associate host with controller");
+                    return;
+                }
+                let [sw, ctl] = (from.type === "controller") ? [to, from] : [from, to];
+                sw.controller = ctl.id;
+                await assocSwitch(sw.id, ctl.id);
+                data.color = {color: "#ff00006f"};
+                data.dashes = [5, 5];
+            } else {
+              let link = await deployLink(data.from, data.to);
+              data.id = link.id;
+            }
             callback(data);
             this.enterAddEdgeMode();
           },
@@ -205,7 +245,6 @@ export default {
       if (await deployHost(host)) {
         this.nodes.add(host);
         this.hosts[host.name] = host;
-        this.nextHostId = hostId + 1;
       } else {
         throw "Could not create host " + hostId;
       }
@@ -221,7 +260,7 @@ export default {
         name: `s${swId}`,
         label: null,
         ports: 4,
-        controller: "c0",
+        controller: null,
         x: position.x,
         y: position.y,
         shape: "circularImage",
@@ -233,13 +272,44 @@ export default {
       };
       sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
       sw.image = switchImg;
-      //sw.shape = "image";
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
-        this.nextSwId = swId + 1;
       } else {
         throw "Could not create sw " + swId;
+      }
+    },
+    async createController(position) {
+      let ctlId = Object.values(this.controllers).length + 1;
+      while (`c${ctlId}` in this.controllers) {
+        ctlId++;
+      }
+      let ip = "127.0.0.1";
+      let port = "6653";
+      let ctl = {
+        id: `c${ctlId}`,
+        type: "controller",
+        name: `c${ctlId}`,
+        label: null,
+        remote: true,
+        ip: ip,
+        port: port,
+        x: position.x,
+        y: position.y,
+        shape: "circularImage",
+        color: {
+          background: "#ffffff00",
+          border: "#ffffff00",
+          highlight: { background: "red", border: "blue" },
+        },
+      };
+      ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
+      ctl.image = controllerImg;
+      if (await deployController(ctl)) {
+        this.nodes.add(ctl);
+        this.controllers[ctl.name] = ctl;
+      } else {
+        throw "Could not create controller " + ctlId;
       }
     },
     handleDrop(event) {
@@ -253,6 +323,10 @@ export default {
         );
       } else if (data === "draggable-switch") {
         this.createSwitch(
+          this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
+        );
+      } else if (data === "draggable-controller") {
+        this.createController(
           this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
         );
       }

@@ -9,7 +9,7 @@ Endpoints to start and stop the network at any point.
 
 Endpoints that add, remove and edit nodes and edges in real time.
 """
-from typing import Tuple
+from typing import Tuple, Union
 
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug
@@ -46,7 +46,7 @@ class Host(Node):
 
 class Switch(Node):
     ports: int
-    controller: str
+    controller: Union[str, None]
 
 
 app = FastAPI(
@@ -66,18 +66,7 @@ app = FastAPI(
     # },
 )
 
-controllers = dict(
-    c0=Controller(
-        id="c0",
-        type="controller",
-        name="c0",
-        label="default controller",
-        x=0,
-        y=0,
-        remote=False,
-        ip="127.0.0.1",
-    )
-)
+controllers = dict()
 switches = dict()
 hosts = dict()
 links = dict()
@@ -121,6 +110,9 @@ def list_hosts():
 def list_switches():
     return switches
 
+@app.get("/api/mininet/controllers")
+def list_controllers():
+    return controllers
 
 @app.get("/api/mininet/links")
 def list_edges():
@@ -138,8 +130,12 @@ def start_network():
     net.build()
     for controller in controllers:
         net.nameToNode[controller].start()
-    for switch in switches:
-        net.nameToNode[switch].start([net.nameToNode[switches[switch]["controller"]]])
+    for switch_id in switches:
+        switch = net.nameToNode[switch_id]
+        if switch.controller:
+            switch.start([switch.controller])
+        else:
+            new_switch.start([])
     net.is_started = True
     return {"status": "ok"}
 
@@ -172,13 +168,16 @@ def create_host(host: Host):
 @app.post("/api/mininet/switches")
 def create_switch(switch: Switch):
     # Create switch in the Mininet network using the request data
-    if switch.controller not in controllers:
+    debug("CREATING SWITCH", switch)
+    if switch.controller and switch.controller not in controllers:
         raise HTTPException(
             status_code=400, detail=f'controller "{switch.controller}" does not exist'
         )
     new_switch = net.addSwitch(switch.name, ports=switch.ports)
-    if net.is_started:
+    if net.is_started and switch.controller:
         new_switch.start([net.nameToNode[switch.controller]])
+    else:
+        new_switch.start([])
     new_switch.type = "sw"
     new_switch.controller = switch.controller
     switches[switch.name] = switch.dict()
@@ -206,12 +205,32 @@ def create_controller(controller: Controller):
     # Return an OK status code
     return {"status": "ok"}
 
+@app.post("/api/mininet/associate")
+def associate_switch(data: dict):
+    # Associate switch to controller.
+    if "switch" not in data or "controller" not in data:
+        raise HTTPException(
+            status_code=400, detail=f'missing key in data'
+        )
+    sw_id = data["switch"]
+    ctl_id = data["controller"]
+    if sw_id not in net.nameToNode or ctl_id not in net.nameToNode:
+        raise HTTPException(status_code=400, detail='node not in net')
+    sw = net.nameToNode[sw_id]
+    ctl = net.nameToNode[ctl_id]
+    if sw.controller:
+        raise HTTPException(status_code=400, detail="switch is already associated")
+    sw.controller = ctl
+    switches[sw_id]["controller"] = ctl_id
+    if net.is_started:
+        sw.start([sw.controller])
+    return "OK"
 
 @app.post("/api/mininet/links")
 def create_link(link: Tuple[str, str]):
     # Create the link in the Mininet network using the link data
     if link[0] not in net.nameToNode or link[1] not in net.nameToNode:
-        return {"error": "node not in net"}
+        raise HTTPException(status_code=400, detail=f'node not in net')
     new_link = net.addLink(link[0], link[1])
     if net.is_started:
         for node in link:
