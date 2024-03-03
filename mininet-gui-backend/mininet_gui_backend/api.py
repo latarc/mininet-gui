@@ -189,10 +189,12 @@ def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
     if controller.remote:
+        # TODO assert there is no other controller with same ip:port
         new_controller = net.addController(
             controller.name, controller=RemoteController, ip=controller.ip
         )
     else:
+        # TODO assert there is only one reference controller
         new_controller = net.addController(
             controller.name, controller=Controller
         )
@@ -237,8 +239,8 @@ def create_link(link: Tuple[str, str]):
             node = net.nameToNode[node]
             if node.type == "host":
                 node.configDefault()
-            elif node.type == "sw":
-                node.start([net.nameToNode[node.controller]])
+            elif node.type == "sw" and node.controller:
+                node.start([node.controller])
     link_name = f"{new_link.intf1.name}_{new_link.intf2.name}"
     # It is important to store this Link object because
     # mininet (apparently) doesn't have an easy way to access this
