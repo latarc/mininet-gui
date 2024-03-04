@@ -135,7 +135,7 @@ def start_network():
         if switch.controller:
             switch.start([switch.controller])
         else:
-            new_switch.start([])
+            switch.start([])
     net.is_started = True
     return {"status": "ok"}
 
