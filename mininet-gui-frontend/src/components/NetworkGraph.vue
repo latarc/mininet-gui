@@ -35,6 +35,8 @@ import controllerImg from "@/assets/controller.svg";
     @deleteSelected="doDeleteSelected"
     @runPingall="showPingallModal"
     @closeAllActiveModes="closeAllActiveModes"
+    @toggleShowHosts="toggleShowHosts"
+    @toggleShowControllers="toggleShowControllers"
     :networkStarted="networkStarted"
     :addEdgeMode="addEdgeMode"
   />
@@ -46,6 +48,9 @@ import controllerImg from "@/assets/controller.svg";
     @dragenter.prevent
     @dragover.prevent
     @keydown.esc="closeAllActiveModes"
+    @keydown.h="toggleShowHosts"
+    @keydown.c="toggleShowControllers"
+    @keydown.e="enterAddEdgeMode"
 ></div>
 <Teleport to="body">
 <modal :show="showModal" @close="showModal = false">
@@ -78,6 +83,8 @@ export default {
       showModal: false,
       modalContents: "",
       modalHeader: "",
+      controllersHidden: true,
+      hostsVisible: true,
     };
   },
   computed: {
@@ -98,7 +105,7 @@ export default {
     Object.values(this.hosts).map((host) => {
       host.shape = "circularImage",
       host.color = {
-        background: "#ffffff00",
+        background: "#ffffffff",
         border: "#ffffff00",
         highlight: { background: "red", border: "blue" },
       };
@@ -108,7 +115,7 @@ export default {
     Object.values(this.switches).map((sw) => {
       sw.shape = "circularImage",
       sw.color = {
-        background: "#ffffff00",
+        background: "#ffffffff",
         border: "#ffffff00",
         highlight: { background: "red", border: "blue" },
       };
@@ -118,7 +125,7 @@ export default {
     Object.values(this.controllers).map((ctl) => {
       ctl.shape = "circularImage",
       ctl.color = {
-        background: "#ffffff00",
+        background: "#ffffffff",
         border: "#ffffff00",
         highlight: { background: "red", border: "blue" },
       };
@@ -130,6 +137,7 @@ export default {
       this.edges.add({
         from: link[0],
         to: link[1],
+        color: this.networkStarted? "#00ff00ff" : "#999999ff",
       });
     }
     for (const sw in this.switches) {
@@ -175,20 +183,26 @@ export default {
             } else {
               let link = await deployLink(data.from, data.to);
               data.id = link.id;
+              data.color = {color: this.networkStarted? "#00ff00ff" : "#999999ff"};
             }
             callback(data);
             this.enterAddEdgeMode();
           },
           deleteNode: async (data, callback) => {
             console.log("node deletion", data);
-            Promise.all(data.nodes.map(nodeId => deleteNode(nodeId)))
-              .then(results => {
-                console.log("All nodes deleted:", results);
-                callback(data)
-              })
-              .catch(error => {
-                console.error("Error deleting nodes:", error);
-              }); 
+            // the deletion must happen synchronously, because mininet
+            // cannot handle creating/deleting two things at the same time
+            let results = [];
+            for (const nodeId of data.nodes) {
+              try {
+                await deleteNode(nodeId);
+                results.push(node);
+              } catch (error) {
+                console.log("error deleting node", nodeId);
+              }
+            }
+            data.nodes = results;
+            callback(data);
           },
           deleteEdge: async (data, callback) => {
             console.log("edge deletion", data);
@@ -196,6 +210,8 @@ export default {
             console.log("this is the edges dataset:", this.edges.get());
             try {
               const results = [];
+              // the deletion must happen synchronously, because mininet
+              // cannot handle creating/deleting two things at the same time
               for (const edge of data.edges) {
                   console.log(edge, "deletion");
                   const result = await deleteLink(edge);
@@ -235,7 +251,7 @@ export default {
         y: position.y,
         shape: "circularImage",
         color: {
-          background: "#ffffff00",
+          background: "#ffffffff",
           border: "#ffffff00",
           highlight: { background: "red", border: "blue" },
         },
@@ -265,7 +281,7 @@ export default {
         y: position.y,
         shape: "circularImage",
         color: {
-          background: "#ffffff00",
+          background: "#ffffffff",
           border: "#ffffff00",
           highlight: { background: "red", border: "blue" },
         },
@@ -298,7 +314,7 @@ export default {
         y: position.y,
         shape: "circularImage",
         color: {
-          background: "#ffffff00",
+          background: "#ffffffff",
           border: "#ffffff00",
           highlight: { background: "red", border: "blue" },
         },
@@ -356,6 +372,24 @@ export default {
         this.closeAddEdgeMode();
       }
     },
+    toggleShowHosts() {
+      this.hostsHidden = !this.hostsHidden;
+      this.nodes.forEach((node, id) => {
+        if (node.type == "host") {
+          node.hidden = this.hostsHidden;
+          this.nodes.updateOnly(node);
+        }
+      });
+    },
+    toggleShowControllers () {
+      this.controllersHidden = !this.controllersHidden;
+      this.nodes.forEach((node, id) => {
+        if (node.type == "controller") {
+          node.hidden = this.controllersHidden;
+          this.nodes.updateOnly(node);
+        }
+      });
+    },
     async doDeleteSelected() {
       this.closeAllActiveModes();
       this.network.deleteSelected();
@@ -363,8 +397,11 @@ export default {
     },
     async startNetwork() {
       this.closeAllActiveModes();
-      if (await requestStartNetwork())
+      console.log("edges:",this.edges);
+      if (await requestStartNetwork()) {
         this.networkStarted = true;
+        this.edges.forEach((item, id) => {item.color = item.color = {color: "#00ff00ff"}; this.edges.updateOnly(item);});
+      }
     },
     async showPingallModal() {
       this.closeAllActiveModes();

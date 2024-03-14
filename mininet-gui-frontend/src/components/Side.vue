@@ -4,6 +4,9 @@
     class="side"
     @dragstart="handleDragStart"
     @keydown.esc="this.$emit('closeAllActiveModes')"
+    @keydown.h="this.$emit('toggleShowHosts')"
+    @keydown.c="this.$emit('toggleShowControllers')"
+    @keydown.e="console.log('TESTE');this.$emit('toggleAddEdgeMode')"
   >
     <p>Mininet Controls</p>
     <button id="button-start-network" class="button-control-network" @click="this.$emit('networkStart')" :disabled="networkStarted">
@@ -65,10 +68,13 @@
     />
     <figcaption>Controller</figcaption>
     </figure>
+    <p>Press h to toggle hosts visibility</p>
+    <p>Press c to toggle controllers visibility</p>
   </div>
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
     <b>&lt;&lt;</b>
   </button>
+  
 </template>
 
 <script>
@@ -84,7 +90,15 @@ export default {
         sideIsActive: 1
     };
   },
-  emits: ["toggleAddEdgeMode", "networkStart", "runPingall", "deleteSelected", "closeAllActiveModes"],
+  emits: [
+    "toggleAddEdgeMode",
+    "networkStart",
+    "runPingall",
+    "deleteSelected",
+    "closeAllActiveModes",
+    "toggleShowHosts",
+    "toggleShowControllers",
+  ],
   methods: {
     toggleSide() {
       if (this.sideIsActive) {
