@@ -70,6 +70,15 @@
     </figure>
     <p>Press h to toggle hosts visibility</p>
     <p>Press c to toggle controllers visibility</p>
+    <hr>
+    <p>Select topology style:</p>
+    <select v-model="selectedTopology" id="select-topology-style">
+      <option value="Single">Single</option>
+      <option value="Linear">Linear</option>
+      <option value="Tree">Tree</option>
+    </select>
+    <input type="number" v-model="nDevices" min="1" />
+    <button id="button-create-topology" @click="createTopology()">Create Topology</button>
   </div>
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
     <b>&lt;&lt;</b>
@@ -87,7 +96,9 @@ export default {
   },
   data() {
     return {
-        sideIsActive: 1
+        sideIsActive: 1,
+        selectedTopology: "Single",
+        nDevices: 1,
     };
   },
   emits: [
@@ -98,6 +109,7 @@ export default {
     "closeAllActiveModes",
     "toggleShowHosts",
     "toggleShowControllers",
+    "createTopology",
   ],
   methods: {
     toggleSide() {
@@ -117,6 +129,13 @@ export default {
         console.log("dragstart", event);
         event.dataTransfer.setData("text", event.target.id);
     },
+    createTopology() {
+        console.log("create topology (Side)", event);
+        this.$emit("createTopology", {
+          selectedTopology: this.selectedTopology,
+          nDevices: this.nDevices
+        });
+    }
   },
 };
 </script>

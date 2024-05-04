@@ -37,6 +37,7 @@ import controllerImg from "@/assets/controller.svg";
     @closeAllActiveModes="closeAllActiveModes"
     @toggleShowHosts="toggleShowHosts"
     @toggleShowControllers="toggleShowControllers"
+    @createTopology="handleCreateTopology"
     :networkStarted="networkStarted"
     :addEdgeMode="addEdgeMode"
   />
@@ -51,6 +52,7 @@ import controllerImg from "@/assets/controller.svg";
     @keydown.h="toggleShowHosts"
     @keydown.c="toggleShowControllers"
     @keydown.e="enterAddEdgeMode"
+    @keydown.d="doDeleteSelected"
 ></div>
 <Teleport to="body">
 <modal :show="showModal" @close="showModal = false">
@@ -196,9 +198,9 @@ export default {
             for (const nodeId of data.nodes) {
               try {
                 await deleteNode(nodeId);
-                results.push(node);
+                results.push(nodeId);
               } catch (error) {
-                console.log("error deleting node", nodeId);
+                console.log("error deleting node", nodeId, error);
               }
             }
             data.nodes = results;
@@ -247,8 +249,6 @@ export default {
         label: null,
         ip: `10.0.0.${hostId}/8`,
         mac: hostId.toString(16).toUpperCase().padStart(12, "0"),
-        x: position.x,
-        y: position.y,
         shape: "circularImage",
         color: {
           background: "#ffffffff",
@@ -258,12 +258,17 @@ export default {
       };
       host.label = `${host.name}`;
       host.image = hostImg;
+      if (position) {
+        host.x = position.x;
+        host.y = position.y;
+      }
       if (await deployHost(host)) {
         this.nodes.add(host);
         this.hosts[host.name] = host;
       } else {
         throw "Could not create host " + hostId;
       }
+      return host
     },
     async createSwitch(position) {
       let swId = Object.values(this.switches).length + 1;
@@ -277,8 +282,6 @@ export default {
         label: null,
         ports: 4,
         controller: null,
-        x: position.x,
-        y: position.y,
         shape: "circularImage",
         color: {
           background: "#ffffffff",
@@ -288,12 +291,18 @@ export default {
       };
       sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
       sw.image = switchImg;
+      if (position) {
+        sw.x = position.x;
+        sw.y = position.y;
+      }
+      sw.image = switchImg;
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
       } else {
         throw "Could not create sw " + swId;
       }
+      return sw
     },
     async createController(position) {
       let ctlId = Object.values(this.controllers).length + 1;
@@ -301,7 +310,7 @@ export default {
         ctlId++;
       }
       let ip = "127.0.0.1";
-      let port = "6653";
+      let port = "6633";
       let ctl = {
         id: `c${ctlId}`,
         type: "controller",
@@ -400,8 +409,31 @@ export default {
       console.log("edges:",this.edges);
       if (await requestStartNetwork()) {
         this.networkStarted = true;
-        this.edges.forEach((item, id) => {item.color = item.color = {color: "#00ff00ff"}; this.edges.updateOnly(item);});
+        this.edges.forEach((item, id) => {
+            if (item.color == "#999999ff") {
+                item.color = {color: "#00ff00ff"};
+                this.edges.updateOnly(item);
+            }
+        });
       }
+    },
+    createPingallTable(inputString) {
+      const data = inputString.replaceAll("min/avg/max/mdev", "").replaceAll("/", " ").replaceAll("->", " ").replaceAll(",", "").replaceAll(":", "").replaceAll("rtt", "").split(/\s+/).filter(Boolean);
+      let tableHTML = '<table border="1"><thead><tr>';
+      const headers = ['src', 'dst', 'packets_sent', 'packets_recv', 'min', 'avg', 'max', 'mdev'];
+      headers.forEach(header => {
+          tableHTML += `<th>${header}</th>`;
+      });
+      tableHTML += '</tr></thead><tbody>';
+      for (let i = 0; i < data.length; i += 9) {
+          tableHTML += '<tr>';
+          for (let j = 0; j < 8; j++) {
+              tableHTML += `<td>${data[i + j]}</td>`;
+          }
+          tableHTML += '</tr>';
+      }
+      tableHTML += '</tbody></table>';
+      return tableHTML;
     },
     async showPingallModal() {
       this.closeAllActiveModes();
@@ -411,10 +443,18 @@ export default {
       let pingallResults = await requestRunPingall()
       if (pingallResults) {
         console.log(pingallResults)
-        this.modalContents = pingallResults.replace("\n", "<br>");
+        let pingallTable = this.createPingallTable(pingallResults)
+        console.log(pingallTable)
+        this.modalContents = pingallTable;
       } else {
         this.showModal = false;
       }
+    },
+    createSwStatsTable(jsonData) {
+      let t='<table border="1">',d=jsonData;
+      t+='<tr>';for(let k in d)t+='<th>'+k+'</th>';t+='</tr>';
+      t+='<tr>';for(let k in d)t+='<td>'+(Array.isArray(d[k])?d[k].join('<br>'):d[k])+'</td>';t+='</tr>';
+      return t+'</table>';
     },
     async showStatsModal(nodeId) {
       this.closeAllActiveModes();
@@ -424,12 +464,64 @@ export default {
       let nodeStats = await getNodeStats(nodeId)
       if (nodeStats) {
         console.log(nodeStats)
-        this.modalContents = JSON.stringify(nodeStats);
+        this.modalContents = this.createSwStatsTable(nodeStats);
       } else {
         this.showModal = false;
       }
+    },
+    async createSingleTopo(nDevices) {
+      let newSw = await this.createSwitch({x: 250,y: 150});
+      for (var i=0; i<nDevices; i++) {
+        let newHost = await this.createHost({x: 200+i*90, y: 300});
+        console.log("newSw")
+        console.log("newSw", newSw)
+        console.log("newHost")
+        console.log("newHost", newHost)
+        let link = await deployLink(newSw.id, newHost.id);
+        this.edges.add({
+          from: newSw.id,
+          to: newHost.id,
+          color: this.networkStarted? "#00ff00ff" : "#999999ff",
+        });
+      }
+    },
+    async createLinearTopo(nDevices) {
+      let prevSw = null;
+      for (var i=0; i<nDevices; i++) {
+        let newSw = await this.createSwitch({x: 250+i*90,y: 150});
+        let newHost = await this.createHost({x: 200+i*90, y: 300});
+        console.log("newSw")
+        console.log("newSw", newSw)
+        console.log("newHost")
+        console.log("newHost", newHost)
+        if (prevSw != null) {
+          await deployLink(newSw.id, prevSw.id);
+          this.edges.add({
+            from: newSw.id,
+            to: prevSw.id,
+            color: this.networkStarted? "#00ff00ff" : "#999999ff",
+          });
+        }
+        await deployLink(newSw.id, newHost.id);
+        this.edges.add({
+          from: newSw.id,
+          to: newHost.id,
+          color: this.networkStarted? "#00ff00ff" : "#999999ff",
+        });
+        prevSw = newSw;
+      }
+    },
+    async handleCreateTopology(event){
+      const topologyType = event.selectedTopology;
+      const nDevices = event.nDevices;
+      console.log("Received createTopology event with:", topologyType, "nDevices", nDevices);
+      if (topologyType == "Single") {
+        await this.createSingleTopo(nDevices);
+      } else if (topologyType == "Linear") {
+        await this.createLinearTopo(nDevices);
+      }
     }
-  },
+  }
 };
 </script>
 
