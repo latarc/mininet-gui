@@ -71,14 +71,16 @@
     <p>Press h to toggle hosts visibility</p>
     <p>Press c to toggle controllers visibility</p>
     <hr>
-    <p>Select topology style:</p>
+    <label for="select-topology-style">Select topology style:</label>
     <select v-model="selectedTopology" id="select-topology-style">
       <option value="Single">Single</option>
       <option value="Linear">Linear</option>
       <option value="Tree">Tree</option>
     </select>
-    <input type="number" v-model="nDevices" min="1" />
-    <button id="button-create-topology" @click="createTopology()">Create Topology</button>
+    <br>
+    <label for="input-topology-ndevices">Select number of nodes:</label>
+    <input id="input-topology-ndevices" type="number" v-model="nDevices" min="1" />
+    <button class="button-control-network" id="button-create-topology" @click="createTopology()">Create Topology</button>
   </div>
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
     <b>&lt;&lt;</b>
@@ -153,18 +155,26 @@ export default {
   overflow-y: auto;
 }
 
-.side * {
+.side p, figcaption, label {
   color: white;
   font-family: Fira Sans;
   margin: 2.5%;
   padding: 4px;
 }
 
+.side select, input {
+  color: black;
+}
+
 .button-control-network {
+  color: white;
   background: var(--oxford-blue);
   border: solid 2px rgba(0, 0, 0, 0.2);
   border-radius: 2px;
   font-size: 11pt;
+  font-family: Fira Sans;
+  margin: 2.5%;
+  padding: 4px;
 }
 
 .button-control-network:active {
@@ -190,7 +200,7 @@ export default {
 }
 
 .draggable-node {
-  width: 70px;
+  width: 40px;
   height: auto;
 }
 
