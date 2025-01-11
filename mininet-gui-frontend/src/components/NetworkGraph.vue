@@ -23,6 +23,7 @@ import {
 import { options } from "../core/options";
 import Side from "./Side.vue";
 import Modal from "./Modal.vue";
+import ControllerForm from "./ControllerForm.vue";
 
 import switchImg from "@/assets/switch.svg";
 import hostImg from "@/assets/host.svg";
@@ -56,12 +57,13 @@ import controllerImg from "@/assets/controller.svg";
     @keydown.d="doDeleteSelected"
 ></div>
 <Teleport to="body">
-<modal :show="showModal" @close="showModal = false">
+<modal :show="showModal" @close="showModal = false; controllerModalIsActive = false">
   <template #header>
     <h3>{{modalHeader}}</h3>
   </template>
   <template #body>
     <span v-html="modalContents"></span>
+    <controller-form v-if="controllerModalIsActive" @form-submit="handleControllerFormSubmit" />
   </template>
 </modal>
 </Teleport>
@@ -72,6 +74,7 @@ export default {
   name: "NetworkGraph",
   components: {
     Side,
+    ControllerForm,
   },
   data() {
     return {
@@ -82,8 +85,11 @@ export default {
       nodes: new DataSet(),
       edges: new DataSet(),
       addEdgeMode: false,
-      networkStarted: false,
+      networkStarted: true,
       showModal: false,
+      controllerModalIsActive: false,
+      formData: null,
+      modalPromiseResolve: null,
       modalContents: "",
       modalHeader: "",
       controllersHidden: true,
@@ -307,19 +313,42 @@ export default {
       }
       return sw
     },
-    async createController(position) {
+    async showControllerFormModal(position){
+      this.modalHeader = "Controller Form";
+      this.showModal = true;
+      this.controllerModalIsActive = true;
+      const result = await new Promise((resolve) => {
+        this.modalPromiseResolve = resolve;
+      });
+      console.log("GOT DATA")
+      console.log(this.formData)
+      await this.createController(position, this.formData.type === "remote", this.formData.ip, this.formData.port)
+    },
+    handleControllerFormSubmit(data) {
+      this.formData = data;
+
+      // Resolve the promise with the form data
+      if (this.modalPromiseResolve) {
+        this.modalPromiseResolve(data);
+        this.modalPromiseResolve = null;
+      }
+
+      this.controllerModalIsActive = false;
+      this.showModal = false;
+    },
+    async createController(position, remote, ip, port) {
       let ctlId = Object.values(this.controllers).length + 1;
       while (`c${ctlId}` in this.controllers) {
         ctlId++;
       }
-      let ip = "127.0.0.1";
-      let port = "6633";
+      // let ip = "127.0.0.1";
+      // let port = "6633";
       let ctl = {
         id: `c${ctlId}`,
         type: "controller",
         name: `c${ctlId}`,
         label: null,
-        remote: true,
+        remote: remote,
         ip: ip,
         port: port,
         x: position.x,
@@ -331,7 +360,8 @@ export default {
           highlight: { background: "red", border: "blue" },
         },
       };
-      ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
+      if (remote) ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
+      else ctl.label = `${ctl.name}`;
       ctl.image = controllerImg;
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
@@ -354,7 +384,7 @@ export default {
           this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
         );
       } else if (data === "draggable-controller") {
-        this.createController(
+        this.showControllerFormModal(
           this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
         );
       }
@@ -363,7 +393,11 @@ export default {
       event.nodes.forEach(async nodeId => {
         let node = this.nodes.get(nodeId)
         // important to be the diff, or else multiple nodes moved at the same time go to the same place
-        await updateNodePosition(nodeId, [node.x + event.event.deltaX, node.y + event.event.deltaY])
+        node.x += event.event.deltaX
+        node.y += event.event.deltaY
+        
+        this.nodes.updateOnly(node)
+        await updateNodePosition(nodeId, [node.x, node.y])
       })
     },
     enterAddEdgeMode() {
@@ -414,19 +448,19 @@ export default {
       this.network.deleteSelected();
 
     },
-    async startNetwork() {
-      this.closeAllActiveModes();
-      console.log("edges:",this.edges);
-      if (await requestStartNetwork()) {
-        this.networkStarted = true;
-        this.edges.forEach((item, id) => {
-            if (item.color == "#999999ff") {
-                item.color = {color: "#00ff00ff"};
-                this.edges.updateOnly(item);
-            }
-        });
-      }
-    },
+    // async startNetwork() {
+    //   this.closeAllActiveModes();
+    //   console.log("edges:",this.edges);
+    //   if (await requestStartNetwork()) {
+    //     this.networkStarted = true;
+    //     this.edges.forEach((item, id) => {
+    //         if (item.color == "#999999ff") {
+    //             item.color = {color: "#00ff00ff"};
+    //             this.edges.updateOnly(item);
+    //         }
+    //     });
+    //   }
+    // },
     createPingallTable(inputString) {
       const data = inputString.replaceAll("min/avg/max/mdev", "").replaceAll("/", " ").replaceAll("->", " ").replaceAll(",", "").replaceAll(":", "").replaceAll("rtt", "").split(/\s+/).filter(Boolean);
       let tableHTML = '<table border="1"><thead><tr>';

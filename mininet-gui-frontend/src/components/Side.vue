@@ -6,12 +6,9 @@
     @keydown.esc="this.$emit('closeAllActiveModes')"
     @keydown.h="this.$emit('toggleShowHosts')"
     @keydown.c="this.$emit('toggleShowControllers')"
-    @keydown.e="console.log('TESTE');this.$emit('toggleAddEdgeMode')"
+    @keydown.e="this.$emit('toggleAddEdgeMode')"
   >
     <p>Mininet Controls</p>
-    <button id="button-start-network" class="button-control-network" @click="this.$emit('networkStart')" :disabled="networkStarted">
-      {{!networkStarted ? "Start Network" : "Network is running"}}
-    </button>
     <button
       id="button-create-link"
       class="button-control-network"
@@ -26,7 +23,7 @@
     >
       Delete Selected
     </button>
-    <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')" :disabled="!networkStarted">
+    <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')">
       Run Pingall Test
     </button>
     <button id="button-export-network" class="button-control-network">
@@ -93,7 +90,7 @@ import { requestStartNetwork } from "../core/api";
 export default {
   props: {
     createLinkMode: false,
-    networkStarted: false,
+    networkStarted: true,
     addEdgeMode: false,
   },
   data() {

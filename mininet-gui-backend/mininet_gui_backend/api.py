@@ -15,7 +15,7 @@ from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
-from mininet.node import RemoteController, Controller
+from mininet.node import RemoteController, Controller as ReferenceController
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
@@ -36,7 +36,8 @@ class Node(BaseModel):
 
 class Controller(Node):
     remote: bool
-    ip: str
+    ip: Union[str, None]
+    port: Union[int, None]
 
 
 class Host(Node):
@@ -193,14 +194,16 @@ def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
     if controller.remote:
-        # TODO assert there is no other controller with same ip:port
+        # TODO aqui o mininet verifica se a porta está open com timeout de 60s e blocka a request 
         new_controller = net.addController(
-            controller.name, controller=RemoteController, ip=controller.ip
+            controller.name,
+            controller=RemoteController,
+            ip=controller.ip,
+            port=controller.port,
         )
     else:
-        # TODO assert there is only one reference controller
         new_controller = net.addController(
-            controller.name, controller=Controller
+            controller.name, controller=ReferenceController
         )
 
     new_controller.start()
@@ -312,4 +315,9 @@ def get_node_stats(node_id: str):
         ports = ports[ports.find("\n")+1:].replace("\n", " ")
         ports = [p for p in ports.split("port") if "LOCAL" not in p]
         result["ports"] = [p for p in ports if p.strip()]
+    del result["x"]
+    del result["y"]
     return result
+
+start_network()
+net.is_started = True
