@@ -24,6 +24,7 @@ import { options } from "../core/options";
 import Side from "./Side.vue";
 import Modal from "./Modal.vue";
 import ControllerForm from "./ControllerForm.vue";
+import TopologyForm from "./TopologyForm.vue";
 
 import switchImg from "@/assets/switch.svg";
 import hostImg from "@/assets/host.svg";
@@ -39,7 +40,7 @@ import controllerImg from "@/assets/controller.svg";
     @closeAllActiveModes="closeAllActiveModes"
     @toggleShowHosts="toggleShowHosts"
     @toggleShowControllers="toggleShowControllers"
-    @createTopology="handleCreateTopology"
+    @createTopology="showTopologyFormModal"
     :networkStarted="networkStarted"
     :addEdgeMode="addEdgeMode"
   />
@@ -57,13 +58,15 @@ import controllerImg from "@/assets/controller.svg";
     @keydown.d="doDeleteSelected"
 ></div>
 <Teleport to="body">
-<modal :show="showModal" @close="showModal = false; controllerModalIsActive = false">
+<modal :show="showModal" @close="showModal = false;">
   <template #header>
     <h3>{{modalHeader}}</h3>
   </template>
   <template #body>
     <span v-html="modalContents"></span>
     <controller-form v-if="controllerModalIsActive" @form-submit="handleControllerFormSubmit" />
+    <topology-form v-if="topologyModalIsActive" @form-submit="handleTopologyFormSubmit" />
+    
   </template>
 </modal>
 </Teleport>
@@ -75,6 +78,7 @@ export default {
   components: {
     Side,
     ControllerForm,
+    TopologyForm,
   },
   data() {
     return {
@@ -88,6 +92,7 @@ export default {
       networkStarted: true,
       showModal: false,
       controllerModalIsActive: false,
+      topologyModalIsActive: false,
       formData: null,
       modalPromiseResolve: null,
       modalContents: "",
@@ -327,7 +332,6 @@ export default {
     handleControllerFormSubmit(data) {
       this.formData = data;
 
-      // Resolve the promise with the form data
       if (this.modalPromiseResolve) {
         this.modalPromiseResolve(data);
         this.modalPromiseResolve = null;
@@ -336,13 +340,12 @@ export default {
       this.controllerModalIsActive = false;
       this.showModal = false;
     },
+    
     async createController(position, remote, ip, port) {
       let ctlId = Object.values(this.controllers).length + 1;
       while (`c${ctlId}` in this.controllers) {
         ctlId++;
       }
-      // let ip = "127.0.0.1";
-      // let port = "6633";
       let ctl = {
         id: `c${ctlId}`,
         type: "controller",
@@ -363,6 +366,7 @@ export default {
       if (remote) ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
       else ctl.label = `${ctl.name}`;
       ctl.image = controllerImg;
+      // TODO fix in backend, this takes too long because of mininet telnet check ip:port
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
         this.controllers[ctl.name] = ctl;
@@ -392,7 +396,7 @@ export default {
     async handleNodeDragEnd(event) {
       event.nodes.forEach(async nodeId => {
         let node = this.nodes.get(nodeId)
-        // important to be the diff, or else multiple nodes moved at the same time go to the same place
+        // TODO: fix this calculation, does not work well with canvas zoom in/out
         node.x += event.event.deltaX
         node.y += event.event.deltaY
         
@@ -555,14 +559,66 @@ export default {
         prevSw = newSw;
       }
     },
-    async handleCreateTopology(event){
-      const topologyType = event.selectedTopology;
-      const nDevices = event.nDevices;
-      console.log("Received createTopology event with:", topologyType, "nDevices", nDevices);
+    async createTreeTopo(depth, fanout) {
+      const addTree = async (currentDepth, offset) => {
+        const isSwitch = currentDepth < depth;
+        let node;
+
+        if (isSwitch) {
+          node = await this.createSwitch({x: 100 + offset,y: 150 + currentDepth*90});
+          console.log("Created Switch:", node);
+
+          for (let i = 0; i < fanout; i++) {
+            const child = await addTree(currentDepth + 1, i*100+fanout*currentDepth*offset);
+            await deployLink(node.id, child.id);
+            this.edges.add({
+              from: node.id,
+              to: child.id,
+              color: this.networkStarted ? "#00ff00ff" : "#999999ff",
+            });
+          }
+        } else {
+          node = await this.createHost({ x: 100 + offset, y: 150 + currentDepth*90 }); // Replace with suitable positioning logic
+          console.log("Created Host:", node);
+        }
+
+        return node;
+      };
+
+      // Start the recursive tree creation
+      await addTree(0, fanout);
+    },
+    async showTopologyFormModal(){
+      this.modalHeader = "Create Topology";
+      this.showModal = true;
+      this.topologyModalIsActive = true;
+      const result = await new Promise((resolve) => {
+        this.modalPromiseResolve = resolve;
+      });
+      console.log("GOT DATA")
+      console.log(this.formData)
+      await this.handleCreateTopology(this.formData.type, this.formData.nDevices, this.formData.nLayers)
+    },
+    handleTopologyFormSubmit(data) {
+      this.formData = data;
+
+      // Resolve the promise with the form data
+      if (this.modalPromiseResolve) {
+        this.modalPromiseResolve(data);
+        this.modalPromiseResolve = null;
+      }
+
+      this.topologyModalIsActive = false;
+      this.showModal = false;
+    },
+    async handleCreateTopology(topologyType, nDevices, nLayers){
+      console.log("Received createTopology event with:", topologyType, "data", nDevices);
       if (topologyType == "Single") {
         await this.createSingleTopo(nDevices);
       } else if (topologyType == "Linear") {
         await this.createLinearTopo(nDevices);
+      } else if (topologyType == "Tree") {
+        await this.createTreeTopo(nDevices, nLayers);
       }
     }
   }
