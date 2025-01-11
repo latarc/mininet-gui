@@ -18,6 +18,7 @@ import {
   requestRunPingall,
   deleteNode,
   deleteLink,
+  updateNodePosition,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -93,7 +94,6 @@ export default {
     network() {
       console.log("computed ran again");
       if (this.network) {
-        this.network
         return this.network;
       }
       return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
@@ -233,6 +233,9 @@ export default {
           this.showStatsModal(event.nodes[0]);
         }
       });
+      this.network.on("dragEnd", async (event) => {
+        this.handleNodeDragEnd(event)
+      });
     },
     intToDpid (number) {
       return number.toString(16).padStart(16, '0').replace(/(..)(..)(..)(..)(..)(..)(..)(..)/, '$1:$2:$3:$4:$5:$6:$7:$8');
@@ -355,6 +358,13 @@ export default {
           this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
         );
       }
+    },
+    async handleNodeDragEnd(event) {
+      event.nodes.forEach(async nodeId => {
+        let node = this.nodes.get(nodeId)
+        // important to be the diff, or else multiple nodes moved at the same time go to the same place
+        await updateNodePosition(nodeId, [node.x + event.event.deltaX, node.y + event.event.deltaY])
+      })
     },
     enterAddEdgeMode() {
         this.addEdgeMode = true;

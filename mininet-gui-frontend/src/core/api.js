@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseUrl = "http://localhost:8080";
+const baseUrl = "http://10.7.230.33:8000";
 
 export const deployHost = async (host) => {
   try {
@@ -89,7 +89,7 @@ export const assocSwitch = async (sw, ctl) => {
   try {
     console.log("assoc",sw, ctl);
     const response = await axios.post(
-      baseUrl + `/api/mininet/associate`,
+      baseUrl + `/api/mininet/associate_switch`,
       JSON.stringify({"switch": sw, "controller": ctl}),
       {
         headers: {
@@ -131,6 +131,25 @@ export const deleteLink = async (linkId) => {
       {
         headers: {
           "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const updateNodePosition = async (nodeId, position) => {
+  try {
+    const response = await axios.post(
+      baseUrl + `/api/mininet/node_position`,
+      JSON.stringify({"node_id": nodeId, "position": position}),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
         },
       },
     );

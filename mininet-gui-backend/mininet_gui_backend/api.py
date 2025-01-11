@@ -12,7 +12,7 @@ Endpoints that add, remove and edit nodes and edges in real time.
 from typing import Tuple, Union
 
 from mininet.net import Mininet
-from mininet.log import setLogLevel, info, debug
+from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
 from mininet.node import RemoteController, Controller
@@ -48,6 +48,8 @@ class Switch(Node):
     ports: int
     controller: Union[str, None]
 
+def debug(msg, *args):
+    _debug(str(msg)+" ".join(map(str, args))+"\n")
 
 app = FastAPI(
     debug=True,
@@ -72,9 +74,9 @@ hosts = dict()
 links = dict()
 
 origins = [
-    "http://localhost",
-    "http://localhost:8080",
-    "http://localhost:5173",
+    "http://10.7.230.33",
+    "http://10.7.230.33:8080",
+    "http://10.7.230.33:5173",
 ]
 
 app.add_middleware(
@@ -178,6 +180,8 @@ def create_switch(switch: Switch):
         new_switch.start([net.nameToNode[switch.controller]])
     else:
         new_switch.start([])
+    new_switch.x = switch.x
+    new_switch.y = switch.y
     new_switch.type = "sw"
     new_switch.controller = switch.controller
     switches[switch.name] = switch.dict()
@@ -202,12 +206,13 @@ def create_controller(controller: Controller):
     new_controller.start()
     new_controller.x = controller.x
     new_controller.y = controller.y
+    new_controller.type = "ctl"
     controllers[controller.name] = controller.dict()
     debug(new_controller)
     # Return an OK status code
     return {"status": "ok"}
 
-@app.post("/api/mininet/associate")
+@app.post("/api/mininet/associate_switch")
 def associate_switch(data: dict):
     # Associate switch to controller.
     if "switch" not in data or "controller" not in data:
@@ -246,6 +251,35 @@ def create_link(link: Tuple[str, str]):
     # mininet (apparently) doesn't have an easy way to access this
     links[link_name] = {"tuple": link, "object": new_link}
     return {"from": link[0], "to": link[1], "id": link_name}
+
+
+@app.post("/api/mininet/node_position")
+def node_position(data: dict):
+    if "node_id" not in data or "position" not in data:
+        raise HTTPException(
+            status_code=400, detail=f'missing key in data'
+        )
+    debug("data:",data)
+    node_id = data["node_id"]
+    x, y = data["position"]
+    if node_id not in net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    node = net.nameToNode[node_id]
+    debug("before update xy",(node.x, node.y))
+    node.x = x
+    node.y = y
+    debug("updated xy",(net.nameToNode[node_id].x, net.nameToNode[node_id].y))
+    if node.type == "sw":
+        switches[node_id]["x"] = x
+        switches[node_id]["y"] = y
+    elif node.type == "host":
+        hosts[node_id]["x"] = x
+        hosts[node_id]["y"] = y
+    elif node.type == "ctl":
+        controllers[node_id]["x"] = x
+        controllers[node_id]["y"] = y
+    return {"message": f"Node {node_id} updated successfully"}
+
 
 @app.delete("/api/mininet/delete_node/{node_id}")
 def delete_node(node_id: str):
