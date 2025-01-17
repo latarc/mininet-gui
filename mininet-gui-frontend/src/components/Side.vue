@@ -10,6 +10,7 @@
     >
     <p>Mininet Controls</p>
     <button class="button-control-network" id="button-create-topology" @click="createTopology()">Generate Topology</button>
+    <button class="button-control-network" id="button-reset-topology" @click="this.$emit('resetTopology')">Reset Topology</button>
     <button
       id="button-create-link"
       class="button-control-network"
@@ -18,18 +19,17 @@
       {{!addEdgeMode ? "Create Link" : "Cancel Add Link"}}
     </button>
     <button
-    id="button-delete-selected"
-    class="button-control-network"
-    @click="this.$emit('deleteSelected')"
-    >
-    Delete Selected
-  </button>
+      id="button-delete-selected"
+      class="button-control-network"
+      @click="this.$emit('deleteSelected')"
+      >
+      Delete Selected
+    </button>
     <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')">
       Run Pingall Test
     </button>
-    <button id="button-export-network" class="button-control-network">
-      Export Network
-    </button>
+    <button class="button-control-network" id="button-export-topology" @click="this.$emit('exportTopology')">Export Topology (JSON)</button>
+    <button class="button-control-network" id="button-import-topology" @click="this.$emit('importTopology')">Import Topology (JSON)</button>
     <figure
       id="draggable-host"
       class="draggable-node"
@@ -97,6 +97,9 @@ export default {
     "toggleShowHosts",
     "toggleShowControllers",
     "createTopology",
+    "resetTopology",
+    "exportTopology",
+    "importTopology",
   ],
   methods: {
     toggleSide() {
@@ -121,7 +124,8 @@ export default {
           selectedTopology: this.selectedTopology,
           nDevices: this.nDevices
         });
-    }
+    },
+
   },
 };
 </script>

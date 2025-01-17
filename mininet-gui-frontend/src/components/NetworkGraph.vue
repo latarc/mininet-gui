@@ -14,7 +14,7 @@ import {
   deploySwitch,
   assocSwitch,
   isNetworkStarted,
-  requestStartNetwork,
+  requestResetNetwork,
   requestRunPingall,
   deleteNode,
   deleteLink,
@@ -41,6 +41,9 @@ import controllerImg from "@/assets/controller.svg";
     @toggleShowHosts="toggleShowHosts"
     @toggleShowControllers="toggleShowControllers"
     @createTopology="showTopologyFormModal"
+    @resetTopology="resetTopology"
+    @exportTopology="exportTopology"
+    @importTopology="importTopology"
     :networkStarted="networkStarted"
     :addEdgeMode="addEdgeMode"
   />
@@ -578,14 +581,13 @@ export default {
             });
           }
         } else {
-          node = await this.createHost({ x: 100 + offset, y: 150 + currentDepth*90 }); // Replace with suitable positioning logic
+          node = await this.createHost({ x: 100 + offset, y: 150 + currentDepth*90 });
           console.log("Created Host:", node);
         }
 
         return node;
       };
 
-      // Start the recursive tree creation
       await addTree(0, fanout);
     },
     async showTopologyFormModal(){
@@ -602,7 +604,6 @@ export default {
     handleTopologyFormSubmit(data) {
       this.formData = data;
 
-      // Resolve the promise with the form data
       if (this.modalPromiseResolve) {
         this.modalPromiseResolve(data);
         this.modalPromiseResolve = null;
@@ -618,8 +619,28 @@ export default {
       } else if (topologyType == "Linear") {
         await this.createLinearTopo(nDevices);
       } else if (topologyType == "Tree") {
-        await this.createTreeTopo(nDevices, nLayers);
+        await this.createTreeTopo(nLayers, nDevices);
       }
+    },
+    async resetTopology() {
+      // confirm? (this will delete the current topology)
+      if (await requestResetNetwork()) {
+        console.log("resetting topology")
+        this.hosts = new Object()
+        this.switches = new Object()
+        this.controllers = new Array()
+        this.links = new Array()
+        this.nodes = new DataSet()
+        this.edges = new DataSet()
+        this.network.setData({nodes: this.nodes, edges:  this.edges})
+        this.network.redraw()
+      }
+    },
+    async exportTopology() {
+
+    },
+    async importTopology() {
+      // reset then import
     }
   }
 };

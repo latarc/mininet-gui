@@ -7,10 +7,11 @@
           <option value="Linear">Linear</option>
           <option value="Tree">Tree</option>
         </select>
+        <br>
   
         <label for="nDevices">nDevices:</label>
         <input id="nDevices" type="text" v-model="nDevices" required />
-
+        <br>
         <div v-if="topologyType === 'Tree'" class="tree-options">
           <label for="nLayers">nLayers:</label>
           <input id="nLayers" type="number" v-model="nLayers" required />
