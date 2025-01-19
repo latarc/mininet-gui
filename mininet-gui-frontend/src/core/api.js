@@ -221,6 +221,25 @@ export const requestExportNetwork = async () => {
   }
 };
 
+export const requestImportNetwork = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await axios.post(baseUrl + "/api/mininet/import_json", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error("Import failed.");
+    }
+  } catch (error) {
+    throw new Error(error.response ? error.response.data.detail : "Network Error");
+  }
+};
+
 
 export const requestRunPingall = async () => {
   try {

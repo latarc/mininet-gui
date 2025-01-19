@@ -20,6 +20,7 @@ import {
   deleteLink,
   updateNodePosition,
   requestExportNetwork,
+  requestImportNetwork,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -35,7 +36,6 @@ import controllerImg from "@/assets/controller.svg";
 <template>
   <Side
     @toggleAddEdgeMode="handleToggleAddEdgeMode"
-    @networkStart="startNetwork"
     @deleteSelected="doDeleteSelected"
     @runPingall="showPingallModal"
     @closeAllActiveModes="closeAllActiveModes"
@@ -647,10 +647,13 @@ export default {
     },
     async exportTopology() {
       console.log("Exporting JSON")
-      json = await requestExportNetwork();
+      await requestExportNetwork();
     },
-    async importTopology() {
-      // reset then import
+    async importTopology(file) {
+      console.log(file)
+      await this.resetTopology()
+      const data = await requestImportNetwork(file);
+      alert("Import successful!");
     }
   }
 };

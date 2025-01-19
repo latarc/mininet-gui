@@ -10,7 +10,7 @@
     @keydown.d="this.$emit('deleteSelected')"
     @keydown.delete="this.$emit('deleteSelected')"
     @keydown.ctrl.a.prevent="this.$emit('doSelectAll')"
-    >
+  >
     <p>Mininet Controls</p>
     <button class="button-control-network" id="button-create-topology" @click="createTopology()">Generate Topology</button>
     <button class="button-control-network" id="button-reset-topology" @click="this.$emit('resetTopology')">Reset Topology</button>
@@ -25,49 +25,35 @@
       id="button-delete-selected"
       class="button-control-network"
       @click="this.$emit('deleteSelected')"
-      >
+    >
       Delete Selected
     </button>
     <button id="button-pingall" class="button-control-network" @click="this.$emit('runPingall')">
       Run Pingall Test
     </button>
     <button class="button-control-network" id="button-export-topology" @click="this.$emit('exportTopology')">Export Topology (JSON)</button>
-    <button class="button-control-network" id="button-import-topology" @click="this.$emit('importTopology')">Import Topology (JSON)</button>
-    <figure
-      id="draggable-host"
-      class="draggable-node"
-      draggable="true"
-    >
-    <img
-      alt="host"
-      src="@/assets/host.svg"
-      draggable="false"
+    <button class="button-control-network" id="button-import-topology" @click="openFileDialog">Import Topology (JSON)</button>
+
+    <!-- Hidden file input -->
+    <input 
+      type="file" 
+      id="fileInput" 
+      accept=".json" 
+      style="display: none" 
+      @change="handleFileUpload"
     />
-    <figcaption>Host</figcaption>
+
+    <figure id="draggable-host" class="draggable-node" draggable="true">
+      <img alt="host" src="@/assets/host.svg" draggable="false" />
+      <figcaption>Host</figcaption>
     </figure>
-    <figure
-      id="draggable-switch"
-      class="draggable-node"
-      draggable="true"
-    >
-    <img
-      alt="switch"
-      src="@/assets/switch.svg"
-      draggable="false"
-    />
-    <figcaption>Switch</figcaption>
+    <figure id="draggable-switch" class="draggable-node" draggable="true">
+      <img alt="switch" src="@/assets/switch.svg" draggable="false" />
+      <figcaption>Switch</figcaption>
     </figure>
-    <figure
-      id="draggable-controller"
-      class="draggable-node"
-      draggable="true"
-    >
-    <img
-      alt="controller"
-      src="@/assets/controller.svg"
-      draggable="false"
-    />
-    <figcaption>Controller</figcaption>
+    <figure id="draggable-controller" class="draggable-node" draggable="true">
+      <img alt="controller" src="@/assets/controller.svg" draggable="false" />
+      <figcaption>Controller</figcaption>
     </figure>
     <br>
     <p><u>Hotkeys</u></p>
@@ -79,7 +65,6 @@
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
     <b>&lt;&lt;</b>
   </button>
-  
 </template>
 
 <script>
@@ -92,7 +77,7 @@ export default {
   },
   data() {
     return {
-        sideIsActive: 1,
+      sideIsActive: 1,
     };
   },
   emits: [
@@ -124,16 +109,24 @@ export default {
       }
     },
     handleDragStart(event) {
-        console.log("dragstart", event);
-        event.dataTransfer.setData("text", event.target.id);
+      console.log("dragstart", event);
+      event.dataTransfer.setData("text", event.target.id);
     },
     createTopology() {
-        this.$emit("createTopology", {
-          selectedTopology: this.selectedTopology,
-          nDevices: this.nDevices
-        });
+      this.$emit("createTopology", {
+        selectedTopology: this.selectedTopology,
+        nDevices: this.nDevices
+      });
     },
-
+    openFileDialog() {
+      document.getElementById("fileInput").click();
+    },
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (file){
+        this.$emit("importTopology", file);
+      }
+    },
   },
 };
 </script>

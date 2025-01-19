@@ -9,14 +9,16 @@ Endpoints to start and stop the network at any point.
 
 Endpoints that add, remove and edit nodes and edges in real time.
 """
+import json
 from typing import Tuple, Union
+from contextlib import asynccontextmanager
 
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
 from mininet.node import RemoteController, Controller as ReferenceController
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
@@ -25,11 +27,26 @@ from mininet_gui_backend.cli import CLISession
 from mininet_gui_backend.schema import Switch, Host, Controller
 
 
-def debug(msg, *args):
-    _debug(str(msg)+" ".join(map(str, args))+"\n")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # start
+    mn_cleanup()
+    app.controllers = dict()
+    app.switches = dict()
+    app.hosts = dict()
+    app.links = dict()
+    setLogLevel("debug")
+    app.net = Mininet(autoSetMacs=True, topo=Topo())
+    app.net.is_started = False
+    start_network()
+    app.net.is_started = True
+    yield
+    # stop
+    mn_cleanup()
 
 app = FastAPI(
     debug=True,
+    lifespan=lifespan,
     title="Mininet-GUI-API",
     description=__doc__,
     version="0.0.1",
@@ -45,11 +62,6 @@ app = FastAPI(
     # },
 )
 
-app.controllers = dict()
-app.switches = dict()
-app.hosts = dict()
-app.links = dict()
-
 origins = [
     "http://10.7.230.33",
     "http://10.7.230.33:8080",
@@ -64,24 +76,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cleanup (mn -c)
-mn_cleanup()
-
-# Create the Mininet network
-setLogLevel("debug")
-app.net = Mininet(autoSetMacs=True, topo=Topo())
-#app.net.addController()
-app.net.is_started = False
-
-@app.get("/api/mininet/export_json", response_class=PlainTextResponse)
-def export_network():
-    debug(app.net)
-    return export_net_to_json(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
-
-@app.get("/api/mininet/export_script", response_class=PlainTextResponse)
-def export_network():
-    debug(app.net)
-    return export_net_to_script(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
+def debug(msg, *args):
+    _debug(str(msg)+" "+" ".join(map(str, args))+"\n")
 
 @app.get("/api/mininet/hosts")
 def list_hosts():
@@ -234,7 +230,7 @@ def associate_switch(data: dict):
         raise HTTPException(status_code=400, detail='node not in net')
     sw = app.net.nameToNode[sw_id]
     ctl = app.net.nameToNode[ctl_id]
-    if sw.controller:
+    if app.switches[sw_id].controller:
         raise HTTPException(status_code=400, detail="switch is already associated")
     sw.controller = ctl
     app.switches[sw_id].controller = ctl_id
@@ -254,6 +250,7 @@ def create_link(link: Tuple[str, str]):
             if node.type == "host":
                 node.configDefault()
             elif node.type == "sw" and node.controller:
+                # Important, otherwise switch doesnt init the port
                 node.start([node.controller])
     link_name = f"{new_link.intf1.name}_{new_link.intf2.name}"
     # It is important to store this Link object because
@@ -279,14 +276,14 @@ def node_position(data: dict):
     node.y = y
     debug("updated xy",(app.net.nameToNode[node_id].x, app.net.nameToNode[node_id].y))
     if node.type == "sw":
-        app.switches[node_id]["x"] = x
-        app.switches[node_id]["y"] = y
+        app.switches[node_id].x = x
+        app.switches[node_id].y = y
     elif node.type == "host":
-        app.hosts[node_id]["x"] = x
-        app.hosts[node_id]["y"] = y
+        app.hosts[node_id].x = x
+        app.hosts[node_id].y = y
     elif node.type == "ctl":
-        app.controllers[node_id]["x"] = x
-        app.controllers[node_id]["y"] = y
+        app.controllers[node_id].x = x
+        app.controllers[node_id].y = y
     return {"message": f"Node {node_id} updated successfully"}
 
 
@@ -302,6 +299,12 @@ def delete_node(node_id: str):
         del app.hosts[node_id]
     elif node.type == "ctl":
         del app.controllers[node_id]
+        for switch_id in app.switches:
+            switch = app.switches[switch_id]
+            if switch.controller == node_id:
+                debug("CONTROLLER", switch.controller, node_id)
+                app.switches[switch_id].controller = None
+                app.net.nameToNode[switch_id].start([])
     return {"message": f"Node {node_id} deleted successfully"}
 
 @app.delete("/api/mininet/delete_link/{link_id}")
@@ -323,9 +326,54 @@ def get_node_stats(node_id: str):
         ports = ports[ports.find("\n")+1:].replace("\n", " ")
         ports = [p for p in ports.split("port") if "LOCAL" not in p]
         result["ports"] = [p for p in ports if p.strip()]
-    del result["x"]
-    del result["y"]
+    del result.x
+    del result.y
     return result
 
-start_network()
-app.net.is_started = True
+
+@app.get("/api/mininet/export_json", response_class=PlainTextResponse)
+def export_network():
+    debug(app.net)
+    return export_net_to_json(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
+
+@app.get("/api/mininet/export_script", response_class=PlainTextResponse)
+def export_network():
+    debug(app.net)
+    return export_net_to_script(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
+
+@app.post("/api/mininet/import_json")
+async def import_json(file: UploadFile = File(...)):
+    contents = await file.read()
+    
+    try:
+        data = json.loads(contents.decode("utf-8"))
+        print("Received Topology JSON:", data)
+
+        for controller_data in data.get("controllers", []):
+            controller = Controller(**controller_data)
+            create_controller(controller)
+
+        for switch_data in data.get("switches", []):
+            switch = Switch(**switch_data)
+            controller = switch.controller
+            switch.controller = None
+            create_switch(switch)
+            if controller:
+                associate_switch({
+                    "switch": switch.id,
+                    "controller": controller
+                })
+
+        for host_data in data.get("hosts", []):
+            host = Host(**host_data)
+            create_host(host)
+
+        for link in data.get("links", []):
+            debug("LINKS: ", data["links"])
+            debug("LINK: ", link)
+            create_link(tuple(link))
+
+        return {"message": "Topology successfully imported"}
+
+    except json.JSONDecodeError:
+        return {"error": "Invalid JSON file"}, 400
