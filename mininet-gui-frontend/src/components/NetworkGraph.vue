@@ -112,71 +112,74 @@ export default {
   computed: {
     network() {
       console.log("computed ran again");
+      return this.computeNetwork();
+    }
+  },
+  async mounted() {
+    this.setupNetwork();
+  },
+  methods: {
+    computeNetwork() {
       if (this.network) {
         return this.network;
       }
       return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
-    }
-  },
-  async mounted() {
-    this.networkStarted = await isNetworkStarted()
-    this.hosts = await getHosts();
-    this.switches = await getSwitches();
-    this.controllers = await getControllers();
-    Object.values(this.hosts).map((host) => {
-      host.shape = "circularImage",
-      host.color = {
-        background: "#ffffffff",
-        border: "#ffffff00",
-        highlight: { background: "red", border: "blue" },
-      };
-      host.image = hostImg;
-      return host;
-    });
-    Object.values(this.switches).map((sw) => {
-      sw.shape = "circularImage",
-      sw.color = {
-        background: "#ffffffff",
-        border: "#ffffff00",
-        highlight: { background: "red", border: "blue" },
-      };
-      sw.image = switchImg;
-      return sw;
-    });
-    Object.values(this.controllers).map((ctl) => {
-      ctl.shape = "circularImage",
-      ctl.color = {
-        background: "#ffffffff",
-        border: "#ffffff00",
-        highlight: { background: "red", border: "blue" },
-      };
-      ctl.image = controllerImg;
-      return ctl;
-    });
-    this.links = await getEdges();
-    for (const link of this.links) {
-      this.edges.add({
-        from: link[0],
-        to: link[1],
-        color: this.networkStarted? "#00ff00ff" : "#999999ff",
-      });
-    }
-    for (const sw in this.switches) {
-      let ctl = this.switches[sw].controller;
-      if (ctl)
-        this.edges.add({from: sw, to: ctl, color: "#ff00006f", dashes: [10, 10]})
-    }
-    const nodes = new DataSet([
-      ...Object.values(this.hosts),
-      ...Object.values(this.switches),
-      ...Object.values(this.controllers),
-    ]);
-    this.nodes = nodes;
-    console.log("network inside mounted, before setup:", this.network);
-    await this.setupNetwork();
-  },
-  methods: {
+    },
     async setupNetwork() {
+      this.networkStarted = await isNetworkStarted()
+      this.hosts = await getHosts();
+      this.switches = await getSwitches();
+      this.controllers = await getControllers();
+      Object.values(this.hosts).map((host) => {
+        host.shape = "circularImage",
+        host.color = {
+          background: "#ffffffff",
+          border: "#ffffff00",
+          highlight: { background: "red", border: "blue" },
+        };
+        host.image = hostImg;
+        return host;
+      });
+      Object.values(this.switches).map((sw) => {
+        sw.shape = "circularImage",
+        sw.color = {
+          background: "#ffffffff",
+          border: "#ffffff00",
+          highlight: { background: "red", border: "blue" },
+        };
+        sw.image = switchImg;
+        return sw;
+      });
+      Object.values(this.controllers).map((ctl) => {
+        ctl.shape = "circularImage",
+        ctl.color = {
+          background: "#ffffffff",
+          border: "#ffffff00",
+          highlight: { background: "red", border: "blue" },
+        };
+        ctl.image = controllerImg;
+        return ctl;
+      });
+      this.links = await getEdges();
+      for (const link of this.links) {
+        this.edges.add({
+          from: link[0],
+          to: link[1],
+          color: this.networkStarted? "#00ff00ff" : "#999999ff",
+        });
+      }
+      for (const sw in this.switches) {
+        let ctl = this.switches[sw].controller;
+        if (ctl)
+          this.edges.add({from: sw, to: ctl, color: "#ff00006f", dashes: [10, 10]})
+      }
+      const nodes = new DataSet([
+        ...Object.values(this.hosts),
+        ...Object.values(this.switches),
+        ...Object.values(this.controllers),
+      ]);
+      this.nodes = nodes;
+      console.log("network inside mounted, before setup:", this.network);
       this.network.setOptions({
         manipulation: {
           enabled: false,
@@ -653,7 +656,9 @@ export default {
       console.log(file)
       await this.resetTopology()
       const data = await requestImportNetwork(file);
-      alert("Import successful!");
+      await this.setupNetwork();
+      this.network.setData({nodes: this.nodes, edges:  this.edges})
+      this.network.redraw()
     }
   }
 };
