@@ -19,35 +19,11 @@ from mininet.node import RemoteController, Controller as ReferenceController
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel
 
-from mininet_gui_backend.export import export_net_to_script
+from mininet_gui_backend.export import export_net_to_script, export_net_to_json
 from mininet_gui_backend.cli import CLISession
+from mininet_gui_backend.schema import Switch, Host, Controller
 
-
-class Node(BaseModel):
-    id: str
-    type: str
-    name: str
-    label: str
-    x: float
-    y: float
-
-
-class Controller(Node):
-    remote: bool
-    ip: Union[str, None]
-    port: Union[int, None]
-
-
-class Host(Node):
-    ip: str
-    mac: str
-
-
-class Switch(Node):
-    ports: int
-    controller: Union[str, None]
 
 def debug(msg, *args):
     _debug(str(msg)+" ".join(map(str, args))+"\n")
@@ -97,11 +73,15 @@ app.net = Mininet(autoSetMacs=True, topo=Topo())
 #app.net.addController()
 app.net.is_started = False
 
-
-@app.get("/api/mininet/export", response_class=PlainTextResponse)
+@app.get("/api/mininet/export_json", response_class=PlainTextResponse)
 def export_network():
     debug(app.net)
-    return export_net_to_script(app.net).encode("utf-8")
+    return export_net_to_json(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
+
+@app.get("/api/mininet/export_script", response_class=PlainTextResponse)
+def export_network():
+    debug(app.net)
+    return export_net_to_script(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
 
 @app.get("/api/mininet/hosts")
 def list_hosts():
@@ -188,7 +168,7 @@ def create_host(host: Host):
     new_host.x = host.x
     new_host.y = host.y
     new_host.type = "host"
-    app.hosts[host.name] = host.dict()
+    app.hosts[host.name] = host
     debug(new_host)
     # Return an OK status code
     return {"status": "ok"}
@@ -211,7 +191,7 @@ def create_switch(switch: Switch):
     new_switch.y = switch.y
     new_switch.type = "sw"
     new_switch.controller = switch.controller
-    app.switches[switch.name] = switch.dict()
+    app.switches[switch.name] = switch
     return switch
 
 
@@ -236,7 +216,7 @@ def create_controller(controller: Controller):
     new_controller.x = controller.x
     new_controller.y = controller.y
     new_controller.type = "ctl"
-    app.controllers[controller.name] = controller.dict()
+    app.controllers[controller.name] = controller
     debug(new_controller)
     # Return an OK status code
     return {"status": "ok"}
@@ -257,7 +237,7 @@ def associate_switch(data: dict):
     if sw.controller:
         raise HTTPException(status_code=400, detail="switch is already associated")
     sw.controller = ctl
-    app.switches[sw_id]["controller"] = ctl_id
+    app.switches[sw_id].controller = ctl_id
     if app.net.is_started:
         sw.start([sw.controller])
     return "OK"

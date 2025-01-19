@@ -1,3 +1,9 @@
+import json
+from typing import List, Dict, Union
+
+from mininet_gui_backend.schema import Host, Switch, Controller
+
+
 SCRIPT_TEMPLATE = """#!/usr/bin/env python3
 
 from mininet.net import Mininet
@@ -50,6 +56,23 @@ def export_net_to_script(net) -> str:
     return script
 
 
-def import_script(script):
-    for line in script.splitlines():
-        eval(line)
+# def import_script(script):
+#     for line in script.splitlines():
+#         eval(line)
+
+
+# json schema
+def export_net_to_json(
+    switches: List[Switch], 
+    hosts: List[Host], 
+    controllers: List[Controller], 
+    links: List[Dict[str, str]]
+) -> str:
+    net_data = {
+        "switches": [switch.dict() for switch in switches.values()],
+        "hosts": [host.dict() for host in hosts.values()],
+        "controllers": [controller.dict() for controller in controllers.values()],
+        "links": [link["tuple"] for link in links.values()]
+    }
+    
+    return json.dumps(net_data, indent=4)
