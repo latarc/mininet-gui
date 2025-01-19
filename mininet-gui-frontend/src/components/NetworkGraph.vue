@@ -44,6 +44,7 @@ import controllerImg from "@/assets/controller.svg";
     @resetTopology="resetTopology"
     @exportTopology="exportTopology"
     @importTopology="importTopology"
+    @doSelectAll="doSelectAll"
     :networkStarted="networkStarted"
     :addEdgeMode="addEdgeMode"
   />
@@ -59,6 +60,8 @@ import controllerImg from "@/assets/controller.svg";
     @keydown.c="toggleShowControllers"
     @keydown.e="enterAddEdgeMode"
     @keydown.d="doDeleteSelected"
+    @keydown.delete="doDeleteSelected"
+    @keydown.ctrl.a.prevent="doSelectAll"
 ></div>
 <Teleport to="body">
 <modal :show="showModal" @close="showModal = false;">
@@ -453,7 +456,11 @@ export default {
     async doDeleteSelected() {
       this.closeAllActiveModes();
       this.network.deleteSelected();
-
+    },
+    doSelectAll() {
+      console.log("CTRL A PRESSED")
+      this.closeAllActiveModes();
+      this.network.setSelection({nodes: this.nodes.getIds()});
     },
     // async startNetwork() {
     //   this.closeAllActiveModes();

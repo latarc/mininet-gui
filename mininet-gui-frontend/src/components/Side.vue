@@ -7,6 +7,9 @@
     @keydown.h="this.$emit('toggleShowHosts')"
     @keydown.c="this.$emit('toggleShowControllers')"
     @keydown.e="this.$emit('toggleAddEdgeMode')"
+    @keydown.d="this.$emit('deleteSelected')"
+    @keydown.delete="this.$emit('deleteSelected')"
+    @keydown.ctrl.a.prevent="this.$emit('doSelectAll')"
     >
     <p>Mininet Controls</p>
     <button class="button-control-network" id="button-create-topology" @click="createTopology()">Generate Topology</button>
@@ -66,6 +69,10 @@
     />
     <figcaption>Controller</figcaption>
     </figure>
+    <br>
+    <p><u>Hotkeys</u></p>
+    <p>Press d to delete selected nodes</p>
+    <p>Press ctrl + a to select all nodes</p>
     <p>Press h to toggle hosts visibility</p>
     <p>Press c to toggle controllers visibility</p>
   </div>
@@ -76,7 +83,7 @@
 </template>
 
 <script>
-import { requestStartNetwork } from "../core/api";
+
 export default {
   props: {
     createLinkMode: false,
@@ -100,6 +107,7 @@ export default {
     "resetTopology",
     "exportTopology",
     "importTopology",
+    "doSelectAll",
   ],
   methods: {
     toggleSide() {
