@@ -123,11 +123,29 @@ export const deleteNode = async (nodeId) => {
   }
 };
 
-export const deleteLink = async (linkId) => {
+export const deleteLink = async (srcId, dstId) => {
   try {
-    console.log("sending deleteLink for edge: ", linkId);
+    console.log("sending deleteLink for edge: ", srcId, dstId);
     const response = await axios.delete(
-      baseUrl + `/api/mininet/delete_link/${linkId}`,
+      baseUrl + `/api/mininet/delete_link/${srcId}/${dstId}`,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const removeAssociation = async (srcId, dstId) => {
+  try {
+    console.log("sending removeAssociation for edge: ", srcId, dstId);
+    const response = await axios.delete(
+      baseUrl + `/api/mininet/remove_association/${srcId}/${dstId}`,
       {
         headers: {
           "Access-Control-Allow-Origin": "*",

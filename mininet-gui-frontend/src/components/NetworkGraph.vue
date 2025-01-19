@@ -21,6 +21,7 @@ import {
   updateNodePosition,
   requestExportNetwork,
   requestImportNetwork,
+  removeAssociation,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -229,17 +230,22 @@ export default {
             callback(data);
           },
           deleteEdge: async (data, callback) => {
-            console.log("edge deletion", data);
-            console.log("this is the network:", this.network);
-            console.log("this is the edges dataset:", this.edges.get());
             try {
               const results = [];
               // the deletion must happen synchronously, because mininet
               // cannot handle creating/deleting two things at the same time
               for (const edge of data.edges) {
-                  console.log(edge, "deletion");
-                  const result = await deleteLink(edge);
-                  results.push(edge);
+                  let link = this.edges.get(edge)
+                  let src = this.nodes.get(link.from);
+                  let dst = this.nodes.get(link.to);
+                  console.log("src", src);
+                  console.log("dst", dst);
+                  if (src.type == "controller" || dst.type == "controller") {
+                    await removeAssociation(link.from, link.to);
+                  } else {
+                    await deleteLink(link.from, link.to);
+                  }
+                  results.push(link.id);
               }
               console.log("All edges deleted:", results);
               data.edges = results
@@ -649,15 +655,13 @@ export default {
       }
     },
     async exportTopology() {
-      console.log("Exporting JSON")
       await requestExportNetwork();
     },
     async importTopology(file) {
-      console.log(file)
       await this.resetTopology()
       const data = await requestImportNetwork(file);
       await this.setupNetwork();
-      this.network.setData({nodes: this.nodes, edges:  this.edges})
+      this.network.setData({nodes: this.nodes, edges: this.edges})
       this.network.redraw()
     }
   }

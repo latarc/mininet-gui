@@ -72,7 +72,7 @@ def export_net_to_json(
         "switches": [switch.dict() for switch in switches.values()],
         "hosts": [host.dict() for host in hosts.values()],
         "controllers": [controller.dict() for controller in controllers.values()],
-        "links": [link["tuple"] for link in links.values()]
+        "links": [list(link) for link in links]
     }
-    
+
     return json.dumps(net_data, indent=4)

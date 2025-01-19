@@ -93,7 +93,7 @@ def list_controllers():
 
 @app.get("/api/mininet/links")
 def list_edges():
-    return [e["tuple"] for e in app.links.values()]
+    return [e for e in app.links]
 
 @app.get("/api/mininet/start")
 def get_network_started():
@@ -163,6 +163,7 @@ def create_host(host: Host):
     new_host = app.net.addHost(host.name, ip=host.ip)
     new_host.x = host.x
     new_host.y = host.y
+    new_host.ip = host.ip
     new_host.type = "host"
     app.hosts[host.name] = host
     debug(new_host)
@@ -211,7 +212,7 @@ def create_controller(controller: Controller):
     new_controller.start()
     new_controller.x = controller.x
     new_controller.y = controller.y
-    new_controller.type = "ctl"
+    new_controller.type = "controller"
     app.controllers[controller.name] = controller
     debug(new_controller)
     # Return an OK status code
@@ -243,6 +244,9 @@ def create_link(link: Tuple[str, str]):
     # Create the link in the Mininet network using the link data
     if link[0] not in app.net.nameToNode or link[1] not in app.net.nameToNode:
         raise HTTPException(status_code=400, detail=f'node not in net')
+    key = frozenset((link[0], link[1]))
+    if key in app.links:
+        raise HTTPException(status_code=400, detail=f'link already exists')
     new_link = app.net.addLink(link[0], link[1])
     if app.net.is_started:
         for node in link:
@@ -252,11 +256,10 @@ def create_link(link: Tuple[str, str]):
             elif node.type == "sw" and node.controller:
                 # Important, otherwise switch doesnt init the port
                 node.start([node.controller])
-    link_name = f"{new_link.intf1.name}_{new_link.intf2.name}"
     # It is important to store this Link object because
     # mininet (apparently) doesn't have an easy way to access this
-    app.links[link_name] = {"tuple": link, "object": new_link}
-    return {"from": link[0], "to": link[1], "id": link_name}
+    app.links[key] = new_link
+    return {"from": link[0], "to": link[1]}
 
 
 @app.post("/api/mininet/node_position")
@@ -281,7 +284,7 @@ def node_position(data: dict):
     elif node.type == "host":
         app.hosts[node_id].x = x
         app.hosts[node_id].y = y
-    elif node.type == "ctl":
+    elif node.type == "controller":
         app.controllers[node_id].x = x
         app.controllers[node_id].y = y
     return {"message": f"Node {node_id} updated successfully"}
@@ -297,7 +300,7 @@ def delete_node(node_id: str):
         del app.switches[node_id]
     elif node.type == "host":
         del app.hosts[node_id]
-    elif node.type == "ctl":
+    elif node.type == "controller":
         del app.controllers[node_id]
         for switch_id in app.switches:
             switch = app.switches[switch_id]
@@ -307,27 +310,48 @@ def delete_node(node_id: str):
                 app.net.nameToNode[switch_id].start([])
     return {"message": f"Node {node_id} deleted successfully"}
 
-@app.delete("/api/mininet/delete_link/{link_id}")
-def delete_link(link_id: str):
-    if link_id not in app.links:
+@app.delete("/api/mininet/delete_link/{src_id}/{dst_id}")
+def delete_link(src_id: str, dst_id: str):
+    key = frozenset((src_id, dst_id))
+    if key not in app.links:
         raise HTTPException(status_code=404, detail=f"Node not found")
-    app.net.delLink(app.links[link_id]["object"])
-    del app.links[link_id]
-    return {"message": f"Link {link_id} deleted successfully"}
+    app.net.delLink(app.links[key])
+    del app.links[key]
+    return {"message": f"Link {key} deleted successfully"}
+
+@app.delete("/api/mininet/remove_association/{src_id}/{dst_id}")
+def remove_association(src_id: str, dst_id: str):
+    if src_id not in app.net.nameToNode or dst_id not in app.net.nameToNode:
+        raise HTTPException(status_code=400, detail='node not in net')
+    sw, ctl = None, None
+    for node_id in (src_id, dst_id):
+        node = app.net.nameToNode[node_id]
+        if node.type == "sw":
+            sw = node
+        elif node.type == "controller":
+            ctl = node
+    if not sw or not ctl:
+        raise HTTPException(status_code=400, detail=f'node {node_id} isnt switch or controller')
+    sw.controller = None
+    app.switches[sw.name].controller = None
+    if app.net.is_started:
+        sw.start([])
+    return "OK"
+
 
 @app.get("/api/mininet/stats/{node_id}")
 def get_node_stats(node_id: str):
     if node_id not in app.net.nameToNode:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     node = app.net.nameToNode[node_id]
-    result = dict(**(app.switches.get(node_id) or app.hosts.get(node_id)))
+    result = dict(**(app.switches.get(node_id) or app.hosts.get(node_id)).dict())
     if node.type == "sw":
         ports = node.dpctl("dump-ports")
         ports = ports[ports.find("\n")+1:].replace("\n", " ")
         ports = [p for p in ports.split("port") if "LOCAL" not in p]
         result["ports"] = [p for p in ports if p.strip()]
-    del result.x
-    del result.y
+    del result["x"]
+    del result["y"]
     return result
 
 
