@@ -76,8 +76,7 @@ import controllerImg from "@/assets/controller.svg";
   <template #body>
     <span v-html="modalContents"></span>
     <controller-form v-if="controllerModalIsActive" @form-submit="handleControllerFormSubmit" />
-    <topology-form v-if="topologyModalIsActive" @form-submit="handleTopologyFormSubmit" />
-    
+    <topology-form v-if="topologyModalIsActive" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
   </template>
 </modal>
 </Teleport>
@@ -95,7 +94,7 @@ export default {
     return {
       hosts: new Object(),
       switches: new Object(),
-      controllers: new Array(),
+      controllers: new Object(),
       links: new Array(),
       nodes: new DataSet(),
       edges: new DataSet(),
@@ -206,7 +205,7 @@ export default {
                 sw.controller = ctl.id;
                 await assocSwitch(sw.id, ctl.id);
                 data.color = {color: "#ff00006f"};
-                data.dashes = [5, 5];
+                data.dashes = [10, 10];
             } else {
               let link = await deployLink(data.from, data.to);
               data.id = link.id;
@@ -303,7 +302,7 @@ export default {
       }
       return host
     },
-    async createSwitch(position) {
+    async createSwitch(switchData) {
       let swId = Object.values(this.switches).length + 1;
       while (`s${swId}` in this.switches) {
         swId++;
@@ -312,8 +311,8 @@ export default {
         id: `s${swId}`,
         type: "sw",
         name: `s${swId}`,
-        label: null,
-        ports: 4,
+        label: switchData.label || null,
+        ports: switchData.ports || 4,
         controller: null,
         shape: "circularImage",
         color: {
@@ -324,9 +323,9 @@ export default {
       };
       sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
       sw.image = switchImg;
-      if (position) {
-        sw.x = position.x;
-        sw.y = position.y;
+      if (switchData) {
+        sw.x = switchData.x;
+        sw.y = switchData.y;
       }
       sw.image = switchImg;
       if (await deploySwitch(sw)) {
@@ -335,12 +334,18 @@ export default {
       } else {
         throw "Could not create sw " + swId;
       }
+      if (switchData.controller && await assocSwitch(sw.id, switchData.controller)) {
+        this.switches[sw.name].controller = switchData.controller
+        this.edges.add({to: sw.id, from: switchData.controller, color: {color: "#ff00006f"}, dashes: [10, 10]})
+      }
       return sw
     },
     async showControllerFormModal(position){
       this.modalHeader = "Controller Form";
       this.showModal = true;
+      this.modalContents = ""
       this.controllerModalIsActive = true;
+      this.topologyModalIsActive = false;
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
       });
@@ -522,14 +527,10 @@ export default {
         this.showModal = false;
       }
     },
-    async createSingleTopo(nDevices) {
-      let newSw = await this.createSwitch({x: 250,y: 150});
+    async createSingleTopo(nDevices, controller) {
+      let newSw = await this.createSwitch({x: 250, y: 150, controller: controller});
       for (var i=0; i<nDevices; i++) {
         let newHost = await this.createHost({x: 200+i*90, y: 300});
-        console.log("newSw")
-        console.log("newSw", newSw)
-        console.log("newHost")
-        console.log("newHost", newHost)
         let link = await deployLink(newSw.id, newHost.id);
         this.edges.add({
           from: newSw.id,
@@ -538,10 +539,10 @@ export default {
         });
       }
     },
-    async createLinearTopo(nDevices, nHosts) {
+    async createLinearTopo(nDevices, nHosts, controller) {
       let prevSw = null;
       for (let i = 0; i < nDevices; i++) {
-        let newSw = await this.createSwitch({ x: 250 + i * 90, y: 150 });
+        let newSw = await this.createSwitch({ x: 250 + i * 90, y: 150, controller: controller});
         console.log("newSw", newSw);
 
         for (let j = 0; j < nHosts; j++) {
@@ -564,11 +565,10 @@ export default {
             color: this.networkStarted ? "#00ff00ff" : "#999999ff",
           });
         }
-
         prevSw = newSw;
       }
     },
-    async createTreeTopo(depth, fanout) {
+    async createTreeTopo(depth, fanout, controller) {
       const nodes = [];
       const maxNodes = Math.pow(fanout, depth);
       for (let d = depth; d >= 0; d--) {
@@ -582,7 +582,7 @@ export default {
             node = await this.createHost({ x, y });
             console.log("Created Host:", node);
           } else {
-            node = await this.createSwitch({ x, y });
+            node = await this.createSwitch({ x: x, y: y, controller: controller});
             console.log("Created Switch:", node);
             const startIndex = i * fanout;
             const endIndex = startIndex + fanout;
@@ -606,16 +606,17 @@ export default {
       this.showModal = true;
       this.modalContents = "";
       this.topologyModalIsActive = true;
+      console.log("networkgraph THIS.CONTROLLERS", this.controllers)
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
       });
       console.log("GOT DATA")
       console.log(this.formData)
-      await this.handleCreateTopology(this.formData.type, this.formData.nDevices, this.formData.nLayers)
+      await this.handleCreateTopology(this.formData.type, this.formData.nDevices, this.formData.nLayers, this.formData.controller)
     },
     handleTopologyFormSubmit(data) {
       this.formData = data;
-
+      console.log("FORM DATA", this.formData)
       if (this.modalPromiseResolve) {
         this.modalPromiseResolve(data);
         this.modalPromiseResolve = null;
@@ -624,14 +625,14 @@ export default {
       this.topologyModalIsActive = false;
       this.showModal = false;
     },
-    async handleCreateTopology(topologyType, nDevices, nLayers){
+    async handleCreateTopology(topologyType, nDevices, nLayers, controller){
       console.log("Received createTopology event with:", topologyType, "data", nDevices, nLayers);
       if (topologyType == "Single") {
-        await this.createSingleTopo(nDevices);
+        await this.createSingleTopo(nDevices, controller);
       } else if (topologyType == "Linear") {
-        await this.createLinearTopo(nDevices, nLayers);
+        await this.createLinearTopo(nDevices, nLayers, controller);
       } else if (topologyType == "Tree") {
-        await this.createTreeTopo(nLayers, nDevices);
+        await this.createTreeTopo(nLayers, nDevices, controller);
       }
     },
     async resetTopology() {
@@ -639,10 +640,10 @@ export default {
 
       if (confirmed && await requestResetNetwork()) {
         console.log("Resetting topology");
-        this.hosts = {};
-        this.switches = {};
-        this.controllers = [];
-        this.links = [];
+        this.hosts = new Object();
+        this.switches = new Object();
+        this.controllers = new Object();
+        this.links = new Array();
         this.nodes = new DataSet();
         this.edges = new DataSet();
         this.network.setData({ nodes: this.nodes, edges: this.edges });
