@@ -415,8 +415,6 @@ export default {
     async handleNodeDragEnd(event) {
       event.nodes.forEach(async nodeId => {
         let node = this.network.body.nodes[nodeId]
-        // TODO: fix this calculation, does not work well with canvas zoom in/out
-        // this.nodes.updateOnly(node)
         await updateNodePosition(nodeId, [node.x, node.y])
       })
     },
@@ -472,19 +470,6 @@ export default {
       this.closeAllActiveModes();
       this.network.setSelection({nodes: this.nodes.getIds()});
     },
-    // async startNetwork() {
-    //   this.closeAllActiveModes();
-    //   console.log("edges:",this.edges);
-    //   if (await requestStartNetwork()) {
-    //     this.networkStarted = true;
-    //     this.edges.forEach((item, id) => {
-    //         if (item.color == "#999999ff") {
-    //             item.color = {color: "#00ff00ff"};
-    //             this.edges.updateOnly(item);
-    //         }
-    //     });
-    //   }
-    // },
     createPingallTable(inputString) {
       const data = inputString.replaceAll("min/avg/max/mdev", "").replaceAll("/", " ").replaceAll("->", " ").replaceAll(",", "").replaceAll(":", "").replaceAll("rtt", "").split(/\s+/).filter(Boolean);
       let tableHTML = '<table border="1"><thead><tr>';
@@ -689,10 +674,4 @@ export default {
   position: absolute;
   z-index: 0;
 }
-/* 
-.vis-network-graph {
-  height: 100%;
-  width: inherit;
-  position: absolute
-} */
 </style>
