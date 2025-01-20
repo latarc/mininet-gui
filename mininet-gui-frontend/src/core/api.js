@@ -267,7 +267,6 @@ export const requestExportMininetScript = async () => {
     if (response.status === 200) {
       const blob = new Blob([response.data], { type: "text/x-python" });
       const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
       a.download = "network_export.py";

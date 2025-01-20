@@ -83,6 +83,9 @@
   
   .submit-button {
     float: right;
+  }
 
+  input {
+    width: 80px;
   }
   </style>

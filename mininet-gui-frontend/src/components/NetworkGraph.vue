@@ -606,6 +606,7 @@ export default {
       this.showModal = true;
       this.modalContents = "";
       this.topologyModalIsActive = true;
+      this.controllerModalIsActive = false;
       console.log("networkgraph THIS.CONTROLLERS", this.controllers)
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
