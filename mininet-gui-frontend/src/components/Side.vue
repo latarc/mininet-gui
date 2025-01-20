@@ -33,7 +33,8 @@
     </button>
     <button class="button-control-network" id="button-export-topology" @click="this.$emit('exportTopology')">Export Topology (JSON)</button>
     <button class="button-control-network" id="button-import-topology" @click="openFileDialog">Import Topology (JSON)</button>
-
+    <button class="button-control-network" id="button-export-script" @click="this.$emit('exportMininetScript')">Export Mininet Script</button>
+    
     <!-- Hidden file input -->
     <input 
       type="file" 
@@ -90,6 +91,7 @@ export default {
     "toggleShowControllers",
     "createTopology",
     "resetTopology",
+    "exportMininetScript",
     "exportTopology",
     "importTopology",
     "doSelectAll",
@@ -104,7 +106,7 @@ export default {
       } else {
         this.sideIsActive = 1;
         document.getElementById("side").style.display = "block";
-        document.getElementById("button-hide-side").style.marginLeft = "180px";
+        document.getElementById("button-hide-side").style.marginLeft = "200px";
         document.getElementById("button-hide-side").innerHTML = "<b><<</b>";
       }
     },
@@ -137,7 +139,7 @@ export default {
 .side {
   background: rgba(0, 0, 0, 0.8);
   height: inherit;
-  width: 180px;
+  width: 200px;
   position: absolute;
   z-index: 2;
   overflow-x: hidden;
@@ -174,7 +176,7 @@ export default {
   position: absolute;
   z-index: 4;
   padding: 0;
-  margin-left: 180px;
+  margin-left: 200px;
   height: inherit;
   width: 10px;
   font-size: 8pt;

@@ -20,6 +20,7 @@ import {
   deleteLink,
   updateNodePosition,
   requestExportNetwork,
+  requestExportMininetScript,
   requestImportNetwork,
   removeAssociation,
 } from "../core/api";
@@ -47,6 +48,7 @@ import controllerImg from "@/assets/controller.svg";
     @exportTopology="exportTopology"
     @importTopology="importTopology"
     @doSelectAll="doSelectAll"
+    @exportMininetScript="exportMininetScript"
     @keydown.ctrl.a.prevent="doSelectAll"
     :networkStarted="networkStarted"
     :addEdgeMode="addEdgeMode"
@@ -656,6 +658,9 @@ export default {
     },
     async exportTopology() {
       await requestExportNetwork();
+    },
+    async exportMininetScript() {
+      await requestExportMininetScript();
     },
     async importTopology(file) {
       await this.resetTopology()

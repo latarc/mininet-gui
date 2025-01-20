@@ -354,16 +354,15 @@ def get_node_stats(node_id: str):
     del result["y"]
     return result
 
+@app.get("/api/mininet/export_script", response_class=PlainTextResponse)
+def export_network():
+    debug(app.net)
+    return export_net_to_script(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
 
 @app.get("/api/mininet/export_json", response_class=PlainTextResponse)
 def export_network():
     debug(app.net)
     return export_net_to_json(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
-
-@app.get("/api/mininet/export_script", response_class=PlainTextResponse)
-def export_network():
-    debug(app.net)
-    return export_net_to_script(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
 
 @app.post("/api/mininet/import_json")
 async def import_json(file: UploadFile = File(...)):

@@ -258,6 +258,28 @@ export const requestImportNetwork = async (file) => {
   }
 };
 
+export const requestExportMininetScript = async () => {
+  try {
+    const response = await axios.get(baseUrl + "/api/mininet/export_script", {
+      responseType: "blob",
+    });
+
+    if (response.status === 200) {
+      const blob = new Blob([response.data], { type: "text/x-python" });
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "network_export.py";
+      document.body.appendChild(a);
+      a.click(); 
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+  }
+};
 
 export const requestRunPingall = async () => {
   try {

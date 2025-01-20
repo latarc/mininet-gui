@@ -1,60 +1,90 @@
 import json
-from typing import List, Dict, Union
+from typing import List, Tuple, Union
 
 from mininet_gui_backend.schema import Host, Switch, Controller
 
 
-SCRIPT_TEMPLATE = """#!/usr/bin/env python3
-
+SCRIPT_TEMPLATE = """
 from mininet.net import Mininet
+from mininet.node import Controller, RemoteController, OVSKernelSwitch, Host
+from mininet.link import TCLink
 from mininet.cli import CLI
+from mininet.log import setLogLevel
 
-net = Mininet({mininet_params})
+setLogLevel("info")
 
-{add_nodes}
-{add_links}
+net = Mininet(controller=Controller, switch=OVSKernelSwitch, host=Host, link=TCLink)
 
-{start_nodes}
+# Controllers
+{controllers}
 
-net.start()
-CLI(net)
+# Switches
+{switches}
+
+# Hosts
+{hosts}
+
+# Links
+{links}
+
+net.build()
+
+{controller_start}
+
+{switch_start}
+
+print("\\nNetwork topology created successfully!\\n")
+
+CLI(net)  # Start Mininet CLI
+
 net.stop()
-
 """
 
 
-def add_nodes(script, nodes):
-    node_add_code = []
-    for node in nodes:
-        params = nodes[node].params
-        parsed_params = ",".join([f'{param}="{params[param]}"' for param in params])
-        if node.startswith("s"):
-            node_add_code.append(f"net.addSwitch({parsed_params})\n")
-        if node.startswith("h"):
-            node_add_code.append(f"net.addHost({parsed_params})\n")
-    print(node_add_code, script)
-    return script.replace("{add_nodes}", "".join(node_add_code))
+def export_net_to_script(
+    switches: List[Switch], 
+    hosts: List[Host], 
+    controllers: List[Controller], 
+    links: List[Tuple[str, str]]
+) -> str:
+    template = str(SCRIPT_TEMPLATE)
 
+    controllers_str = "\n".join([
+        f'{c.name} = net.addController("{c.name}", controller=RemoteController, ip="{c.ip}", port={c.port})'
+        if c.remote else f'{c.name} = net.addController("{c.name}")'
+        for c in controllers.values()
+    ])
 
-def add_links(script, links):
-    link_add_code = []
-    for link in links:
-        link_add_code.append(f"net.addLink({link[0]}, {link[1]})\n")
-    return script.replace("{add_links}", "".join(link_add_code))
+    switches_str = "\n".join([
+        f'{s.name} = net.addSwitch("{s.name}")' for s in switches.values()
+    ])
 
+    hosts_str = "\n".join([
+        f'{h.name} = net.addHost("{h.name}", ip="{h.ip}", mac="{h.mac}")' for h in hosts.values()
+    ])
 
-def start_nodes(script, nodes):
-    start_nodes_code = []
+    links_str = "\n".join([
+        f'net.addLink({link_list[0]}, {link_list[1]})'
+        for link_list in (list(link) for link in links.keys())
+    ])
 
-    return script.replace("{add_links}", "".join(start_nodes_code))
+    controller_start_str = "\n".join([
+        f"{c.name}.start()" for c in controllers.values()
+    ])
 
+    switch_start_str = "\n".join([
+        f'{s.name}.start([{s.controller}])' if s.controller else f'{s.name}.start([])'
+        for s in switches.values()
+    ])
 
-def export_net_to_script(net) -> str:
-    script = add_nodes(SCRIPT_TEMPLATE, net.nameToNode)
-    # add_links(script, net.links)
-    # start_nodes(script, net.nodes)
-    return script
-
+    return template.format(
+        controllers=controllers_str,
+        switches=switches_str,
+        hosts=hosts_str,
+        links=links_str,
+        controller_start=controller_start_str,
+        switch_start=switch_start_str
+    )
 
 # def import_script(script):
 #     for line in script.splitlines():
@@ -66,7 +96,7 @@ def export_net_to_json(
     switches: List[Switch], 
     hosts: List[Host], 
     controllers: List[Controller], 
-    links: List[Dict[str, str]]
+    links: List[Tuple[str, str]]
 ) -> str:
     net_data = {
         "switches": [switch.dict() for switch in switches.values()],
