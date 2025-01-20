@@ -34,15 +34,21 @@ const props = defineProps({
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
+  align-items: center;
+  justify-content: center;
   transition: opacity 0.3s ease;
+  overflow: hidden;
 }
 
 .modal-container {
-  width: 300px;
-  margin: auto;
+  min-width: 200px;
+  max-width: 90vw;
+  width: auto;
+  max-height: 80vh;
+  overflow-y: auto;
   padding: 20px 30px;
   background-color: #fff;
-  border-radius: 2px;
+  border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);
   transition: all 0.3s ease;
 }
@@ -50,37 +56,29 @@ const props = defineProps({
 .modal-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   flex-direction: row;
 }
 
 .modal-header h3 {
   margin-top: 0;
   color: #42b983;
-  
 }
 
 .modal-body {
   margin: 10px 0;
+  word-wrap: break-word;
+  text-align: center;
 }
 
 .modal-default-button {
-  /* float: right; */
   background: none;
-	color: inherit;
-	border: none;
-	padding: 0;
-	cursor: pointer;
-	outline: inherit;
+  color: inherit;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  outline: inherit;
 }
-
-/*
- * The following styles are auto-applied to elements with
- * transition="modal" when their visibility is toggled
- * by Vue.js.
- *
- * You can easily play with the modal transition by editing
- * these styles.
- */
 
 .modal-enter-from {
   opacity: 0;
@@ -92,7 +90,6 @@ const props = defineProps({
 
 .modal-enter-from .modal-container,
 .modal-leave-to .modal-container {
-  -webkit-transform: scale(1.1);
   transform: scale(1.1);
 }
 </style>

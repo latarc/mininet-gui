@@ -414,12 +414,9 @@ export default {
     },
     async handleNodeDragEnd(event) {
       event.nodes.forEach(async nodeId => {
-        let node = this.nodes.get(nodeId)
+        let node = this.network.body.nodes[nodeId]
         // TODO: fix this calculation, does not work well with canvas zoom in/out
-        node.x += event.event.deltaX
-        node.y += event.event.deltaY
-        
-        this.nodes.updateOnly(node)
+        // this.nodes.updateOnly(node)
         await updateNodePosition(nodeId, [node.x, node.y])
       })
     },
@@ -556,63 +553,73 @@ export default {
         });
       }
     },
-    async createLinearTopo(nDevices) {
+    async createLinearTopo(nDevices, nHosts) {
       let prevSw = null;
-      for (var i=0; i<nDevices; i++) {
-        let newSw = await this.createSwitch({x: 250+i*90,y: 150});
-        let newHost = await this.createHost({x: 200+i*90, y: 300});
-        console.log("newSw")
-        console.log("newSw", newSw)
-        console.log("newHost")
-        console.log("newHost", newHost)
-        if (prevSw != null) {
+      for (let i = 0; i < nDevices; i++) {
+        let newSw = await this.createSwitch({ x: 250 + i * 90, y: 150 });
+        console.log("newSw", newSw);
+
+        for (let j = 0; j < nHosts; j++) {
+          let newHost = await this.createHost({ x: 200 + i * 90, y: 300 + j * 50 });
+          console.log("newHost", newHost);
+
+          await deployLink(newSw.id, newHost.id);
+          this.edges.add({
+            from: newSw.id,
+            to: newHost.id,
+            color: this.networkStarted ? "#00ff00ff" : "#999999ff",
+          });
+        }
+
+        if (prevSw) {
           await deployLink(newSw.id, prevSw.id);
           this.edges.add({
             from: newSw.id,
             to: prevSw.id,
-            color: this.networkStarted? "#00ff00ff" : "#999999ff",
+            color: this.networkStarted ? "#00ff00ff" : "#999999ff",
           });
         }
-        await deployLink(newSw.id, newHost.id);
-        this.edges.add({
-          from: newSw.id,
-          to: newHost.id,
-          color: this.networkStarted? "#00ff00ff" : "#999999ff",
-        });
+
         prevSw = newSw;
       }
     },
     async createTreeTopo(depth, fanout) {
-      const addTree = async (currentDepth, offset) => {
-        const isSwitch = currentDepth < depth;
-        let node;
-
-        if (isSwitch) {
-          node = await this.createSwitch({x: 100 + offset,y: 150 + currentDepth*90});
-          console.log("Created Switch:", node);
-
-          for (let i = 0; i < fanout; i++) {
-            const child = await addTree(currentDepth + 1, i*100+fanout*currentDepth*offset);
-            await deployLink(node.id, child.id);
-            this.edges.add({
-              from: node.id,
-              to: child.id,
-              color: this.networkStarted ? "#00ff00ff" : "#999999ff",
-            });
+      const nodes = [];
+      const maxNodes = Math.pow(fanout, depth);
+      for (let d = depth; d >= 0; d--) {
+        const layer = [];
+        const numNodes = Math.pow(fanout, d);
+        for (let i = 0; i < numNodes; i++) {
+          let x = (i + 0.5) * maxNodes * 100 / (numNodes || 1);
+          let y = 150 + d * 150;
+          let node;
+          if (d === depth) {
+            node = await this.createHost({ x, y });
+            console.log("Created Host:", node);
+          } else {
+            node = await this.createSwitch({ x, y });
+            console.log("Created Switch:", node);
+            const startIndex = i * fanout;
+            const endIndex = startIndex + fanout;
+            for (let j = startIndex; j < endIndex && j < nodes[d + 1].length; j++) {
+              const child = nodes[d + 1][j];
+              await deployLink(node.id, child.id);
+              this.edges.add({
+                from: node.id,
+                to: child.id,
+                color: this.networkStarted ? "#00ff00ff" : "#999999ff",
+              });
+            }
           }
-        } else {
-          node = await this.createHost({ x: 100 + offset, y: 150 + currentDepth*90 });
-          console.log("Created Host:", node);
+          layer.push(node);
         }
-
-        return node;
-      };
-
-      await addTree(0, fanout);
+        nodes[d] = layer;
+      }
     },
     async showTopologyFormModal(){
       this.modalHeader = "Create Topology";
       this.showModal = true;
+      this.modalContents = "";
       this.topologyModalIsActive = true;
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
@@ -633,27 +640,28 @@ export default {
       this.showModal = false;
     },
     async handleCreateTopology(topologyType, nDevices, nLayers){
-      console.log("Received createTopology event with:", topologyType, "data", nDevices);
+      console.log("Received createTopology event with:", topologyType, "data", nDevices, nLayers);
       if (topologyType == "Single") {
         await this.createSingleTopo(nDevices);
       } else if (topologyType == "Linear") {
-        await this.createLinearTopo(nDevices);
+        await this.createLinearTopo(nDevices, nLayers);
       } else if (topologyType == "Tree") {
         await this.createTreeTopo(nLayers, nDevices);
       }
     },
     async resetTopology() {
-      // confirm? (this will delete the current topology)
-      if (await requestResetNetwork()) {
-        console.log("resetting topology")
-        this.hosts = new Object()
-        this.switches = new Object()
-        this.controllers = new Array()
-        this.links = new Array()
-        this.nodes = new DataSet()
-        this.edges = new DataSet()
-        this.network.setData({nodes: this.nodes, edges:  this.edges})
-        this.network.redraw()
+      const confirmed = window.confirm("Are you sure you want to reset the topology? This action cannot be undone.");
+
+      if (confirmed && await requestResetNetwork()) {
+        console.log("Resetting topology");
+        this.hosts = {};
+        this.switches = {};
+        this.controllers = [];
+        this.links = [];
+        this.nodes = new DataSet();
+        this.edges = new DataSet();
+        this.network.setData({ nodes: this.nodes, edges: this.edges });
+        this.network.redraw();
       }
     },
     async exportTopology() {

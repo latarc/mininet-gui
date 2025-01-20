@@ -3,17 +3,20 @@
       <form @submit.prevent="submitForm">
         <label for="type">Topology Type:</label>
         <select id="type" v-model="topologyType">
-          <option value="Single">Single</option>
+          <option value="Single" selected="selected">Single</option>
           <option value="Linear">Linear</option>
           <option value="Tree">Tree</option>
         </select>
         <br>
-  
-        <label for="nDevices">nDevices:</label>
-        <input id="nDevices" type="text" v-model="nDevices" required />
+        <label for="nDevices">Switches:</label>
+        <input id="nDevices" type="number" v-model="nDevices" required />
         <br>
+        <div v-if="topologyType === 'Linear'" class="tree-options">
+          <label for="nLayers">Hosts per switch:</label>
+          <input id="nLayers" type="number" v-model="nLayers" required />
+        </div>
         <div v-if="topologyType === 'Tree'" class="tree-options">
-          <label for="nLayers">nLayers:</label>
+          <label for="nLayers">Layers:</label>
           <input id="nLayers" type="number" v-model="nLayers" required />
         </div>
         <br>
@@ -26,9 +29,9 @@
   export default {
     data() {
       return {
-        topologyType: "default",
+        topologyType: "Single",
         nDevices: "",
-        nLayers: "",
+        nLayers: null,
       };
     },
     methods: {
@@ -36,7 +39,7 @@
         const formData = {
           type: this.topologyType,
           nDevices: this.nDevices,
-          nLayers: this.topologyType === "Tree" ? this.nLayers : null,
+          nLayers: this.nLayers,
         };
         this.$emit("form-submit", formData);
       },
