@@ -509,10 +509,12 @@ export default {
       }
     },
     createSwStatsTable(jsonData) {
-      let t='<table border="1">',d=jsonData;
-      t+='<tr>';for(let k in d)t+='<th>'+k+'</th>';t+='</tr>';
-      t+='<tr>';for(let k in d)t+='<td>'+(Array.isArray(d[k])?d[k].join('<br>'):d[k])+'</td>';t+='</tr>';
-      return t+'</table>';
+      let output = '<div style="text-align: left;">';
+      for (let key in jsonData) {
+        output += `<div><strong>${key}:</strong> ${Array.isArray(jsonData[key]) ? jsonData[key].join(', ') : jsonData[key]}</div>`;
+      }
+      output += '</div>';
+      return output;
     },
     async showStatsModal(nodeId) {
       this.closeAllActiveModes();
