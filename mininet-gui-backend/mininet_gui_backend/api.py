@@ -339,19 +339,51 @@ def remove_association(src_id: str, dst_id: str):
     return "OK"
 
 
+FLOW_FIELDS = [
+    "cookie", "duration", "table", "n_packets", "n_bytes", 
+    "idle_timeout", "priority", "actions"
+]
+
 @app.get("/api/mininet/stats/{node_id}")
 def get_node_stats(node_id: str):
     if node_id not in app.net.nameToNode:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
+    
     node = app.net.nameToNode[node_id]
-    result = dict(**(app.switches.get(node_id) or app.hosts.get(node_id)).dict())
+    base_data = app.switches.get(node_id) or app.hosts.get(node_id)
+    result = dict(**base_data.dict())
+
     if node.type == "sw":
-        ports = node.dpctl("dump-ports")
-        ports = ports[ports.find("\n")+1:].replace("\n", " ")
-        ports = [p for p in ports.split("port") if "LOCAL" not in p]
-        result["ports"] = [p for p in ports if p.strip()]
-    del result["x"]
-    del result["y"]
+        ports_raw = node.dpctl("dump-ports")
+        ports_raw = ports_raw[ports_raw.find("\n") + 1:].replace("\n", " ")
+        result["ports"] = [p.strip() for p in ports_raw.split("port") if "LOCAL" not in p and p.strip()]
+
+        flow_table_raw = node.dpctl("dump-flows").strip()
+        parsed_flows = []
+
+        for line in flow_table_raw.split("\n"):
+            fields = line.split(",")
+            flow = {}
+            match_fields = {}
+
+            for field in fields:
+                key_val = field.strip().split("=")
+
+                if len(key_val) == 2:
+                    key, value = key_val
+                    if key in FLOW_FIELDS:
+                        flow[key] = value
+                    else:
+                        match_fields[key] = value
+
+            flow["match_fields"] = match_fields
+            parsed_flows.append(flow)
+
+        result["flow_table"] = parsed_flows
+
+    result.pop("x", None)
+    result.pop("y", None)
+    
     return result
 
 @app.get("/api/mininet/export_script", response_class=PlainTextResponse)

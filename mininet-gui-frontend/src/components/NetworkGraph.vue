@@ -27,6 +27,8 @@ import {
 import { options } from "../core/options";
 import Side from "./Side.vue";
 import Modal from "./Modal.vue";
+import NodeStats from "./NodeStats.vue";
+import PingallResults from "./PingallResults.vue";
 import ControllerForm from "./ControllerForm.vue";
 import TopologyForm from "./TopologyForm.vue";
 
@@ -67,19 +69,20 @@ import controllerImg from "@/assets/controller.svg";
     @keydown.d="doDeleteSelected"
     @keydown.delete="doDeleteSelected"
     @keydown.ctrl.a.prevent="doSelectAll"
-></div>
-<Teleport to="body">
-<modal :show="showModal" @close="showModal = false;">
-  <template #header>
-    <h3>{{modalHeader}}</h3>
-  </template>
-  <template #body>
-    <span v-html="modalContents"></span>
-    <controller-form v-if="controllerModalIsActive" @form-submit="handleControllerFormSubmit" />
-    <topology-form v-if="topologyModalIsActive" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
-  </template>
-</modal>
-</Teleport>
+  ></div>
+  <Teleport to="body">
+    <modal :show="showModal" @close="closeModal">
+      <template #header>
+        <h3>{{ modalHeader }}</h3>
+      </template>
+      <template #body>
+        <node-stats v-if="modalOption === 'nodeStats'" :stats="modalData" />
+        <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
+        <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
+        <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
+      </template>
+    </modal>
+  </Teleport>
 </template>
 
 <script>
@@ -87,28 +90,24 @@ export default {
   name: "NetworkGraph",
   components: {
     Side,
+    NodeStats,
+    PingallResults,
     ControllerForm,
     TopologyForm,
   },
   data() {
     return {
-      hosts: new Object(),
-      switches: new Object(),
-      controllers: new Object(),
-      links: new Array(),
+      hosts: {},
+      switches: {},
+      controllers: {},
+      links: [],
       nodes: new DataSet(),
       edges: new DataSet(),
       addEdgeMode: false,
       networkStarted: true,
       showModal: false,
-      controllerModalIsActive: false,
-      topologyModalIsActive: false,
-      formData: null,
-      modalPromiseResolve: null,
-      modalContents: "",
-      modalHeader: "",
-      controllersHidden: true,
-      hostsVisible: true,
+      modalOption: null,
+      modalData: {},
     };
   },
   computed: {
@@ -340,31 +339,26 @@ export default {
       }
       return sw
     },
-    async showControllerFormModal(position){
+    async showControllerFormModal(position) {
       this.modalHeader = "Controller Form";
+      this.modalOption = "controllerForm";
       this.showModal = true;
-      this.modalContents = ""
-      this.controllerModalIsActive = true;
-      this.topologyModalIsActive = false;
+
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
       });
-      console.log("GOT DATA")
-      console.log(this.formData)
-      await this.createController(position, this.formData.type === "remote", this.formData.ip, this.formData.port)
+
+      console.log("GOT DATA:", this.formData);
+      await this.createController(position, this.formData.type === "remote", this.formData.ip, this.formData.port);
     },
     handleControllerFormSubmit(data) {
       this.formData = data;
-
       if (this.modalPromiseResolve) {
         this.modalPromiseResolve(data);
         this.modalPromiseResolve = null;
       }
-
-      this.controllerModalIsActive = false;
       this.showModal = false;
     },
-    
     async createController(position, remote, ip, port) {
       let ctlId = Object.values(this.controllers).length + 1;
       while (`c${ctlId}` in this.controllers) {
@@ -433,8 +427,9 @@ export default {
     },
     closeModal() {
       this.modalHeader = "";
-      this.modalContents = "";
       this.showModal = false;
+      this.modalOption = null;
+      this.modalData = null;
     },
     closeAllActiveModes() {
       this.closeAddEdgeMode();
@@ -475,59 +470,23 @@ export default {
       this.closeAllActiveModes();
       this.network.setSelection({nodes: this.nodes.getIds()});
     },
-    createPingallTable(inputString) {
-      const data = inputString.replaceAll("min/avg/max/mdev", "").replaceAll("/", " ").replaceAll("->", " ").replaceAll(",", "").replaceAll(":", "").replaceAll("rtt", "").split(/\s+/).filter(Boolean);
-      let tableHTML = '<table border="1"><thead><tr>';
-      const headers = ['src', 'dst', 'packets_sent', 'packets_recv', 'min', 'avg', 'max', 'mdev'];
-      headers.forEach(header => {
-          tableHTML += `<th>${header}</th>`;
-      });
-      tableHTML += '</tr></thead><tbody>';
-      for (let i = 0; i < data.length; i += 9) {
-          tableHTML += '<tr>';
-          for (let j = 0; j < 8; j++) {
-              tableHTML += `<td>${data[i + j]}</td>`;
-          }
-          tableHTML += '</tr>';
-      }
-      tableHTML += '</tbody></table>';
-      return tableHTML;
-    },
     async showPingallModal() {
       this.closeAllActiveModes();
       this.modalHeader = "Pingall Results";
-      this.modalContents = "Loading...";
+      this.modalOption = "pingall";
       this.showModal = true;
-      let pingallResults = await requestRunPingall()
-      if (pingallResults) {
-        console.log(pingallResults)
-        let pingallTable = this.createPingallTable(pingallResults)
-        console.log(pingallTable)
-        this.modalContents = pingallTable;
-      } else {
-        this.showModal = false;
-      }
-    },
-    createSwStatsTable(jsonData) {
-      let output = '<div style="text-align: left;">';
-      for (let key in jsonData) {
-        output += `<div><strong>${key}:</strong> ${Array.isArray(jsonData[key]) ? jsonData[key].join(', ') : jsonData[key]}</div>`;
-      }
-      output += '</div>';
-      return output;
+
+      let pingallResults = await requestRunPingall();
+      this.modalData = pingallResults || null;
     },
     async showStatsModal(nodeId) {
       this.closeAllActiveModes();
-      this.modalHeader = "Node Info";
-      this.modalContents = `<h3>Node ${nodeId}</h3>Loading...`;
+      this.modalHeader = `Node Info: ${nodeId}`;
+      this.modalOption = "nodeStats";
       this.showModal = true;
-      let nodeStats = await getNodeStats(nodeId)
-      if (nodeStats) {
-        console.log(nodeStats)
-        this.modalContents = this.createSwStatsTable(nodeStats);
-      } else {
-        this.showModal = false;
-      }
+      let nodeStats = await getNodeStats(nodeId);
+      console.log("nodeStats", nodeStats)
+      this.modalData = nodeStats || null;
     },
     async createSingleTopo(nDevices, controller) {
       let newSw = await this.createSwitch({x: 250, y: 150, controller: controller});
@@ -603,29 +562,26 @@ export default {
         nodes[d] = layer;
       }
     },
-    async showTopologyFormModal(){
+    async showTopologyFormModal() {
       this.modalHeader = "Create Topology";
+      this.modalOption = "topologyForm";
       this.showModal = true;
-      this.modalContents = "";
-      this.topologyModalIsActive = true;
-      this.controllerModalIsActive = false;
-      console.log("networkgraph THIS.CONTROLLERS", this.controllers)
+
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
       });
-      console.log("GOT DATA")
-      console.log(this.formData)
-      await this.handleCreateTopology(this.formData.type, this.formData.nDevices, this.formData.nLayers, this.formData.controller)
+
+      console.log("GOT DATA", this.formData);
+      await this.handleCreateTopology(this.formData.type, this.formData.nDevices, this.formData.nLayers, this.formData.controller);
     },
     handleTopologyFormSubmit(data) {
       this.formData = data;
-      console.log("FORM DATA", this.formData)
+      console.log("FORM DATA", this.formData);
+
       if (this.modalPromiseResolve) {
         this.modalPromiseResolve(data);
         this.modalPromiseResolve = null;
       }
-
-      this.topologyModalIsActive = false;
       this.showModal = false;
     },
     async handleCreateTopology(topologyType, nDevices, nLayers, controller){
