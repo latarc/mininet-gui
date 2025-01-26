@@ -483,10 +483,10 @@ export default {
       this.closeAllActiveModes();
       this.modalHeader = `Node Info: ${nodeId}`;
       this.modalOption = "nodeStats";
-      this.showModal = true;
       let nodeStats = await getNodeStats(nodeId);
       console.log("nodeStats", nodeStats)
       this.modalData = nodeStats || null;
+      this.showModal = true;
     },
     async createSingleTopo(nDevices, controller) {
       let newSw = await this.createSwitch({x: 250, y: 150, controller: controller});

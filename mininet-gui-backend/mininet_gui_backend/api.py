@@ -350,7 +350,9 @@ def get_node_stats(node_id: str):
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     
     node = app.net.nameToNode[node_id]
-    base_data = app.switches.get(node_id) or app.hosts.get(node_id)
+    base_data = app.switches.get(node_id) or app.hosts.get(node_id) or app.controllers.get(node_id)
+    if not base_data:
+        raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     result = dict(**base_data.dict())
 
     if node.type == "sw":
@@ -378,8 +380,20 @@ def get_node_stats(node_id: str):
 
             flow["match_fields"] = match_fields
             parsed_flows.append(flow)
-
         result["flow_table"] = parsed_flows
+    elif node.type == "host":
+        arp_table = node.cmd("arp -a -n")
+        print("ARP TABLE", arp_table)
+        parsed_arp_table = []
+        for line in arp_table.splitlines():
+            parts = line.split()
+            if len(parts) < 6:
+                continue
+            ip = parts[1].strip("()")
+            mac = parts[3]
+            interface = parts[-1]
+            parsed_arp_table.append({"ip": ip, "mac": mac, "interface": interface})
+        result["arp_table"] = parsed_arp_table
 
     result.pop("x", None)
     result.pop("y", None)
