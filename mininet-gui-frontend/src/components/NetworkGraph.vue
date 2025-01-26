@@ -71,7 +71,7 @@ import controllerImg from "@/assets/controller.svg";
     @keydown.ctrl.a.prevent="doSelectAll"
   ></div>
   <Teleport to="body">
-    <modal :show="showModal" @close="closeModal">
+    <modal :show="showModal" @close="closeModal" @keydown.esc="closeModal">
       <template #header>
         <h3>{{ modalHeader }}</h3>
       </template>
@@ -121,9 +121,8 @@ export default {
   },
   methods: {
     computeNetwork() {
-      if (this.network) {
+      if (this.network)
         return this.network;
-      }
       return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
     },
     async setupNetwork() {
