@@ -5,7 +5,7 @@
       <button
         v-for="(node, nodeId) in nodes"
         :key="nodeId"
-        @click="activeTab = nodeId"
+        @click="activeTab = nodeId; focusInput()"
         :class="{ active: activeTab === nodeId }"
       >
         {{ nodeId }}
@@ -13,20 +13,15 @@
     </div>
 
     <!-- Terminal Window -->
-    <div class="terminal-window" v-if="activeTab" @click.prevent="focusInput">
+    <div class="terminal-window"  @click="focusInput">
       <!-- Terminal output -->
-      <pre 
-        @click.prevent="focusInput" 
-        class="terminal-output"
-      >
-      {{ terminals[activeTab] }}
-      </pre>
+      <pre ref="terminalOutput" class="terminal-output" @click="focusInput">{{ terminals[activeTab] }}</pre>
       
       <!-- Invisible input field -->
       <input
         ref="inputField"
         v-model="userInputs[activeTab]"
-        @input="sendCommand(activeTab)"
+        @keydown.prevent="handleKeydown"
         @keydown.enter.prevent="handleEnter"
         @keydown.tab.prevent="handleTab"
         @keydown.backspace.prevent="handleBackspace"
@@ -36,6 +31,7 @@
     </div>
   </div>
 </template>
+
 
 <script>
 export default {
@@ -48,45 +44,13 @@ export default {
       activeTab: null,
     };
   },
-  mounted() {
-    if (!this.nodes || Object.keys(this.nodes).length === 0) return;
 
-    Object.keys(this.nodes).forEach((nodeId) => {
-      const ws = new WebSocket(`ws://10.7.230.33:8000/api/mininet/terminal/${nodeId}`);
-
-      ws.onopen = () => {
-        console.log(`WebSocket opened for ${nodeId}`);
-        this.terminals[nodeId] = `Connected to ${nodeId}\n`;
-      };
-
-      ws.onmessage = (event) => {
-        this.terminals[nodeId] += `${event.data}`;
-      };
-
-      ws.onerror = (error) => {
-        console.error(`WebSocket error for ${nodeId}:`, error);
-      };
-
-      ws.onclose = () => {
-        console.log(`WebSocket closed for ${nodeId}`);
-      };
-
-      this.sockets[nodeId] = ws;
-      this.terminals[nodeId] = "";
-      this.userInputs[nodeId] = "";
-    });
-
-    this.activeTab = Object.keys(this.nodes)[0] || null;
-  },
   beforeUnmount() {
     Object.values(this.sockets).forEach((ws) => ws.close());
   },
   methods: {
-    sendCommand(nodeId) {
-      if (!this.userInputs[nodeId]) return;
-
-      const command = this.userInputs[nodeId];
-      this.userInputs[nodeId] = ""; // Clear the input field
+    sendChar(nodeId, char) {
+      // if (!this.userInputs[nodeId]) return;
 
       if (!this.sockets[nodeId] || this.sockets[nodeId].readyState !== WebSocket.OPEN) {
         console.log(`WebSocket for ${nodeId} is not connected. Attempting to reconnect...`);
@@ -95,11 +59,12 @@ export default {
 
         this.sockets[nodeId].onopen = () => {
           console.log(`WebSocket reconnected for ${nodeId}`);
-          this.sockets[nodeId].send(command);
+          this.sockets[nodeId].send(char);
         };
 
         this.sockets[nodeId].onmessage = (event) => {
           this.terminals[nodeId] += `${event.data}`;
+          if (this.activeTab == nodeId) this.scrollToBottom();
         };
 
         this.sockets[nodeId].onerror = (error) => {
@@ -112,7 +77,7 @@ export default {
 
         return;
       }
-      this.sockets[nodeId].send(command);
+      this.sockets[nodeId].send(char);
     },
     handleEnter() {
       const nodeId = this.activeTab;
@@ -128,11 +93,39 @@ export default {
       const command = this.userInputs[nodeId];
       this.sockets[nodeId].send('\b \b');
     },
+    handleKeydown(event) {
+      console.log("keydown",event.key)
+      const nodeId = this.activeTab;
+
+      if (event.key === '-') {
+        event.stopPropagation();
+      }
+
+      if (event.key === 'Enter') {
+        this.handleEnter();
+      } else if (event.key === 'Tab') {
+        this.handleTab();
+      } else if (event.key === 'Backspace') {
+        this.handleBackspace();
+      } else {
+        this.sendChar(nodeId, event.key)
+      }
+    },
+
     focusInput() {
       // Focus the hidden input when terminal output is clicked
       console.log("FOCUS INPUT")
       this.$refs.inputField.focus();
-    }
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const terminalOutput = this.$refs.terminalOutput;
+        if (terminalOutput) {
+          terminalOutput.scrollTop = terminalOutput.scrollHeight - terminalOutput.clientHeight;
+        }
+      });
+    },
+
   }
 };
 </script>
