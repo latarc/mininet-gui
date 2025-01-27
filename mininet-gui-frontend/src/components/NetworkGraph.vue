@@ -27,6 +27,7 @@ import {
 import { options } from "../core/options";
 import Side from "./Side.vue";
 import Modal from "./Modal.vue";
+import Webshell from "./Webshell.vue";
 import NodeStats from "./NodeStats.vue";
 import PingallResults from "./PingallResults.vue";
 import ControllerForm from "./ControllerForm.vue";
@@ -36,40 +37,49 @@ import switchImg from "@/assets/switch.svg";
 import hostImg from "@/assets/host.svg";
 import controllerImg from "@/assets/controller.svg";
 </script>
-
 <template>
-  <Side
-    @toggleAddEdgeMode="handleToggleAddEdgeMode"
-    @deleteSelected="doDeleteSelected"
-    @runPingall="showPingallModal"
-    @closeAllActiveModes="closeAllActiveModes"
-    @toggleShowHosts="toggleShowHosts"
-    @toggleShowControllers="toggleShowControllers"
-    @createTopology="showTopologyFormModal"
-    @resetTopology="resetTopology"
-    @exportTopology="exportTopology"
-    @importTopology="importTopology"
-    @doSelectAll="doSelectAll"
-    @exportMininetScript="exportMininetScript"
-    @keydown.ctrl.a.prevent="doSelectAll"
-    :networkStarted="networkStarted"
-    :addEdgeMode="addEdgeMode"
-  />
-  <div
-    ref="graph"
-    id="network-graph"
-    class="network-graph"
-    @drop.prevent="handleDrop"
-    @dragenter.prevent
-    @dragover.prevent
-    @keydown.esc="closeAllActiveModes"
-    @keydown.h="toggleShowHosts"
-    @keydown.c="toggleShowControllers"
-    @keydown.e="enterAddEdgeMode"
-    @keydown.d="doDeleteSelected"
-    @keydown.delete="doDeleteSelected"
-    @keydown.ctrl.a.prevent="doSelectAll"
-  ></div>
+  <div class="layout">
+    <!-- Side panel (left) -->
+    <Side
+      class="side-panel"
+      @toggleAddEdgeMode="handleToggleAddEdgeMode"
+      @deleteSelected="doDeleteSelected"
+      @runPingall="showPingallModal"
+      @closeAllActiveModes="closeAllActiveModes"
+      @toggleShowHosts="toggleShowHosts"
+      @toggleShowControllers="toggleShowControllers"
+      @createTopology="showTopologyFormModal"
+      @resetTopology="resetTopology"
+      @exportTopology="exportTopology"
+      @importTopology="importTopology"
+      @doSelectAll="doSelectAll"
+      @exportMininetScript="exportMininetScript"
+      @keydown.ctrl.a.prevent="doSelectAll"
+      :networkStarted="networkStarted"
+      :addEdgeMode="addEdgeMode"
+    />
+    
+    <!-- Main Content (Graph + WebShell) -->
+    <div class="main-content">
+      <div ref="graph" id="network-graph" class="network-graph"
+        @drop.prevent="handleDrop"
+        @dragenter.prevent
+        @dragover.prevent
+        @keydown.esc="closeAllActiveModes"
+        @keydown.h="toggleShowHosts"
+        @keydown.c="toggleShowControllers"
+        @keydown.e="enterAddEdgeMode"
+        @keydown.d="doDeleteSelected"
+        @keydown.delete="doDeleteSelected"
+        @keydown.ctrl.a.prevent="doSelectAll"
+      ></div>
+
+      <!-- WebShell at the bottom -->
+      <webshell class="webshell" :nodes="hosts" />
+    </div>
+  </div>
+
+  <!-- Modal (unchanged) -->
   <Teleport to="body">
     <modal :show="showModal" @close="closeModal" @keydown.esc="closeModal">
       <template #header>
@@ -84,6 +94,7 @@ import controllerImg from "@/assets/controller.svg";
     </modal>
   </Teleport>
 </template>
+
 
 <script>
 export default {
@@ -625,12 +636,53 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+/* 
 .network-graph {
   background-color: white;
   height: 100%;
   width: 100%;
   position: absolute;
   z-index: 0;
+} */
+
+/* Use Flexbox for Main Layout */
+.layout {
+  display: flex;
+  height: 100vh; /* Full screen height */
+  overflow: hidden;
+}
+
+/* Side panel (fixed width on the left) */
+.side-panel {
+  width: 250px; /* Adjust width as needed */
+  height: 100vh;
+  background: #f8f9fa; /* Light background */
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+/* Main content (graph + webshell) */
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Network graph (takes remaining space above webshell) */
+.network-graph {
+  flex-grow: 1;
+  background: #e8e8e8; /* Light grey */
+  overflow: hidden;
+}
+
+/* WebShell at the bottom */
+.webshell {
+  height: 250px; /* Fixed height for terminal */
+  background: black;
+  color: white;
+  border-top: 2px solid #444;
+  overflow: auto;
 }
 </style>

@@ -9,7 +9,11 @@ Endpoints to start and stop the network at any point.
 
 Endpoints that add, remove and edit nodes and edges in real time.
 """
+import os
+import pty
 import json
+import select
+import asyncio
 from typing import Tuple, Union
 from contextlib import asynccontextmanager
 
@@ -18,7 +22,7 @@ from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
 from mininet.node import RemoteController, Controller as ReferenceController
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
@@ -26,6 +30,11 @@ from mininet_gui_backend.export import export_net_to_script, export_net_to_json
 from mininet_gui_backend.cli import CLISession
 from mininet_gui_backend.schema import Switch, Host, Controller
 
+
+FLOW_FIELDS = [
+    "cookie", "duration", "table", "n_packets", "n_bytes", 
+    "idle_timeout", "priority", "actions"
+]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,6 +44,7 @@ async def lifespan(app: FastAPI):
     app.switches = dict()
     app.hosts = dict()
     app.links = dict()
+    app.terminals = dict()
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
     app.net.is_started = False
@@ -339,11 +349,6 @@ def remove_association(src_id: str, dst_id: str):
     return "OK"
 
 
-FLOW_FIELDS = [
-    "cookie", "duration", "table", "n_packets", "n_bytes", 
-    "idle_timeout", "priority", "actions"
-]
-
 @app.get("/api/mininet/stats/{node_id}")
 def get_node_stats(node_id: str):
     if node_id not in app.net.nameToNode:
@@ -446,3 +451,46 @@ async def import_json(file: UploadFile = File(...)):
 
     except json.JSONDecodeError:
         return {"error": "Invalid JSON file"}, 400
+
+async def read_pty(master_fd, websocket: WebSocket):
+    """Reads PTY output and sends it to WebSocket"""
+    try:
+        while True:
+            await asyncio.sleep(0.01)
+            r, _, _ = select.select([master_fd], [], [], 0)
+            if master_fd in r:
+                output = os.read(master_fd, 1024).decode(errors="ignore")
+                await websocket.send_text(output)
+    except Exception as e:
+        debug(f"PTY Read Error: {e}")
+
+@app.websocket("/api/mininet/terminal/{node_id}")
+async def websocket_terminal(websocket: WebSocket, node_id: str):
+    """WebSocket endpoint for accessing a Mininet node terminal"""
+    await websocket.accept()
+    
+    node = app.net.get(node_id)
+
+    if not node:
+        await websocket.send_text(f"Error: node {node_id} not found.")
+        await websocket.close()
+        return
+
+    master_fd, slave_fd = pty.openpty()
+
+    process = node.popen(["/bin/bash", "-i"], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, text=True, close_fds=True)
+
+    app.terminals[node_id] = (master_fd, process)
+
+    asyncio.create_task(read_pty(master_fd, websocket))
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            debug("RECEIVED",data.encode())
+            os.write(master_fd, data.encode())
+    except WebSocketDisconnect:
+        process.terminate()
+        os.close(master_fd)
+        app.terminals.pop(node_id, None)
+        print(f"Closed terminal session for {node_id}")
