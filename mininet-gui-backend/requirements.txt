@@ -1,0 +1,4 @@
+fastapi
+websockets
+uvicorn
+python-multipart
