@@ -13,9 +13,9 @@
     </div>
 
     <!-- Terminal Window -->
-    <div class="terminal-window" @click="focusInput">
+    <div ref="terminalWindow" class="terminal-window" @click="focusInput">
       <pre ref="terminalOutput" class="terminal-output">
-        {{ terminals[activeTab] }}<span :class="['cursor', isFocused ? 'filled' : 'empty']"></span>
+        {{ sanitizedTerminals[activeTab] }}<span :class="['cursor', isFocused ? 'filled' : 'empty']"></span>
       </pre>
       <input
         ref="inputField"
@@ -36,6 +36,7 @@ export default {
   data() {
     return {
       terminals: {},
+      sanitizedTerminals: {},
       sockets: {},
       userInputs: {},
       activeTab: null,
@@ -67,14 +68,21 @@ export default {
 
     handleTerminalData(nodeId, data) {
       if (data === "\b\u001b[K") {
-        // Handle backspace by removing the last character
         this.terminals[nodeId] = this.terminals[nodeId].slice(0, -1);
       } else if (data === "\u0007") {
-        // Ignore the bell character
         return;
+      } else if (data.includes("[H\u001b[2J\u001b[3J\u001b")) {
+        this.terminals[nodeId] = ""; // Clear the terminal but do not delete history
       } else {
         this.terminals[nodeId] = (this.terminals[nodeId] || "") + data;
       }
+      
+      // Sanitize output
+      this.sanitizedTerminals[nodeId] = this.terminals[nodeId]
+        .replace(/\[\?2004[lh]/g, "")
+        .replace(/\u001b\r\u001b/g, "")
+        .replace(/\u001b/g, ""); // Remove standalone escape characters
+      
       if (this.activeTab === nodeId) this.scrollToBottom();
     },
 
@@ -110,9 +118,9 @@ export default {
 
     scrollToBottom() {
       this.$nextTick(() => {
-        const webshell = this.$refs.webshell;
-        if (webshell) {
-          webshell.scrollTop = webshell.scrollHeight;
+        const terminalOutput = this.$refs.terminalOutput;
+        if (terminalOutput) {
+          terminalOutput.scrollTop = terminalOutput.scrollHeight;
         }
       });
     }
@@ -122,9 +130,21 @@ export default {
 
 <style>
 .hidden-input {
-  position: absolute;
+  position: fixed;
   opacity: 0;
   pointer-events: none;
+}
+
+.terminal-window {
+  margin-left: 2%;
+  width: 98%;
+  height: 80%;
+}
+
+.terminal-output {
+  width: 100%;
+  height: 100%;
+  overflow-y: scroll;
 }
 
 .cursor {
