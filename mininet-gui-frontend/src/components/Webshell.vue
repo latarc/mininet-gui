@@ -1,11 +1,11 @@
 <template>
-  <div class="webshell-container">
+  <div class="webshell-container webshell" ref="webshell">
     <!-- Tabs -->
     <div class="tabs">
       <button
         v-for="(node, nodeId) in nodes"
         :key="nodeId"
-        @click="activeTab = nodeId; focusInput()"
+        @click="setActiveTab(nodeId)"
         :class="{ active: activeTab === nodeId }"
       >
         {{ nodeId }}
@@ -13,203 +13,133 @@
     </div>
 
     <!-- Terminal Window -->
-    <div class="terminal-window"  @click="focusInput">
-      <!-- Terminal output -->
-      <pre ref="terminalOutput" class="terminal-output" @click="focusInput">{{ terminals[activeTab] }}</pre>
-      
-      <!-- Invisible input field -->
+    <div class="terminal-window" @click="focusInput">
+      <pre ref="terminalOutput" class="terminal-output">
+        {{ terminals[activeTab] }}<span :class="['cursor', isFocused ? 'filled' : 'empty']"></span>
+      </pre>
       <input
         ref="inputField"
         v-model="userInputs[activeTab]"
         @keydown.prevent="handleKeydown"
-        @keydown.enter.prevent="handleEnter"
-        @keydown.tab.prevent="handleTab"
-        @keydown.backspace.prevent="handleBackspace"
-        autofocus
+        @focus="isFocused = true"
+        @blur="isFocused = false"
         class="hidden-input"
+        tabindex="-1"
       />
     </div>
   </div>
 </template>
 
-
 <script>
 export default {
-  props: ["nodes"], // nodes is an object { h1: {...}, h2: {...} }
+  props: ["nodes"],
   data() {
     return {
       terminals: {},
       sockets: {},
       userInputs: {},
       activeTab: null,
+      isFocused: false,
     };
   },
-
   beforeUnmount() {
-    Object.values(this.sockets).forEach((ws) => ws.close());
+    Object.values(this.sockets).forEach(ws => ws?.close());
   },
   methods: {
-    sendChar(nodeId, char) {
-      // if (!this.userInputs[nodeId]) return;
+    setActiveTab(nodeId) {
+      this.activeTab = nodeId;
+      this.focusInput();
+      if (!this.sockets[nodeId]) this.initWebSocket(nodeId);
+    },
 
-      if (!this.sockets[nodeId] || this.sockets[nodeId].readyState !== WebSocket.OPEN) {
-        console.log(`WebSocket for ${nodeId} is not connected. Attempting to reconnect...`);
+    initWebSocket(nodeId) {
+      if (this.sockets[nodeId]) return;
+      
+      const ws = new WebSocket(`ws://10.7.230.33:8000/api/mininet/terminal/${nodeId}`);
+      
+      ws.onopen = () => console.log(`Connected to ${nodeId}`);
+      ws.onmessage = event => this.handleTerminalData(nodeId, event.data);
+      ws.onerror = error => console.error(`WebSocket error (${nodeId}):`, error);
+      ws.onclose = () => console.log(`WebSocket closed (${nodeId})`);
+      
+      this.sockets[nodeId] = ws;
+    },
 
-        this.sockets[nodeId] = new WebSocket(`ws://10.7.230.33:8000/api/mininet/terminal/${nodeId}`);
-
-        this.sockets[nodeId].onopen = () => {
-          console.log(`WebSocket reconnected for ${nodeId}`);
-          this.sockets[nodeId].send(char);
-        };
-
-        this.sockets[nodeId].onmessage = (event) => {
-          this.terminals[nodeId] += `${event.data}`;
-          if (this.activeTab == nodeId) this.scrollToBottom();
-        };
-
-        this.sockets[nodeId].onerror = (error) => {
-          console.error(`WebSocket error for ${nodeId}:`, error);
-        };
-
-        this.sockets[nodeId].onclose = () => {
-          console.log(`WebSocket closed for ${nodeId}`);
-        };
-
+    handleTerminalData(nodeId, data) {
+      if (data === "\b\u001b[K") {
+        // Handle backspace by removing the last character
+        this.terminals[nodeId] = this.terminals[nodeId].slice(0, -1);
+      } else if (data === "\u0007") {
+        // Ignore the bell character
         return;
-      }
-      this.sockets[nodeId].send(char);
-    },
-    handleEnter() {
-      const nodeId = this.activeTab;
-      this.sockets[nodeId].send("\n");
-      this.userInputs[nodeId] = "";
-    },
-    handleTab() {
-      const nodeId = this.activeTab;
-      this.sockets[nodeId].send("\t");
-    },
-    handleBackspace() {
-      const nodeId = this.activeTab;
-      const command = this.userInputs[nodeId];
-      this.sockets[nodeId].send('\b \b');
-    },
-    handleKeydown(event) {
-      console.log("keydown",event.key)
-      const nodeId = this.activeTab;
-
-      if (event.key === '-') {
-        event.stopPropagation();
-      }
-
-      if (event.key === 'Enter') {
-        this.handleEnter();
-      } else if (event.key === 'Tab') {
-        this.handleTab();
-      } else if (event.key === 'Backspace') {
-        this.handleBackspace();
       } else {
-        this.sendChar(nodeId, event.key)
+        this.terminals[nodeId] = (this.terminals[nodeId] || "") + data;
       }
+      if (this.activeTab === nodeId) this.scrollToBottom();
+    },
+
+    sendChar(nodeId, char) {
+      const ws = this.sockets[nodeId];
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(char);
+      } else {
+        console.log(`WebSocket for ${nodeId} is not connected. Reconnecting...`);
+        this.initWebSocket(nodeId);
+      }
+    },
+
+    handleKeydown(event) {
+      const nodeId = this.activeTab;
+      if (!nodeId) return;
+      
+      if (event.key === "Backspace") {
+        this.sendChar(nodeId, "\b");
+      } else if (event.key === "Enter") {
+        this.sendChar(nodeId, "\n");
+      } else if (event.key === "Tab") {
+        this.sendChar(nodeId, "\t");
+      } else {
+        this.sendChar(nodeId, event.key);
+      }
+      this.scrollToBottom();
     },
 
     focusInput() {
-      // Focus the hidden input when terminal output is clicked
-      console.log("FOCUS INPUT")
-      this.$refs.inputField.focus();
-    },
-    scrollToBottom() {
-      this.$nextTick(() => {
-        const terminalOutput = this.$refs.terminalOutput;
-        if (terminalOutput) {
-          terminalOutput.scrollTop = terminalOutput.scrollHeight - terminalOutput.clientHeight;
-        }
-      });
+      this.$refs.inputField?.focus();
     },
 
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const webshell = this.$refs.webshell;
+        if (webshell) {
+          webshell.scrollTop = webshell.scrollHeight;
+        }
+      });
+    }
   }
 };
 </script>
 
-<style scoped>
-* {
-  padding: 0;
-  margin: 0;
-}
-
-/* Main Container */
-.webshell-container {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 300px;
-  background-color: black;
-  color: white;
-  display: flex;
-  flex-direction: column;
-  border-top: 2px solid #444;
-}
-
-/* Tabs */
-.tabs {
-  display: flex;
-  border-bottom: 1px solid #666;
-  padding: 5px;
-  height: 40px;
-}
-.tabs button {
-  background: none;
-  border: none;
-  color: white;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.tabs button.active {
-  background: #222;
-  border-bottom: 2px solid #00ff00;
-}
-
-/* Terminal Window */
-.terminal-window {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 10px;
-  height: 200px;
-  width: 100%;
-  font-family: monospace;
-  white-space: pre-wrap;
-  overflow-y: auto;
-  position: relative;
-}
-
-/* Terminal Output */
-.terminal-output {
-  flex-grow: 1;
-  height: 90%;
-  width: 90%;
-  color: #0f0;
-  overflow-y: scroll;
-  overflow-x: hidden; 
-  word-wrap: break-word;
-  cursor: text;
-}
-
-/* Terminal Input */
+<style>
 .hidden-input {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 0%;
-  width: 0%;
-  /* background: transparent; */
-  border: none;
-  outline: none;
-  color: white;
-  font-size: 16px;
-  font-family: monospace;
-  z-index: 1;
-  /* visibility: hidden; Completely hide the input */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
+.filled {
+  background-color: white;
+}
+
+.empty {
+  border: 1px solid white;
 }
 </style>
