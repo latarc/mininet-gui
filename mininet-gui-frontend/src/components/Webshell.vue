@@ -3,12 +3,12 @@
     <!-- Tabs -->
     <div class="tabs">
       <button
-        v-for="(node, nodeId) in nodes"
-        :key="nodeId"
-        @click="setActiveTab(nodeId)"
-        :class="{ active: activeTab === nodeId }"
+        v-for="node in nodes.get()"
+        :key="node.id"
+        @click="setActiveTab(node.id)"
+        :class="{ active: activeTab === node.id }"
       >
-        {{ nodeId }}
+        {{ node.id }}
       </button>
     </div>
 
@@ -42,6 +42,16 @@ export default {
       activeTab: null,
       isFocused: false,
     };
+  },
+  watch: {
+    nodes: {
+      handler(newNodes) {
+        if (newNodes.length === 0) {
+          this.clearTerminals();
+        }
+      },
+      deep: true,
+    },
   },
   beforeUnmount() {
     Object.values(this.sockets).forEach(ws => ws?.close());
@@ -123,6 +133,15 @@ export default {
           terminalOutput.scrollTop = terminalOutput.scrollHeight;
         }
       });
+    },
+
+    clearTerminals() {
+      Object.values(this.sockets).forEach(ws => ws?.close());
+      this.terminals = {};
+      this.sanitizedTerminals = {};
+      this.userInputs = {};
+      this.sockets = {};
+      this.activeTab = null;
     }
   }
 };
