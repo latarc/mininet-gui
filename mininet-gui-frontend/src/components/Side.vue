@@ -138,7 +138,7 @@ export default {
 
 .side {
   background: rgba(0, 0, 0, 0.8);
-  height: inherit;
+  height: 75vh;
   width: 200px;
   position: absolute;
   z-index: 2;

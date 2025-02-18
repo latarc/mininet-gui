@@ -40,8 +40,8 @@ import controllerImg from "@/assets/controller.svg";
 <template>
   <div class="layout">
     <!-- Side panel (left) -->
+    <!-- <div class="side-panel"> -->
     <Side
-      class="side-panel"
       @toggleAddEdgeMode="handleToggleAddEdgeMode"
       @deleteSelected="doDeleteSelected"
       @runPingall="showPingallModal"
@@ -58,6 +58,7 @@ import controllerImg from "@/assets/controller.svg";
       :networkStarted="networkStarted"
       :addEdgeMode="addEdgeMode"
     />
+  <!-- </div> -->
     
     <!-- Main Content (Graph + WebShell) -->
     <div class="main-content">
@@ -75,7 +76,7 @@ import controllerImg from "@/assets/controller.svg";
       ></div>
 
       <!-- WebShell at the bottom -->
-      <webshell class="webshell" :nodes="hosts" />
+      <webshell class="webshell" :nodes="nodes" />
     </div>
   </div>
 
@@ -654,13 +655,14 @@ export default {
 }
 
 /* Side panel (fixed width on the left) */
-.side-panel {
-  width: 250px; /* Adjust width as needed */
-  height: 100vh;
-  background: #f8f9fa; /* Light background */
+/* .side-panel {
+  position: absolute;
+  z-index: 2;
+  width: 250px;
+  background: #f8f9fa; /* Light background 
   border-right: 1px solid #ccc;
   overflow-y: auto;
-}
+} */
 
 /* Main content (graph + webshell) */
 .main-content {
@@ -679,7 +681,7 @@ export default {
 
 /* WebShell at the bottom */
 .webshell {
-  height: 250px; /* Fixed height for terminal */
+  height: 25%; /* Fixed height for terminal */
   background: black;
   color: white;
   border-top: 2px solid #444;
