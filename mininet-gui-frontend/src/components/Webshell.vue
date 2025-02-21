@@ -21,6 +21,7 @@
         ref="inputField"
         v-model="userInputs[activeTab]"
         @keydown.prevent="handleKeydown"
+        @keyup="handleKeyup"
         @focus="isFocused = true"
         @blur="isFocused = false"
         class="hidden-input"
@@ -41,6 +42,7 @@ export default {
       userInputs: {},
       activeTab: null,
       isFocused: false,
+      ctrlPressed: false, // Track Control key state
     };
   },
   watch: {
@@ -66,7 +68,7 @@ export default {
     initWebSocket(nodeId) {
       if (this.sockets[nodeId]) return;
       
-      const ws = new WebSocket(`ws://10.7.230.33:8000/api/mininet/terminal/${nodeId}`);
+      const ws = new WebSocket(`ws://192.168.56.101:8000/api/mininet/terminal/${nodeId}`);
       
       ws.onopen = () => console.log(`Connected to ${nodeId}`);
       ws.onmessage = event => this.handleTerminalData(nodeId, event.data);
@@ -77,22 +79,49 @@ export default {
     },
 
     handleTerminalData(nodeId, data) {
-      if (data === "\b\u001b[K") {
-        this.terminals[nodeId] = this.terminals[nodeId].slice(0, -1);
-      } else if (data === "\u0007") {
+      if (!this.terminals[nodeId]) this.terminals[nodeId] = "";
+
+      // Handle backspace
+      if (data === ("\b \b")) {
+        this.terminals[nodeId] = this.terminals[nodeId].replace(/.$/, ""); // Remove last char
+        this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
         return;
-      } else if (data.includes("[H\u001b[2J\u001b[3J\u001b")) {
-        this.terminals[nodeId] = ""; // Clear the terminal but do not delete history
-      } else {
-        this.terminals[nodeId] = (this.terminals[nodeId] || "") + data;
       }
-      
-      // Sanitize output
-      this.sanitizedTerminals[nodeId] = this.terminals[nodeId]
-        .replace(/\[\?2004[lh]/g, "")
-        .replace(/\u001b\r\u001b/g, "")
-        .replace(/\u001b/g, ""); // Remove standalone escape characters
-      
+
+      // handle arrow left
+      if (data === "\b") {
+        if (this.userInputs[nodeId]?.length > 0) {
+          this.userInputs[nodeId] = this.userInputs[nodeId].slice(0, -1); // Remove last character from input
+          this.terminals[nodeId] += "\x1b[D"; // Move cursor left in display
+        }
+        this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
+        return;
+      }
+
+
+      // Ignore bell character
+      if (data === "\u0007") return;
+
+      // Clear screen sequence detection
+      if (data.includes("[H\u001b[2J\u001b[3J\u001b")) {
+        this.terminals[nodeId] = ""; // Clear display without losing history
+        this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
+        return;
+      }
+
+      // **Filter out OSC sequences like terminal title changes**
+      data = data.replace(/\x1b\]0;.*?\x07/g, "");
+
+      // **Remove ANSI escape codes (cursor movements, colors, etc.)**
+      data = data.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "");
+      data = data.replace(/\u001b/g, ""); // Remove any remaining ESC chars
+
+      // Append sanitized data
+      this.terminals[nodeId] += data;
+
+      // Save sanitized version
+      this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
+
       if (this.activeTab === nodeId) this.scrollToBottom();
     },
 
@@ -109,18 +138,53 @@ export default {
     handleKeydown(event) {
       const nodeId = this.activeTab;
       if (!nodeId) return;
-      
-      if (event.key === "Backspace") {
+
+      // Ignore Shift key presses and other modifier keys
+      if (event.key === "Shift" || event.key === "CapsLock" || event.key === "Dead" || event.key === "Alt") {
+        return;
+      }
+
+      if (event.key === "Control") {
+        this.ctrlPressed = true;
+        return;
+      }
+
+      if (this.ctrlPressed && event.key.toLowerCase() === "c") {
+        this.sendChar(nodeId, "\x03"); // SIGINT (Ctrl+C)
+      } else if (this.ctrlPressed && event.key.toLowerCase() === "l") {
+        this.sendChar(nodeId, "\u001b[H\u001b[2J\u001b[3J\u001b"); // Clear screen (Ctrl+L)
+      } else if (event.key === "Backspace") {
         this.sendChar(nodeId, "\b");
       } else if (event.key === "Enter") {
         this.sendChar(nodeId, "\n");
       } else if (event.key === "Tab") {
         this.sendChar(nodeId, "\t");
+      } else if (event.key === "ArrowLeft") {
+        // this.sendChar(nodeId, "\u001b[D"); // Move cursor left
+      } else if (event.key === "ArrowRight") {
+        // this.sendChar(nodeId, "\u001b[C"); // Move cursor right
+      } else if (event.key === "ArrowUp") {
+        // this.sendChar(nodeId, "\u001b[A"); // Move cursor up
+      } else if (event.key === "ArrowDown") {
+        // this.sendChar(nodeId, "\u001b[B"); // Move cursor down
+      } else if (event.key === "Home") {
+      } else if (event.key === "End") {
+      } else if (event.key === "Delete") {
       } else {
         this.sendChar(nodeId, event.key);
       }
+
       this.scrollToBottom();
     },
+
+
+
+    handleKeyup(event) {
+      if (event.key === "Control") {
+        this.ctrlPressed = false;
+      }
+    },
+
 
     focusInput() {
       this.$refs.inputField?.focus();

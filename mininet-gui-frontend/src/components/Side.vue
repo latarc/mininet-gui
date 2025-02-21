@@ -177,7 +177,7 @@ export default {
   z-index: 4;
   padding: 0;
   margin-left: 200px;
-  height: inherit;
+  height: 75vh;
   width: 10px;
   font-size: 8pt;
   border: none;

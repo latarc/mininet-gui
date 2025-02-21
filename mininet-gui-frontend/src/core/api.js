@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseUrl = "http://10.7.230.33:8000";
+const baseUrl = "http://192.168.56.101:8000";
 
 export const deployHost = async (host) => {
   try {
