@@ -68,7 +68,7 @@ export default {
     initWebSocket(nodeId) {
       if (this.sockets[nodeId]) return;
       
-      const ws = new WebSocket(`ws://192.168.56.101:8000/api/mininet/terminal/${nodeId}`);
+      const ws = new WebSocket(`ws://10.7.230.33:8000/api/mininet/terminal/${nodeId}`);
       
       ws.onopen = () => console.log(`Connected to ${nodeId}`);
       ws.onmessage = event => this.handleTerminalData(nodeId, event.data);
@@ -82,22 +82,21 @@ export default {
       if (!this.terminals[nodeId]) this.terminals[nodeId] = "";
 
       // Handle backspace
-      if (data === ("\b \b")) {
+      if (data === ("\b \b") || data === "\b\x1b[K") {
         this.terminals[nodeId] = this.terminals[nodeId].replace(/.$/, ""); // Remove last char
         this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
         return;
       }
 
       // handle arrow left
-      if (data === "\b") {
-        if (this.userInputs[nodeId]?.length > 0) {
-          this.userInputs[nodeId] = this.userInputs[nodeId].slice(0, -1); // Remove last character from input
-          this.terminals[nodeId] += "\x1b[D"; // Move cursor left in display
-        }
-        this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
-        return;
-      }
-
+      // if (data === "\b") {
+      //   if (this.userInputs[nodeId]?.length > 0) {
+      //     this.userInputs[nodeId] = this.userInputs[nodeId].slice(0, -1); // Remove last character from input
+      //     this.terminals[nodeId] += "\x1b[D"; // Move cursor left in display
+      //   }
+      //   this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
+      //   return;
+      // }
 
       // Ignore bell character
       if (data === "\u0007") return;
@@ -114,6 +113,7 @@ export default {
 
       // **Remove ANSI escape codes (cursor movements, colors, etc.)**
       data = data.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "");
+      data = data.replace(/\x1b\[\?2004[hl]/g, "");
       data = data.replace(/\u001b/g, ""); // Remove any remaining ESC chars
 
       // Append sanitized data
