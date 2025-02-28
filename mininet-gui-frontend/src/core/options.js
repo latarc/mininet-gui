@@ -1,11 +1,4 @@
-
 export const options = {
-  // clickToUse: true,
-  // configure: {
-  //   enabled: true,
-  //   filter: 'nodes,edges',
-  //   showButton: true
-  // },
   edges: {
     width: 5,
     color: {
@@ -21,6 +14,23 @@ export const options = {
     margin: 10,
     widthConstraint: {
       maximum: 200,
+    },
+    font: {
+      color: "#cccccc",
+      size: 14,
+      face: "Fira Sans",
+    },
+    color: {
+      border: "#ffffff00",
+      background: "#ffffffff",
+      highlight: {
+        border: "#007acc",
+        background: "#ffffffff",
+      },
+      hover: {
+        border: "#007acc",
+        background: "#ffffffff",
+      },
     },
   },
   interaction: {

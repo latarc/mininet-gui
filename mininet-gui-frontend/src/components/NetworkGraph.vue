@@ -37,10 +37,10 @@ import switchImg from "@/assets/switch.svg";
 import hostImg from "@/assets/host.svg";
 import controllerImg from "@/assets/controller.svg";
 </script>
+
 <template>
   <div class="layout">
     <!-- Side panel (left) -->
-    <!-- <div class="side-panel"> -->
     <Side
       @toggleAddEdgeMode="handleToggleAddEdgeMode"
       @deleteSelected="doDeleteSelected"
@@ -58,7 +58,6 @@ import controllerImg from "@/assets/controller.svg";
       :networkStarted="networkStarted"
       :addEdgeMode="addEdgeMode"
     />
-  <!-- </div> -->
     
     <!-- Main Content (Graph + WebShell) -->
     <div class="main-content">
@@ -80,7 +79,6 @@ import controllerImg from "@/assets/controller.svg";
     </div>
   </div>
 
-  <!-- Modal (unchanged) -->
   <Teleport to="body">
     <modal :show="showModal" @close="closeModal" @keydown.esc="closeModal">
       <template #header>
@@ -95,7 +93,6 @@ import controllerImg from "@/assets/controller.svg";
     </modal>
   </Teleport>
 </template>
-
 
 <script>
 export default {
@@ -138,53 +135,63 @@ export default {
       return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
     },
     async setupNetwork() {
-      this.networkStarted = await isNetworkStarted()
+      this.networkStarted = await isNetworkStarted();
       this.hosts = await getHosts();
       this.switches = await getSwitches();
       this.controllers = await getControllers();
+
       Object.values(this.hosts).map((host) => {
-        host.shape = "circularImage",
+        host.shape = "circularImage";
         host.color = {
-          background: "#ffffffff",
-          border: "#ffffff00",
-          highlight: { background: "red", border: "blue" },
+          background: "#ffffff",
+          border: "#ffffff",
+          highlight: { background: "#007acc", border: "#007acc" },
         };
         host.image = hostImg;
         return host;
       });
+
       Object.values(this.switches).map((sw) => {
-        sw.shape = "circularImage",
+        sw.shape = "circularImage";
         sw.color = {
-          background: "#ffffffff",
-          border: "#ffffff00",
-          highlight: { background: "red", border: "blue" },
+          background: "#ffffff",
+          border: "#ffffff",
+          highlight: { background: "#007acc", border: "#007acc" },
         };
         sw.image = switchImg;
         return sw;
       });
+
       Object.values(this.controllers).map((ctl) => {
-        ctl.shape = "circularImage",
+        ctl.shape = "circularImage";
         ctl.color = {
-          background: "#ffffffff",
-          border: "#ffffff00",
-          highlight: { background: "red", border: "blue" },
+          background: "#ffffff",
+          border: "#ffffff",
+          highlight: { background: "#007acc", border: "#007acc" },
         };
         ctl.image = controllerImg;
         return ctl;
       });
+
       this.links = await getEdges();
       for (const link of this.links) {
         this.edges.add({
           from: link[0],
           to: link[1],
-          color: this.networkStarted? "#00ff00ff" : "#999999ff",
+          color: this.networkStarted ? "#00aa00ff" : "#999999ff",
         });
       }
       for (const sw in this.switches) {
         let ctl = this.switches[sw].controller;
         if (ctl)
-          this.edges.add({from: sw, to: ctl, color: "#ff00006f", dashes: [10, 10]})
+          this.edges.add({
+            from: sw,
+            to: ctl,
+            color: "#ff00006f",
+            dashes: [10, 10]
+          });
       }
+
       const nodes = new DataSet([
         ...Object.values(this.hosts),
         ...Object.values(this.switches),
@@ -201,7 +208,7 @@ export default {
               return;
             }
             console.log("network", this.network);
-            let from = this.nodes.get(data.from)
+            let from = this.nodes.get(data.from);
             let to = this.nodes.get(data.to);
             if (from.type === "controller" && to.type === "controller") {
                 alert("cannot connect controller with controller");
@@ -219,15 +226,13 @@ export default {
             } else {
               let link = await deployLink(data.from, data.to);
               data.id = link.id;
-              data.color = {color: this.networkStarted? "#00ff00ff" : "#999999ff"};
+              data.color = {color: this.networkStarted ? "#00aa00ff" : "#999999ff"};
             }
             callback(data);
             this.enterAddEdgeMode();
           },
           deleteNode: async (data, callback) => {
             console.log("node deletion", data);
-            // the deletion must happen synchronously, because mininet
-            // cannot handle creating/deleting two things at the same time
             let results = [];
             for (const nodeId of data.nodes) {
               try {
@@ -243,10 +248,8 @@ export default {
           deleteEdge: async (data, callback) => {
             try {
               const results = [];
-              // the deletion must happen synchronously, because mininet
-              // cannot handle creating/deleting two things at the same time
               for (const edge of data.edges) {
-                  let link = this.edges.get(edge)
+                  let link = this.edges.get(edge);
                   let src = this.nodes.get(link.from);
                   let dst = this.nodes.get(link.to);
                   console.log("src", src);
@@ -259,7 +262,7 @@ export default {
                   results.push(link.id);
               }
               console.log("All edges deleted:", results);
-              data.edges = results
+              data.edges = results;
               callback(data);
             } catch (error) {
               console.error("Error deleting edges:", error);
@@ -273,7 +276,7 @@ export default {
         }
       });
       this.network.on("dragEnd", async (event) => {
-        this.handleNodeDragEnd(event)
+        this.handleNodeDragEnd(event);
       });
     },
     intToDpid (number) {
@@ -293,9 +296,9 @@ export default {
         mac: hostId.toString(16).toUpperCase().padStart(12, "0"),
         shape: "circularImage",
         color: {
-          background: "#ffffffff",
-          border: "#ffffff00",
-          highlight: { background: "red", border: "blue" },
+          background: "#ffffff",
+          border: "#ffffff",
+          highlight: { background: "#007acc", border: "#007acc" },
         },
       };
       host.label = `${host.name}`;
@@ -310,7 +313,7 @@ export default {
       } else {
         throw "Could not create host " + hostId;
       }
-      return host
+      return host;
     },
     async createSwitch(switchData) {
       let swId = Object.values(this.switches).length + 1;
@@ -326,9 +329,9 @@ export default {
         controller: null,
         shape: "circularImage",
         color: {
-          background: "#ffffffff",
-          border: "#ffffff00",
-          highlight: { background: "red", border: "blue" },
+          background: "#ffffff",
+          border: "#ffffff",
+          highlight: { background: "#007acc", border: "#007acc" },
         },
       };
       sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
@@ -337,7 +340,6 @@ export default {
         sw.x = switchData.x;
         sw.y = switchData.y;
       }
-      sw.image = switchImg;
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
@@ -345,10 +347,15 @@ export default {
         throw "Could not create sw " + swId;
       }
       if (switchData.controller && await assocSwitch(sw.id, switchData.controller)) {
-        this.switches[sw.name].controller = switchData.controller
-        this.edges.add({to: sw.id, from: switchData.controller, color: {color: "#ff00006f"}, dashes: [10, 10]})
+        this.switches[sw.name].controller = switchData.controller;
+        this.edges.add({
+          from: sw.id,
+          to: switchData.controller,
+          color: {color: "#ff00006f"},
+          dashes: [10, 10]
+        });
       }
-      return sw
+      return sw;
     },
     async showControllerFormModal(position) {
       this.modalHeader = "Controller Form";
@@ -387,15 +394,14 @@ export default {
         y: position.y,
         shape: "circularImage",
         color: {
-          background: "#ffffffff",
-          border: "#ffffff00",
-          highlight: { background: "red", border: "blue" },
+          background: "#ffffff",
+          border: "#ffffff",
+          highlight: { background: "#007acc", border: "#007acc" },
         },
       };
       if (remote) ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
       else ctl.label = `${ctl.name}`;
       ctl.image = controllerImg;
-      // TODO fix in backend, this takes too long because of mininet telnet check ip:port
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
         this.controllers[ctl.name] = ctl;
@@ -424,17 +430,17 @@ export default {
     },
     async handleNodeDragEnd(event) {
       event.nodes.forEach(async nodeId => {
-        let node = this.network.body.nodes[nodeId]
-        await updateNodePosition(nodeId, [node.x, node.y])
-      })
+        let node = this.network.body.nodes[nodeId];
+        await updateNodePosition(nodeId, [node.x, node.y]);
+      });
     },
     enterAddEdgeMode() {
-        this.addEdgeMode = true;
-        this.network.addEdgeMode();
+      this.addEdgeMode = true;
+      this.network.addEdgeMode();
     },
     closeAddEdgeMode() {
-        this.addEdgeMode = false;
-        this.network.disableEditMode();
+      this.addEdgeMode = false;
+      this.network.disableEditMode();
     },
     closeModal() {
       this.modalHeader = "";
@@ -447,7 +453,7 @@ export default {
       this.closeModal();
     },
     handleToggleAddEdgeMode() {
-      console.log("addedgemode toggle")
+      console.log("addedgemode toggle");
       if (!this.addEdgeMode) {
         this.enterAddEdgeMode();
       } else {
@@ -477,7 +483,7 @@ export default {
       this.network.deleteSelected();
     },
     doSelectAll() {
-      console.log("CTRL A PRESSED")
+      console.log("CTRL A PRESSED");
       this.closeAllActiveModes();
       this.network.setSelection({nodes: this.nodes.getIds()});
     },
@@ -495,7 +501,7 @@ export default {
       this.modalHeader = `Node Info: ${nodeId}`;
       this.modalOption = "nodeStats";
       let nodeStats = await getNodeStats(nodeId);
-      console.log("nodeStats", nodeStats)
+      console.log("nodeStats", nodeStats);
       this.modalData = nodeStats || null;
       this.showModal = true;
     },
@@ -507,7 +513,7 @@ export default {
         this.edges.add({
           from: newSw.id,
           to: newHost.id,
-          color: this.networkStarted? "#00ff00ff" : "#999999ff",
+          color: this.networkStarted ? "#007acc" : "#999999ff",
         });
       }
     },
@@ -525,7 +531,7 @@ export default {
           this.edges.add({
             from: newSw.id,
             to: newHost.id,
-            color: this.networkStarted ? "#00ff00ff" : "#999999ff",
+            color: this.networkStarted ? "#007acc" : "#999999ff",
           });
         }
 
@@ -534,7 +540,7 @@ export default {
           this.edges.add({
             from: newSw.id,
             to: prevSw.id,
-            color: this.networkStarted ? "#00ff00ff" : "#999999ff",
+            color: this.networkStarted ? "#007acc" : "#999999ff",
           });
         }
         prevSw = newSw;
@@ -564,7 +570,7 @@ export default {
               this.edges.add({
                 from: node.id,
                 to: child.id,
-                color: this.networkStarted ? "#00ff00ff" : "#999999ff",
+                color: this.networkStarted ? "#007acc" : "#999999ff",
               });
             }
           }
@@ -627,44 +633,23 @@ export default {
       await requestExportMininetScript();
     },
     async importTopology(file) {
-      await this.resetTopology()
+      await this.resetTopology();
       const data = await requestImportNetwork(file);
       await this.setupNetwork();
-      this.network.setData({nodes: this.nodes, edges: this.edges})
-      this.network.redraw()
+      this.network.setData({nodes: this.nodes, edges: this.edges});
+      this.network.redraw();
     }
   }
 };
 </script>
 
 <style scoped>
-/* 
-.network-graph {
-  background-color: white;
-  height: 100%;
-  width: 100%;
-  position: absolute;
-  z-index: 0;
-} */
-
-/* Use Flexbox for Main Layout */
 .layout {
   display: flex;
-  height: 100vh; /* Full screen height */
+  height: 100vh;
   overflow: hidden;
 }
 
-/* Side panel (fixed width on the left) */
-/* .side-panel {
-  position: absolute;
-  z-index: 2;
-  width: 250px;
-  background: #f8f9fa; /* Light background 
-  border-right: 1px solid #ccc;
-  overflow-y: auto;
-} */
-
-/* Main content (graph + webshell) */
 .main-content {
   flex-grow: 1;
   display: flex;
@@ -672,16 +657,14 @@ export default {
   height: 100vh;
 }
 
-/* Network graph (takes remaining space above webshell) */
 .network-graph {
   flex-grow: 1;
-  background: #e8e8e8; /* Light grey */
+  background: #252526;
   overflow: hidden;
 }
 
-/* WebShell at the bottom */
 .webshell {
-  height: 25%; /* Fixed height for terminal */
+  height: 25%;
   background: black;
   color: white;
   border-top: 2px solid #444;

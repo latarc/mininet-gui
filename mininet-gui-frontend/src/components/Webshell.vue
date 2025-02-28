@@ -1,20 +1,20 @@
 <template>
-  <div class="webshell-container webshell" ref="webshell">
-    <!-- Tabs -->
+  <div class="webshell-container">
     <div class="tabs">
       <button
         v-for="node in nodes.get()"
         :key="node.id"
         @click="setActiveTab(node.id)"
         :class="{ active: activeTab === node.id }"
+        class="tab-button"
       >
         {{ node.id }}
       </button>
     </div>
 
-    <!-- Terminal Window -->
-    <div ref="terminalWindow" class="terminal-window" @click="focusInput">
+    <div class="terminal-window" @click="focusInput">
       <pre ref="terminalOutput" class="terminal-output">
+        <!-- the cursor MUST be in the same line as the terminal text or else it breaks -->
         {{ sanitizedTerminals[activeTab] }}<span :class="['cursor', isFocused ? 'filled' : 'empty']"></span>
       </pre>
       <input
@@ -42,7 +42,7 @@ export default {
       userInputs: {},
       activeTab: null,
       isFocused: false,
-      ctrlPressed: false, // Track Control key state
+      ctrlPressed: false,
     };
   },
   watch: {
@@ -67,8 +67,7 @@ export default {
 
     initWebSocket(nodeId) {
       if (this.sockets[nodeId]) return;
-      
-      const ws = new WebSocket(`ws://10.7.230.33:8000/api/mininet/terminal/${nodeId}`);
+      const ws = new WebSocket(`ws://192.168.56.101:8000/api/mininet/terminal/${nodeId}`);
       
       ws.onopen = () => console.log(`Connected to ${nodeId}`);
       ws.onmessage = event => this.handleTerminalData(nodeId, event.data);
@@ -81,45 +80,29 @@ export default {
     handleTerminalData(nodeId, data) {
       if (!this.terminals[nodeId]) this.terminals[nodeId] = "";
 
-      // Handle backspace
+      // backspace
       if (data === ("\b \b") || data === "\b\x1b[K") {
-        this.terminals[nodeId] = this.terminals[nodeId].replace(/.$/, ""); // Remove last char
+        this.terminals[nodeId] = this.terminals[nodeId].replace(/.$/, "");
         this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
         return;
       }
 
-      // handle arrow left
-      // if (data === "\b") {
-      //   if (this.userInputs[nodeId]?.length > 0) {
-      //     this.userInputs[nodeId] = this.userInputs[nodeId].slice(0, -1); // Remove last character from input
-      //     this.terminals[nodeId] += "\x1b[D"; // Move cursor left in display
-      //   }
-      //   this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
-      //   return;
-      // }
-
-      // Ignore bell character
+      // Ignore "bell" char
       if (data === "\u0007") return;
 
-      // Clear screen sequence detection
       if (data.includes("[H\u001b[2J\u001b[3J\u001b")) {
-        this.terminals[nodeId] = ""; // Clear display without losing history
+        this.terminals[nodeId] = "";
         this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
         return;
       }
 
-      // **Filter out OSC sequences like terminal title changes**
       data = data.replace(/\x1b\]0;.*?\x07/g, "");
 
-      // **Remove ANSI escape codes (cursor movements, colors, etc.)**
       data = data.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "");
       data = data.replace(/\x1b\[\?2004[hl]/g, "");
-      data = data.replace(/\u001b/g, ""); // Remove any remaining ESC chars
+      data = data.replace(/\u001b/g, "");
 
-      // Append sanitized data
       this.terminals[nodeId] += data;
-
-      // Save sanitized version
       this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
 
       if (this.activeTab === nodeId) this.scrollToBottom();
@@ -139,7 +122,6 @@ export default {
       const nodeId = this.activeTab;
       if (!nodeId) return;
 
-      // Ignore Shift key presses and other modifier keys
       if (event.key === "Shift" || event.key === "CapsLock" || event.key === "Dead" || event.key === "Alt") {
         return;
       }
@@ -149,42 +131,35 @@ export default {
         return;
       }
 
+      // Ctrl + C
       if (this.ctrlPressed && event.key.toLowerCase() === "c") {
-        this.sendChar(nodeId, "\x03"); // SIGINT (Ctrl+C)
-      } else if (this.ctrlPressed && event.key.toLowerCase() === "l") {
-        this.sendChar(nodeId, "\u001b[H\u001b[2J\u001b[3J\u001b"); // Clear screen (Ctrl+L)
-      } else if (event.key === "Backspace") {
+        this.sendChar(nodeId, "\x03");
+      }
+      // Ctrl + L
+      else if (this.ctrlPressed && event.key.toLowerCase() === "l") {
+        this.sendChar(nodeId, "\u001b[H\u001b[2J\u001b[3J\u001b");
+      }
+      else if (event.key === "Backspace") {
         this.sendChar(nodeId, "\b");
-      } else if (event.key === "Enter") {
+      }
+      else if (event.key === "Enter") {
         this.sendChar(nodeId, "\n");
-      } else if (event.key === "Tab") {
+      }
+      else if (event.key === "Tab") {
         this.sendChar(nodeId, "\t");
-      } else if (event.key === "ArrowLeft") {
-        // this.sendChar(nodeId, "\u001b[D"); // Move cursor left
-      } else if (event.key === "ArrowRight") {
-        // this.sendChar(nodeId, "\u001b[C"); // Move cursor right
-      } else if (event.key === "ArrowUp") {
-        // this.sendChar(nodeId, "\u001b[A"); // Move cursor up
-      } else if (event.key === "ArrowDown") {
-        // this.sendChar(nodeId, "\u001b[B"); // Move cursor down
-      } else if (event.key === "Home") {
-      } else if (event.key === "End") {
-      } else if (event.key === "Delete") {
-      } else {
+      }
+      else {
         this.sendChar(nodeId, event.key);
       }
 
       this.scrollToBottom();
     },
 
-
-
     handleKeyup(event) {
       if (event.key === "Control") {
         this.ctrlPressed = false;
       }
     },
-
 
     focusInput() {
       this.$refs.inputField?.focus();
@@ -211,23 +186,72 @@ export default {
 };
 </script>
 
-<style>
-.hidden-input {
-  position: fixed;
-  opacity: 0;
-  pointer-events: none;
+<style scoped>
+
+.webshell-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #1e1e1e;
+  color: #cccccc;
+  font-family: "Fira Code", Consolas, monospace;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+
+.tabs {
+  display: flex;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #333;
+}
+
+.tab-button {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: #cccccc;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
+.tab-button.active {
+  background-color: #1e1e1e;
+  border-bottom: 2px solid #007acc;
+}
+
+.tab-button:hover {
+  background-color: #333333;
 }
 
 .terminal-window {
-  margin-left: 2%;
-  width: 98%;
-  height: 80%;
+  flex: 1;
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  padding: 1rem;
+  overflow: hidden;
 }
 
 .terminal-output {
-  width: 100%;
-  height: 100%;
-  overflow-y: scroll;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.hidden-input {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .cursor {
@@ -239,10 +263,10 @@ export default {
 }
 
 .filled {
-  background-color: white;
+  background-color: #cccccc;
 }
 
 .empty {
-  border: 1px solid white;
+  border: 1px solid #cccccc;
 }
 </style>
