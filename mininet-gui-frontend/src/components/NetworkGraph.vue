@@ -41,23 +41,26 @@ import controllerImg from "@/assets/light-controller.svg";
 <template>
   <div class="layout">
     <!-- Side panel (left) -->
-    <Side
-      @toggleAddEdgeMode="handleToggleAddEdgeMode"
-      @deleteSelected="doDeleteSelected"
-      @runPingall="showPingallModal"
-      @closeAllActiveModes="closeAllActiveModes"
-      @toggleShowHosts="toggleShowHosts"
-      @toggleShowControllers="toggleShowControllers"
-      @createTopology="showTopologyFormModal"
-      @resetTopology="resetTopology"
-      @exportTopology="exportTopology"
-      @importTopology="importTopology"
-      @doSelectAll="doSelectAll"
-      @exportMininetScript="exportMininetScript"
-      @keydown.ctrl.a.prevent="doSelectAll"
-      :networkStarted="networkStarted"
-      :addEdgeMode="addEdgeMode"
-    />
+
+      <div class="side-container">
+        <Side
+          @toggleAddEdgeMode="handleToggleAddEdgeMode"
+          @deleteSelected="doDeleteSelected"
+          @runPingall="showPingallModal"
+          @closeAllActiveModes="closeAllActiveModes"
+          @toggleShowHosts="toggleShowHosts"
+          @toggleShowControllers="toggleShowControllers"
+          @createTopology="showTopologyFormModal"
+          @resetTopology="resetTopology"
+          @exportTopology="exportTopology"
+          @importTopology="importTopology"
+          @doSelectAll="doSelectAll"
+          @exportMininetScript="exportMininetScript"
+          @keydown.ctrl.a.prevent="doSelectAll"
+          :networkStarted="networkStarted"
+          :addEdgeMode="addEdgeMode"
+        />
+      </div>
     
     <!-- Main Content (Graph + WebShell) -->
     <div class="main-content">
@@ -658,6 +661,15 @@ export default {
   height: 100vh;
 }
 
+.side-container {
+  position: relative;
+  /* min-width: 10vw; */
+  max-width: 15vw;
+  display: flex;
+  flex-direction: row;
+  justify-content: stretch;
+}
+
 .network-graph {
   flex-grow: 1;
   background: #252526;
@@ -670,5 +682,6 @@ export default {
   color: white;
   border-top: 2px solid #444;
   overflow: auto;
+  position: relative;
 }
 </style>

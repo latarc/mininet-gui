@@ -135,11 +135,9 @@ export default {
       const button = document.getElementById("button-hide-side");
       if (!this.sideIsActive) {
         side.style.display = "none";
-        button.style.marginLeft = "0";
         button.innerHTML = '<span class="material-symbols-outlined">chevron_right</span>';
       } else {
         side.style.display = "block";
-        button.style.marginLeft = "200px";
         button.innerHTML = '<span class="material-symbols-outlined">chevron_left</span>';
       }
     },
@@ -171,9 +169,10 @@ export default {
 
 .side {
   background-color: #1e1e1e;
-  height: 75vh;
-  width: 200px;
-  position: absolute;
+  height: 100%;
+  min-width: 10vw;
+  width: 15vw;
+  position: relative;
   z-index: 2;
   overflow-x: hidden;
   overflow-y: auto;
@@ -213,7 +212,7 @@ export default {
 figcaption {
   color: #cccccc;
   font-family: 'Fira Sans', sans-serif;
-  margin: 5px 5px;
+  /* margin: 5px 5px; */
   padding: 2px;
   font-size: 10pt;
 }
@@ -252,11 +251,10 @@ figcaption {
 }
 
 .button-hide-side {
-  position: absolute;
+  position: relative;
   z-index: 4;
   padding: 0;
-  margin-left: 200px;
-  height: 75vh;
+  height: 100%;
   width: 24px;
   font-size: 14pt;
   border: none;
@@ -278,7 +276,7 @@ figcaption {
   flex-direction: column;
   align-items: center;
   padding: 5px;
-  gap: 10px;
+  /* gap: 5px; */
 }
 
 .draggable-node {
