@@ -1,5 +1,10 @@
 <template>
   <div class="webshell-container">
+    <div class="webshell-header">
+      <i class="mdi mdi-console"></i>
+      <span class="title">WebShell</span>
+    </div>
+
     <div class="tabs">
       <button
         v-for="node in nodes.get()"
@@ -97,7 +102,6 @@ export default {
       }
 
       data = data.replace(/\x1b\]0;.*?\x07/g, "");
-
       data = data.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "");
       data = data.replace(/\x1b\[\?2004[hl]/g, "");
       data = data.replace(/\u001b/g, "");
@@ -122,7 +126,7 @@ export default {
       const nodeId = this.activeTab;
       if (!nodeId) return;
 
-      if (event.key === "Shift" || event.key === "CapsLock" || event.key === "Dead" || event.key === "Alt") {
+      if (["Shift", "CapsLock", "Dead", "Alt"].includes(event.key)) {
         return;
       }
 
@@ -187,7 +191,6 @@ export default {
 </script>
 
 <style scoped>
-
 .webshell-container {
   display: flex;
   flex-direction: column;
@@ -197,6 +200,25 @@ export default {
   font-family: "Fira Code", Consolas, monospace;
   border: 1px solid #333;
   border-radius: 4px;
+  border-top: 3px solid #007acc;
+}
+
+.webshell-header {
+  display: flex;
+  align-items: center;
+  background-color: #2d2d2d;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.webshell-header i {
+  font-size: 1.2rem;
+  margin-right: 0.5rem;
+}
+
+.webshell-header .title {
+  font-weight: bold;
+  font-size: 1rem;
 }
 
 .tabs {

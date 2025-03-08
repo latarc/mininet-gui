@@ -33,9 +33,9 @@ import PingallResults from "./PingallResults.vue";
 import ControllerForm from "./ControllerForm.vue";
 import TopologyForm from "./TopologyForm.vue";
 
-import switchImg from "@/assets/switch.svg";
-import hostImg from "@/assets/host.svg";
-import controllerImg from "@/assets/controller.svg";
+import switchImg from "@/assets/light-switch.svg";
+import hostImg from "@/assets/light-host.svg";
+import controllerImg from "@/assets/light-controller.svg";
 </script>
 
 <template>
@@ -142,9 +142,10 @@ export default {
 
       Object.values(this.hosts).map((host) => {
         host.shape = "circularImage";
+
         host.color = {
-          background: "#ffffff",
-          border: "#ffffff",
+          background: "#252526",
+          border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         };
         host.image = hostImg;
@@ -154,8 +155,8 @@ export default {
       Object.values(this.switches).map((sw) => {
         sw.shape = "circularImage";
         sw.color = {
-          background: "#ffffff",
-          border: "#ffffff",
+          background: "#252526",
+          border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         };
         sw.image = switchImg;
@@ -165,8 +166,8 @@ export default {
       Object.values(this.controllers).map((ctl) => {
         ctl.shape = "circularImage";
         ctl.color = {
-          background: "#ffffff",
-          border: "#ffffff",
+          background: "#252526",
+          border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         };
         ctl.image = controllerImg;
@@ -296,8 +297,8 @@ export default {
         mac: hostId.toString(16).toUpperCase().padStart(12, "0"),
         shape: "circularImage",
         color: {
-          background: "#ffffff",
-          border: "#ffffff",
+          background: "#252526",
+          border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         },
       };
@@ -329,8 +330,8 @@ export default {
         controller: null,
         shape: "circularImage",
         color: {
-          background: "#ffffff",
-          border: "#ffffff",
+          background: "#252526",
+          border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         },
       };
@@ -394,8 +395,8 @@ export default {
         y: position.y,
         shape: "circularImage",
         color: {
-          background: "#ffffff",
-          border: "#ffffff",
+          background: "#252526",
+          border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         },
       };
@@ -513,7 +514,7 @@ export default {
         this.edges.add({
           from: newSw.id,
           to: newHost.id,
-          color: this.networkStarted ? "#007acc" : "#999999ff",
+          color: this.networkStarted ? "#00aa00ff" : "#999999ff",
         });
       }
     },
@@ -531,7 +532,7 @@ export default {
           this.edges.add({
             from: newSw.id,
             to: newHost.id,
-            color: this.networkStarted ? "#007acc" : "#999999ff",
+            color: this.networkStarted ? "#00aa00ff" : "#999999ff",
           });
         }
 
@@ -540,7 +541,7 @@ export default {
           this.edges.add({
             from: newSw.id,
             to: prevSw.id,
-            color: this.networkStarted ? "#007acc" : "#999999ff",
+            color: this.networkStarted ? "#00aa00ff" : "#999999ff",
           });
         }
         prevSw = newSw;
@@ -570,7 +571,7 @@ export default {
               this.edges.add({
                 from: node.id,
                 to: child.id,
-                color: this.networkStarted ? "#007acc" : "#999999ff",
+                color: this.networkStarted ? "#00aa00ff" : "#999999ff",
               });
             }
           }
@@ -664,7 +665,7 @@ export default {
 }
 
 .webshell {
-  height: 25%;
+  height: 30%;
   background: black;
   color: white;
   border-top: 2px solid #444;

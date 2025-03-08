@@ -21,8 +21,8 @@ export const options = {
       face: "Fira Sans",
     },
     color: {
-      border: "#ffffff00",
-      background: "#ffffffff",
+      border: "#00000000",
+      background: "#252526",
       highlight: {
         border: "#007acc",
         background: "#ffffffff",
