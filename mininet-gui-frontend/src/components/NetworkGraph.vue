@@ -191,7 +191,7 @@ export default {
           this.edges.add({
             from: sw,
             to: ctl,
-            color: "#ff00006f",
+            color: "#777788af",
             dashes: [10, 10]
           });
       }
@@ -225,7 +225,7 @@ export default {
                 let [sw, ctl] = (from.type === "controller") ? [to, from] : [from, to];
                 sw.controller = ctl.id;
                 await assocSwitch(sw.id, ctl.id);
-                data.color = {color: "#ff00006f"};
+                data.color = {color: "#777788af"};
                 data.dashes = [10, 10];
             } else {
               let link = await deployLink(data.from, data.to);
@@ -355,7 +355,7 @@ export default {
         this.edges.add({
           from: sw.id,
           to: switchData.controller,
-          color: {color: "#ff00006f"},
+          color: {color: "#777788af"},
           dashes: [10, 10]
         });
       }
