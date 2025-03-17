@@ -3,9 +3,12 @@
 sudo pkill uvicorn
 sudo pkill vite
 
-FRONTEND_DIR=$PWD/mininet-gui-frontend
-BACKEND_DIR=$PWD/mininet-gui-backend
-export MININET_GUI_ADDRESS=$(hostname --all-ip-addresses | awk '{print $1}'  )
+
+MININET_GUI_DIR="/home/mininet/mininet-gui"
+BACKEND_DIR="$MININET_GUI_DIR/mininet-gui-backend"
+FRONTEND_DIR="$MININET_GUI_DIR/mininet-gui-frontend"
+
+export MININET_GUI_ADDRESS=$(hostname --all-ip-addresses | awk '{print $1}')
 
 echo "Running mininet-gui-backend in background"
 (cd $BACKEND_DIR ; sudo nohup uvicorn mininet_gui_backend.api:app --host=0.0.0.0 --port=8000 --log-level debug &)

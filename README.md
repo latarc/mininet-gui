@@ -39,20 +39,20 @@ Por isso, recomenda-se a utilização da VM do Mininet-GUI que disponibilizamos 
 
 Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
-Passo 1: Baixe o arquivo zip neste link: <https://link.para.vm>
+Passo 1: Baixe o arquivo zip neste link: <https://github.com/latarc/mininet-gui/releases/download/v0.0.1/Mininet-GUI-VM-SBRC-2025.zip>
 
-Passo 2: Descompacte o arquivo zip, que contém um arquivo chamado "Mininet-GUI-VM SBRC 2025.ova"
+Passo 2: Descompacte o arquivo zip, que contém um arquivo chamado "Mininet-GUI-VM-SBRC-2025.ova"
 
-Passo 3: Abra o arquivo `Mininet-GUI-VM SBRC 2025.ova` no VirtualBox, para importar a máquina virtual
+Passo 3: Abra o arquivo `Mininet-GUI-VM-SBRC-2025.ova` no VirtualBox, para importar a máquina virtual
 
 
 # Teste mínimo
 
 Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, senha: `mininet`)
 
-Passo 2: Rode o seguinte comando: `cd mininet-gui && ./run.sh`
+Passo 2: Rode o seguinte comando: `mininet_gui` (ou alternativamente `/home/mininet/mininet-gui/run.sh`)
 
-Passo 3: Abra em um navegador a URL retornada como saída da execução do comando do Passo 2. Exemplo: `http://192.168.56.101:5173` (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI).
+Passo 3:  A execução do comando do Passo 2 retornará em sua saída uma URL (Exemplo: `http://192.168.56.101:5173`). Acesse essa URL em um navegador no host da VM (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI)
 
 
 # Experimentos

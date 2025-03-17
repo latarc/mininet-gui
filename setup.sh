@@ -2,8 +2,9 @@
 
 sudo apt update && sudo apt install -y curl npm
 
-export BACKEND_DIR=$PWD/mininet-gui-backend
-export FRONTEND_DIR=$PWD/mininet-gui-frontend
+MININET_GUI_DIR="/home/mininet/mininet-gui"
+BACKEND_DIR="$MININET_GUI_DIR/mininet-gui-backend"
+FRONTEND_DIR="$MININET_GUI_DIR/mininet-gui-frontend"
 
 echo "Installing backend deps"
 (cd $BACKEND_DIR ; sudo python3 -m pip install -r requirements.txt)
@@ -20,3 +21,4 @@ nvm install 18.20.7
 echo "Installing frontend deps"
 (cd $FRONTEND_DIR ; npm install)
 
+echo "alias mininet_gui=$MININET_GUI_DIR/run.sh" >> /home/mininet/.bashrc
