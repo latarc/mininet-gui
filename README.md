@@ -2,13 +2,16 @@
 
 Resumo descrevendo o objetivo do artefato, com o respectivo título e resumo do artigo.
 
+
 # Estrutura do readme.md
 
 Apresenta a estrutura do readme.md, descrevendo como o repositório está organizado.
 
+
 # Selos Considerados
 
 Os selos considerados são: Disponíveis, Funcionais, Sustentáveis e Reprodutíveis.
+
 
 # Informações básicas
 
@@ -43,14 +46,13 @@ Passo 2: Descompacte o arquivo, que contém uma pasta chamada "mininet-gui-vm"
 Passo 3: Abra o arquivo `Mininet-GUI-VM-SBRC2025.ovf` no VirtualBox, para importar a máquina virtual
 
 
-
 # Teste mínimo
 
 Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, senha: `mininet`)
 
 Passo 2: Rode o seguinte comando: `cd mininet-gui && ./run.sh`
 
-Passo 3: Abra em um navegador a URL retornada como saída da execução do comando do Passo 2. Exemplo: `http://127.0.0.1:5173` (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI).
+Passo 3: Abra em um navegador a URL retornada como saída da execução do comando do Passo 2. Exemplo: `http://192.168.56.101:5173` (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI).
 
 
 # Experimentos
@@ -60,9 +62,11 @@ Cada reivindicações deve ser apresentada em uma subseção, com detalhes de ar
 
 Caso o processo para a reprodução de todos os experimento não seja possível em tempo viável. Os autores devem escolher as principais reivindicações apresentadas no artigo e apresentar o respectivo processo para reprodução.
 
+
 ## Reivindicações #X
 
 ## Reivindicações #Y
+
 
 # LICENSE
 
