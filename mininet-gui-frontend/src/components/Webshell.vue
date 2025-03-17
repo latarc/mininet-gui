@@ -48,6 +48,7 @@ export default {
       activeTab: null,
       isFocused: false,
       ctrlPressed: false,
+      backendWsUrl: import.meta.env.VITE_BACKEND_WS_URL,
     };
   },
   watch: {
@@ -72,7 +73,7 @@ export default {
 
     initWebSocket(nodeId) {
       if (this.sockets[nodeId]) return;
-      const ws = new WebSocket(`ws://127.0.0.1:8000/api/mininet/terminal/${nodeId}`);
+      const ws = new WebSocket(`${this.backendWsUrl}/api/mininet/terminal/${nodeId}`);
       
       ws.onopen = () => console.log(`Connected to ${nodeId}`);
       ws.onmessage = event => this.handleTerminalData(nodeId, event.data);

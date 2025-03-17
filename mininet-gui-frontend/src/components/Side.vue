@@ -86,14 +86,14 @@
       </div>
     </div>
 
-    <!-- Hotkeys Help Group -->
+    <!-- Hotkeys Help Group
     <div class="sidebar-group hotkeys">
       <h2>Hotkeys</h2>
       <p><strong>d</strong>: Delete selected nodes</p>
       <p><strong>ctrl + a</strong>: Select all nodes</p>
       <p><strong>h</strong>: Toggle hosts visibility</p>
       <p><strong>c</strong>: Toggle controllers visibility</p>
-    </div>
+    </div> -->
   </div>
 
   <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
