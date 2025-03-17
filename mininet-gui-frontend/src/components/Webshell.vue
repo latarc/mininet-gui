@@ -72,7 +72,7 @@ export default {
 
     initWebSocket(nodeId) {
       if (this.sockets[nodeId]) return;
-      const ws = new WebSocket(`ws://192.168.56.101:8000/api/mininet/terminal/${nodeId}`);
+      const ws = new WebSocket(`ws://127.0.0.1:8000/api/mininet/terminal/${nodeId}`);
       
       ws.onopen = () => console.log(`Connected to ${nodeId}`);
       ws.onmessage = event => this.handleTerminalData(nodeId, event.data);

@@ -18,7 +18,7 @@ Processador:	Intel(R) Core(TM) i5-10300H CPU @ 2.50GHz   2.50 GHz
 RAM instalada:	8,00 GB
 Sistema Operacional:	Windows 11 Home Single Language
 Tipo de sistema:	Sistema operacional de 64 bits, processador baseado em x64
-Espaço disponível em disco: Pelo menos 80GB
+Espaço disponível em disco: Pelo menos 80GB livres
 
 
 # Dependências
@@ -50,7 +50,7 @@ Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, s
 
 Passo 2: Rode o seguinte comando: `cd mininet-gui && ./run.sh`
 
-Passo 3: Abra em um navegador a URL retornada como saída da execução do comando do Passo 2. Exemplo: `http://192.168.56.101:5173` (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI).
+Passo 3: Abra em um navegador a URL retornada como saída da execução do comando do Passo 2. Exemplo: `http://127.0.0.1:5173` (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI).
 
 
 # Experimentos
@@ -66,5 +66,32 @@ Caso o processo para a reprodução de todos os experimento não seja possível 
 
 # LICENSE
 
-Apresente a licença.
+BSD 3-Clause License
+
+Copyright (c) 2025, LaTARC Research Lab
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
