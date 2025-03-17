@@ -41,9 +41,9 @@ Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
 Passo 1: Baixe o arquivo zip neste link: <https://link.para.vm>
 
-Passo 2: Descompacte o arquivo, que contém uma pasta chamada "mininet-gui-vm"
+Passo 2: Descompacte o arquivo zip, que contém um arquivo chamado "Mininet-GUI-VM SBRC 2025.ova"
 
-Passo 3: Abra o arquivo `Mininet-GUI-VM-SBRC2025.ovf` no VirtualBox, para importar a máquina virtual
+Passo 3: Abra o arquivo `Mininet-GUI-VM SBRC 2025.ova` no VirtualBox, para importar a máquina virtual
 
 
 # Teste mínimo
