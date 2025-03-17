@@ -1,6 +1,6 @@
 {
   "name": "mininet-gui",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "axios": "^1.2.1",
+    "dotenv": "^16.4.7",
     "vis-data": "^7.1.4",
     "vis-network": "^9.1.2",
     "vis-util": "^5.0.3",

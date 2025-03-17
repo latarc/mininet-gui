@@ -1,38 +1,101 @@
-# mininet-gui
+# Mininet-GUI: Uma Abordagem Visual e Interativa para Experimentação em Redes SDN
 
-Frontend and backend API of the Mininet-GUI app
+Resumo descrevendo o objetivo do artefato, com o respectivo título e resumo do artigo.
 
-## Setup tutorial
 
-This is one possible setup for running the app, although it may not be the best.
+# Estrutura do readme.md
 
-### Frontend setup
+Apresenta a estrutura do readme.md, descrevendo como o repositório está organizado.
 
-Prerequisites: docker
 
-To run the frontend image, I used this docker command:
-```
-docker run -w /usr/app -dt -p 0.0.0.0:5173:5173 -u node --name mn-gui-fe -v /home/ubuntu/mininet-gui/mininet-gui-frontend/:/usr/app node /bin/bash -c "npm i && npm run dev"
-```
+# Selos Considerados
 
-Explanation:
-- `-w` sets the workdir to /usr/app
-- `-dt` runs the command on a detached (background) terminal
-- `-p 0.0.0.0:5173:5173` exposes the default vite port, 5173
-- `-u node` runs the process with user `node` instead of `root`
-- `--name mn-gui-fe` name of the container
-- `-v /home/ubuntu/mininet-gui/mininet-gui-frontend:/usr/app` v stands for volume. this flag mounts the dev directory into the container's /usr/app directory.
-- `node` is the tag of the image we'll run
-- `/bin/bash -c "npm i && npm run dev"` this one installs the dependencies and then runs `npm run dev` to start the development server.
+Os selos considerados são: Disponíveis, Funcionais, Sustentáveis e Reprodutíveis.
 
-### Backend setup
 
-Prerequisites: mininet (preferably 2.3.0) installed on python3 (3.10+) and sudo/root permissions
+# Informações básicas
 
-This is a simple step by step to run the backend:
+Para a demonstração, foi utilizado um laptop com as seguintes configurações:
 
-```
-cd mininet-gui-backend
-sudo pip install -r requirements.txt # ignore the warning which says this is dangerous.
-sudo uvicorn mininet_gui_backend.api:app --host=0.0.0.0 --port=8080 --log-level debug
-```
+Processador:	Intel(R) Core(TM) i5-10300H CPU @ 2.50GHz   2.50 GHz
+RAM instalada:	8,00 GB
+Sistema Operacional:	Windows 11 Home Single Language
+Tipo de sistema:	Sistema operacional de 64 bits, processador baseado em x64
+Espaço disponível em disco: Pelo menos 80GB livres
+
+
+# Dependências
+
+A demonstração do Mininet-GUI utilizou o Oracle VirtualBox (versão 7.1.6 r167084).
+
+
+# Preocupações com segurança
+
+A instalação nativa do Mininet é invasiva, e pode alterar ou remover arquivos importantes do sistema de arquivos. 
+Por isso, recomenda-se a utilização da VM do Mininet-GUI que disponibilizamos no repositório.
+
+
+# Instalação
+
+Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
+
+Passo 1: Baixe o arquivo zip neste link: <https://link.para.vm>
+
+Passo 2: Descompacte o arquivo zip, que contém um arquivo chamado "Mininet-GUI-VM SBRC 2025.ova"
+
+Passo 3: Abra o arquivo `Mininet-GUI-VM SBRC 2025.ova` no VirtualBox, para importar a máquina virtual
+
+
+# Teste mínimo
+
+Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, senha: `mininet`)
+
+Passo 2: Rode o seguinte comando: `cd mininet-gui && ./run.sh`
+
+Passo 3: Abra em um navegador a URL retornada como saída da execução do comando do Passo 2. Exemplo: `http://192.168.56.101:5173` (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI).
+
+
+# Experimentos
+
+Esta seção deve descrever um passo a passo para a execução e obtenção dos resultados do artigo. Permitindo que os revisores consigam alcançar as reivindicações apresentadas no artigo. 
+Cada reivindicações deve ser apresentada em uma subseção, com detalhes de arquivos de configurações a serem alterados, comandos a serem executados, flags a serem utilizadas, tempo esperado de execução, expectativa de recursos a serem utilizados como 1GB RAM/Disk e resultado esperado. 
+
+Caso o processo para a reprodução de todos os experimento não seja possível em tempo viável. Os autores devem escolher as principais reivindicações apresentadas no artigo e apresentar o respectivo processo para reprodução.
+
+
+## Reivindicações #X
+
+## Reivindicações #Y
+
+
+# LICENSE
+
+BSD 3-Clause License
+
+Copyright (c) 2025, LaTARC Research Lab
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+

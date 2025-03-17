@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseUrl = "http://10.7.230.33:8000";
+const baseUrl = import.meta.env.VITE_BACKEND_URL;
 
 export const deployHost = async (host) => {
   try {
