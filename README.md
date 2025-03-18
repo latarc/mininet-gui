@@ -20,6 +20,8 @@ Os selos considerados são: Disponíveis, Funcionais, Sustentáveis e Reprodutí
 
 Vídeo da demonstração: <https://www.youtube.com/watch?v=NR50fQHFmy0>
 
+Repositório oficial: <https://github.com/latarc/mininet-gui>
+
 Para a demonstração, foi utilizado um laptop com as seguintes configurações:
 
 Processador:	Intel(R) Core(TM) i5-10300H CPU @ 2.50GHz   2.50 GHz
@@ -65,6 +67,16 @@ Passo 3:  A execução do comando do Passo 2 retornará em sua saída uma URL (E
 
 A execução da VM utiliza 1.5GB de RAM e requer um core de CPU reservado à VM.
 
+## Reivindicação "Geração automatizada de topologias, incluindo diversos modelos amplamente utilizados"
+
+Após inicializar o mininet_gui e acessar a interface web do frontend, clique no botão "Generate Topology". Selecione o tipo de topologia (Single, Linear ou Tree), 
+e o número de dispositivos, então clique em OK.
+
+## Reivindicação "Terminal integrado dos nós via WebShell"
+
+Após inicializar o mininet_gui e acessar a interface web do frontend, crie ao menos um nó (seja pelo Gerador de Topologias ou clicando e arrastando) e na aba inferior titulada "Webshell"
+selecione a aba com o nome desse nó, clicando nela.
+Em seguida, utilize o terminal bash para executar comandos diretamente no namespace daquele nó.
 
 # LICENSE
 
