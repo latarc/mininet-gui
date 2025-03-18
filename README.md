@@ -1,11 +1,14 @@
 # Mininet-GUI: Uma Abordagem Visual e Interativa para Experimentação em Redes SDN
 
-Resumo descrevendo o objetivo do artefato, com o respectivo título e resumo do artigo.
-
+O Mininet é um emulador amplamente utilizado para a prototipação e experimentação de Redes Definidas por Software (SDN). No entanto, sua interface gráfica principal, o MiniEdit, oferece suporte limitado e baixa interatividade, dificultando sua adoção e restringindo experimentações avançadas. Embora diversas ferramentas tenham sido propostas, nenhuma se consolidou como alternativa definitiva devido à falta de integração de funcionalidades essenciais. 
+Neste trabalho, apresentamos o Mininet-GUI, uma ferramenta integrada que opera através de uma interface web para viabilizar a criação, edição e execução de topologias no Mininet em tempo real. O Mininet-GUI possibilita a manipulação dinâmica de hosts, switches, controladores e links, além da execução de comandos diretamente na interface. Diferentemente das abordagens existentes, o Mininet-GUI oferece edição interativa da topologia, acesso simplificado aos terminais via WebShell e suporte à exportação/importação de topologias nos formatos JSON e Python.  
+O Mininet-GUI visa tornar a experimentação com SDN mais acessível e eficiente, atendendo tanto a iniciantes quanto a pesquisadores avançados. Este trabalho descreve sua arquitetura, funcionalidades e aplicabilidade por meio de casos de uso recorrentes.
 
 # Estrutura do readme.md
 
-Apresenta a estrutura do readme.md, descrevendo como o repositório está organizado.
+O arquivo README.md divide-se nas seguintes seções: Selos Considerados, Informações Básicas, Dependências, Preocupações com segurança, Instalação, Teste mínimo, Experimentos e LICENSE.
+O repositório contém dois subdiretórios principais: mininet-gui-frontend, com o código da aplicação frontend, e mininet-gui-backend, com o código do backend.
+Além disso, há dois scripts setup.sh e run.sh, para facilitar a instalação e execução.
 
 
 # Selos Considerados
@@ -14,6 +17,8 @@ Os selos considerados são: Disponíveis, Funcionais, Sustentáveis e Reprodutí
 
 
 # Informações básicas
+
+Vídeo da demonstração: <https://www.youtube.com/watch?v=NR50fQHFmy0>
 
 Para a demonstração, foi utilizado um laptop com as seguintes configurações:
 
@@ -26,7 +31,8 @@ Espaço disponível em disco: Pelo menos 80GB livres
 
 # Dependências
 
-A demonstração do Mininet-GUI utilizou o Oracle VirtualBox (versão 7.1.6 r167084).
+A execução do Mininet-GUI requer o Oracle VirtualBox (versão 7.1.6 r167084).
+Memória RAM: Mínimo de 8GB para a máquina virtual.
 
 
 # Preocupações com segurança
@@ -57,15 +63,7 @@ Passo 3:  A execução do comando do Passo 2 retornará em sua saída uma URL (E
 
 # Experimentos
 
-Esta seção deve descrever um passo a passo para a execução e obtenção dos resultados do artigo. Permitindo que os revisores consigam alcançar as reivindicações apresentadas no artigo. 
-Cada reivindicações deve ser apresentada em uma subseção, com detalhes de arquivos de configurações a serem alterados, comandos a serem executados, flags a serem utilizadas, tempo esperado de execução, expectativa de recursos a serem utilizados como 1GB RAM/Disk e resultado esperado. 
-
-Caso o processo para a reprodução de todos os experimento não seja possível em tempo viável. Os autores devem escolher as principais reivindicações apresentadas no artigo e apresentar o respectivo processo para reprodução.
-
-
-## Reivindicações #X
-
-## Reivindicações #Y
+A execução da VM utiliza 1.5GB de RAM e requer um core de CPU reservado à VM.
 
 
 # LICENSE
