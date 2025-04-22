@@ -19,7 +19,7 @@ Os selos considerados são: Disponíveis, Funcionais, Sustentáveis e Reprodutí
 
 # Informações básicas
 
-Vídeo da demonstração: <https://www.youtube.com/watch?v=NR50fQHFmy0>
+Vídeo da demonstração: <https://youtu.be/YSsqHKsJlxY>
 
 Repositório oficial: <https://github.com/latarc/mininet-gui>
 
