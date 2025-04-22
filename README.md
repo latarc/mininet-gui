@@ -49,7 +49,7 @@ Por isso, recomenda-se a utilização da VM do Mininet-GUI que disponibilizamos 
 
 Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
-Passo 1: Baixe o arquivo ova neste link: <https://drive.google.com/file/d/1NFCiIHVayjP73l5EOa15aXd5i0zLtWjt/view?usp=sharing>
+Passo 1: Baixe o arquivo ova neste link: <https://drive.google.com/file/d/1wUN4vgxJqw-GtIyFlrv6jH3sYG8qKwEg/view?usp=sharing>
 
 Passo 2: Abra o arquivo `Mininet-GUI-Desktop-VM-SBRC-2025.ova` no VirtualBox, para importar a máquina virtual
 
@@ -58,6 +58,7 @@ Passo 3: Execute a máquina virtual (user `mininet`, senha `mininet`)
 
 ## Instalação manual
 
+Atenção: os comandos abaixo irão modificar o kernel e outras configurações do seu sistema operacional, portanto use com cautela.
 Utilize os comandos abaixo para instalar manualmente (testado no ubuntu 20.04):
 
 ```bash
@@ -75,17 +76,19 @@ cd mininet-gui
 
 Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, senha: `mininet`)
 
-Passo 2: Rode o seguinte comando: `mininet_gui` (ou alternativamente `/home/mininet/mininet-gui/run.sh`)
+Passo 2: Abra o terminal (Ctrl+Alt+T) e rode o seguinte comando: `mininet_gui` (ou alternativamente `/home/mininet/mininet-gui/run.sh`)
 
-Passo 3: A execução do comando do Passo 2 mostrará em sua saída do terminal uma URL (Exemplo: `http://192.168.56.101:5173`). Acesse essa URL em um navegador no host da VM (o endereço IP deve ser o IP da máquina virtual do Mininet-GUI)
+Passo 3: A execução do comando do Passo 2 mostrará em sua saída do terminal uma URL (Exemplo: `http://10.0.2.15:5173`). Acesse essa URL em um navegador dentro da VM.
 
-Passo 4: Para criar um controlador, arraste o ícone rotulado "Controller" localizado na aba lateral esquerda para o centro da tela. Em seguida, abrirá uma caixa de diálogo perguntando o tipo do controller. Nessa etapa, selecione a opção "Default" e em seguida pressione o botão "Submit" para criar o controller.
+Passo 4: Para criar um controlador, arraste o ícone rotulado "Controller", localizado na aba lateral esquerda, para o centro da tela. Em seguida, se abrirá uma caixa de diálogo, perguntando o tipo do controller. Nessa etapa, selecione a opção "Default" e em seguida pressione o botão "Submit" para criar o controller.
 
 Passo 5: Clique no botão "Generate Topology" localizado na aba lateral esquerda. No modal, selecione o "Topology Type" Single, o "Controller" c1, e no campo "Hosts" insira o número 2. Em seguida, pressione o botão "Submit".
 
 Passo 6: Execute um teste de pingall clicando no botão "Run Pingall Test" na aba lateral esquerda e aguarde os resultados aparecerem.
 
-Passo 7: Teste com iperf - selecione no webshell o terminal do node h1 e digite o comando `iperf -s`. Depois, abra o terminal do node h2 e digite o comando `iperf -c 10.0.0.1`.
+Passo 7: Teste com iperf - selecione no webshell o terminal do node h1 e digite o comando `iperf -s`. Depois, abra o terminal do node h2 e digite o comando `iperf -c 10.0.0.1`. Aguarde 1 minuto para o teste completar-se.
+
+Passo 8: Finalmente, clique nos botões "Export Topology (JSON)" e "Export Mininet Script" para obter respectivamente o arquivo JSON com a configuração da topologia atual e o script do mininet para executar a topologia fora do Mininet-GUI, diretamente no Python.
 
 
 # Experimentos
