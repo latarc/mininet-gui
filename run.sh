@@ -17,7 +17,7 @@ echo "VITE_BACKEND_URL=http://$MININET_GUI_ADDRESS:8000" > $FRONTEND_DIR/.env
 echo "VITE_BACKEND_WS_URL=ws://$MININET_GUI_ADDRESS:8000" >> $FRONTEND_DIR/.env
 
 echo "Running mininet-gui-frontend in background"
-(cd $FRONTEND_DIR ; nohup npm run dev &)
+(cd $FRONTEND_DIR ; nvm use 18.20.7 ; nohup npm run dev &)
 
 echo "Mininet-GUI bootstrap complete"
 echo "Backend log file: $BACKEND_DIR/nohup.out"
