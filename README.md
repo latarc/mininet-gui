@@ -50,7 +50,7 @@ Por isso, recomenda-se a utilização da VM do Mininet-GUI que disponibilizamos 
 
 Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
-Passo 1: Baixe o arquivo ova neste link: <https://drive.google.com/file/d/1wUN4vgxJqw-GtIyFlrv6jH3sYG8qKwEg/view?usp=sharing>
+Passo 1: Baixe o arquivo ova neste link: <https://drive.google.com/file/d/1HBqlTwEWnmkPjRFJVQhEn34itKNyzhg3/view?usp=sharing>
 
 Passo 2: Abra o arquivo `Mininet-GUI-Desktop-VM-SBRC-2025.ova` no VirtualBox, para importar a máquina virtual
 
@@ -72,6 +72,10 @@ cd mininet-gui
 ./setup.sh
 ```
 
+Opcionalmente, para instalar o Ryu:
+```bash
+pip3 install ryu eventlet==0.30.0 dnspython==1.16.0
+```
 
 # Teste mínimo
 
@@ -87,9 +91,11 @@ Passo 5: Clique no botão "Generate Topology" localizado na aba lateral esquerda
 
 Passo 6: Execute um teste de pingall clicando no botão "Run Pingall Test" na aba lateral esquerda e aguarde os resultados aparecerem.
 
-Passo 7: Teste com iperf - selecione no webshell o terminal do node h1 e digite o comando `iperf -s`. Depois, abra o terminal do node h2 e digite o comando `iperf -c 10.0.0.1`. Aguarde 1 minuto para o teste completar-se.
+Passo 7 (opcional): Teste com iperf - selecione no webshell o terminal do node h1 e digite o comando `iperf -s`. Depois, abra o terminal do node h2 e digite o comando `iperf -c 10.0.0.1`. Aguarde 1 minuto para o teste completar-se.
 
-Passo 8: Finalmente, clique nos botões "Export Topology (JSON)" e "Export Mininet Script" para obter respectivamente o arquivo JSON com a configuração da topologia atual e o script do mininet para executar a topologia fora do Mininet-GUI, diretamente no Python.
+Passo 8 (opcional): Multiplos controladores - arraste um novo "Controller" da barra lateral para o centro da tela, mas dessa vez mude o type para "Remote" e preencha o IP 127.0.0.1 e a porta 6633. Em seguida, gere uma topologia (com o "Generate Topology") do tipo Single e com 2 hosts, e também selecione o novo controlador criado (c2). Adicionalmente, clique no botão "Create Link" e conecte os switches das duas topologias, s1 e s2, clicando e arrastando de um para o outro (o sucesso dessa ação é indicado por uma linha verde conectando os dois nós). A seguir, selecione no webshell o terminal do novo controlador c2 e execute o comando: `ryu-manager --ofp-tcp-listen-port 6633 ryu.app.simple_switch_13` para iniciar o controlador SDN Ryu. Optamos por utilizar o Ryu nesse exemplo, pois ele é leve e não ocupa tanto espaço na VM quanto outros (ONOS, OpenDaylight, Floodlight). Para testar a conexão, execute um teste com o botão de Pingall.
+
+Passo 9: Finalmente, clique nos botões "Export Topology (JSON)" e "Export Mininet Script" para obter respectivamente o arquivo JSON com a configuração da topologia atual e o script do mininet para executar a topologia fora do Mininet-GUI, diretamente no Python.
 
 
 # Experimentos
