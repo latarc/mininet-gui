@@ -9,6 +9,7 @@ O Mininet-GUI visa tornar a experimentação com SDN mais acessível e eficiente
 O arquivo README.md divide-se nas seguintes seções: Selos Considerados, Informações Básicas, Dependências, Preocupações com segurança, Instalação, Teste mínimo, Experimentos e LICENSE.
 O repositório contém dois subdiretórios principais: mininet-gui-frontend, com o código da aplicação frontend, e mininet-gui-backend, com o código do backend.
 Além disso, há dois scripts setup.sh e run.sh, para facilitar a instalação e execução.
+Foram incluídos também dois arquivos: `example_network_export.json` e `example_network_export.py`, que são arquivos exemplos exportados de uma topologia criada no Mininet-GUI.
 
 
 # Selos Considerados
