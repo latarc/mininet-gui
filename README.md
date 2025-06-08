@@ -6,51 +6,36 @@ O Mininet é um emulador amplamente utilizado para a prototipação e experiment
 Neste trabalho, apresentamos o Mininet-GUI, uma ferramenta integrada que opera através de uma interface web para viabilizar a criação, edição e execução de topologias no Mininet em tempo real. O Mininet-GUI possibilita a manipulação dinâmica de hosts, switches, controladores e links, além da execução de comandos diretamente na interface. Diferentemente das abordagens existentes, o Mininet-GUI oferece edição interativa da topologia, acesso simplificado aos terminais via WebShell e suporte à exportação/importação de topologias nos formatos JSON e Python.  
 O Mininet-GUI visa tornar a experimentação com SDN mais acessível e eficiente, atendendo tanto a iniciantes quanto a pesquisadores avançados. Este trabalho descreve sua arquitetura, funcionalidades e aplicabilidade por meio de casos de uso recorrentes.
 
-![mininet-gui screenshot](https://github.com/user-attachments/assets/1d5bfc10-859e-4385-96ac-f8f366e14b5a)
+## Informações básicas
 
-# Estrutura do readme.md
+Contato: Lucas Schneider <lucasschneider.dev@gmail.com>
 
-O arquivo README.md divide-se nas seguintes seções: Selos Considerados, Informações Básicas, Dependências, Preocupações com segurança, Instalação, Teste mínimo, Experimentos e LICENSE.
-O repositório contém dois subdiretórios principais: mininet-gui-frontend, com o código da aplicação frontend, e mininet-gui-backend, com o código do backend.
-Além disso, há dois scripts setup.sh e run.sh, para facilitar a instalação e execução.
-Foram incluídos também dois arquivos: `example_network_export.json` e `example_network_export.py`, que são arquivos exemplos exportados de uma topologia criada no Mininet-GUI.
-
-
-# Selos Considerados
-
-Os selos considerados são: Disponíveis, Funcionais, Sustentáveis e Reprodutíveis.
-
-
-# Informações básicas
+Link para o artigo: <https://1drv.ms/b/c/75254e252c7d0ebe/EWzabHAvMyFEoawJRxAa0fcBwRgmczsjGMxyTq2DMsi5-w?e=Wc0xK3>
 
 Vídeo da demonstração: <https://youtu.be/YSsqHKsJlxY>
 
 Repositório oficial: <https://github.com/latarc/mininet-gui>
 
-Para a demonstração, foi utilizado um laptop com as seguintes configurações:
+### Screenshot da aplicação
 
-Processador:	Intel(R) Core(TM) i5-10300H CPU @ 2.50GHz   2.50 GHz
-RAM instalada:	8,00 GB
-Sistema Operacional:	Windows 11 Home Single Language
-Tipo de sistema:	Sistema operacional de 64 bits, processador baseado em x64
-Espaço disponível em disco: Pelo menos 80GB livres
+![mininet-gui screenshot](https://github.com/user-attachments/assets/1d5bfc10-859e-4385-96ac-f8f366e14b5a)
 
 
-# Dependências
+## Dependências
 
 A execução do Mininet-GUI requer o Oracle VirtualBox (versão 7.1.6 r167084).
 Memória RAM: Mínimo de 8GB para a máquina virtual.
 
 
-# Preocupações com segurança
+## Preocupações com segurança
 
 A instalação nativa do Mininet é invasiva, e pode alterar ou remover arquivos importantes do sistema de arquivos. 
 Por isso, recomenda-se a utilização da VM do Mininet-GUI que disponibilizamos no repositório.
 
 
-# Instalação
+## Instalação
 
-## Máquina Virtual (recomendado)
+### Máquina Virtual (recomendado)
 
 Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
@@ -61,7 +46,7 @@ Passo 2: Abra o arquivo `Mininet-GUI-Desktop-VM-SBRC-2025.ova` no VirtualBox, pa
 Passo 3: Execute a máquina virtual (user `mininet`, senha `mininet`)
 
 
-## Instalação manual
+### Instalação manual
 
 Atenção: os comandos abaixo irão modificar o kernel e outras configurações do seu sistema operacional, portanto use com cautela.
 Utilize os comandos abaixo para instalar manualmente (testado no ubuntu 20.04):
@@ -81,7 +66,7 @@ Opcionalmente, para instalar o Ryu:
 pip3 install ryu eventlet==0.30.0 dnspython==1.16.0
 ```
 
-# Teste mínimo
+## Teste mínimo
 
 Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, senha: `mininet`)
 
@@ -102,22 +87,22 @@ Passo 8 (opcional): Multiplos controladores - arraste um novo "Controller" da ba
 Passo 9: Finalmente, clique nos botões "Export Topology (JSON)" e "Export Mininet Script" para obter respectivamente o arquivo JSON com a configuração da topologia atual e o script do mininet para executar a topologia fora do Mininet-GUI, diretamente no Python.
 
 
-# Experimentos
+## Experimentos
 
 A execução da VM requer no mínimo 2GB de RAM e um core de CPU reservado à VM.
 
-## Reivindicação "Geração automatizada de topologias, incluindo diversos modelos amplamente utilizados"
+### Reivindicação "Geração automatizada de topologias, incluindo diversos modelos amplamente utilizados"
 
 Após inicializar o mininet_gui e acessar a interface web do frontend, clique no botão "Generate Topology". Selecione o tipo de topologia (Single, Linear ou Tree), 
 e o número de dispositivos, então clique em OK.
 
-## Reivindicação "Terminal integrado dos nós via WebShell"
+### Reivindicação "Terminal integrado dos nós via WebShell"
 
 Após inicializar o mininet_gui e acessar a interface web do frontend, crie ao menos um nó (seja pelo Gerador de Topologias ou clicando e arrastando) e na aba inferior titulada "Webshell"
 selecione a aba com o nome desse nó, clicando nela.
 Em seguida, utilize o terminal bash para executar comandos diretamente no namespace daquele nó.
 
-# LICENSE
+## LICENSE
 
 BSD 3-Clause License
 
