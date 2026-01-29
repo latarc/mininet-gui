@@ -63,6 +63,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @importTopology="importTopology"
           @doSelectAll="doSelectAll"
           @exportMininetScript="exportMininetScript"
+          @openSettings="showSettingsModal"
           @keydown.ctrl.a.prevent="doSelectAll"
           :networkStarted="networkStarted"
           :addEdgeMode="addEdgeMode"
@@ -105,6 +106,14 @@ import controllerImg from "@/assets/light-controller.svg";
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
+        <div v-if="modalOption === 'settings'" class="settings-modal">
+          <div class="settings-group">
+            <label class="settings-toggle">
+              <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
+              <span>Show host IP addresses</span>
+            </label>
+          </div>
+        </div>
         <div v-if="modalOption === 'confirmReset'" class="confirm-reset">
           <p class="confirm-reset__text">
             Are you sure you want to reset the topology? This action cannot be undone.
@@ -147,8 +156,12 @@ export default {
       snifferActive: false,
       sidebarCollapsed: false,
       showModal: false,
+      modalHeader: "",
       modalOption: null,
       modalData: {},
+      settings: {
+        showHostIp: false,
+      },
     };
   },
   computed: {
@@ -158,6 +171,7 @@ export default {
     }
   },
   async mounted() {
+    this.loadSettings();
     await this.syncSnifferState();
     this.snifferStateTimer = setInterval(this.syncSnifferState, 5000);
     this.setupNetwork();
@@ -166,6 +180,45 @@ export default {
     if (this.snifferStateTimer) clearInterval(this.snifferStateTimer);
   },
   methods: {
+    loadSettings() {
+      try {
+        const raw = localStorage.getItem("mininetGuiSettings");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          this.settings = { ...this.settings, ...parsed };
+        }
+      } catch (error) {
+        console.warn("Failed to load settings", error);
+      }
+    },
+    persistSettings() {
+      try {
+        localStorage.setItem("mininetGuiSettings", JSON.stringify(this.settings));
+      } catch (error) {
+        console.warn("Failed to persist settings", error);
+      }
+      this.applyHostLabels();
+    },
+    hostLabel(host) {
+      if (!host) return "";
+      if (this.settings.showHostIp && host.ip) {
+        return `${host.name}\n${host.ip}`;
+      }
+      return `${host.name}`;
+    },
+    applyHostLabels() {
+      Object.values(this.hosts || {}).forEach((host) => {
+        const label = this.hostLabel(host);
+        host.label = label;
+        this.nodes.update({ id: host.id, label });
+      });
+    },
+    showSettingsModal() {
+      this.closeAllActiveModes();
+      this.modalHeader = "Settings";
+      this.modalOption = "settings";
+      this.showModal = true;
+    },
     computeNetwork() {
       if (this.network)
         return this.network;
@@ -186,6 +239,7 @@ export default {
           highlight: { background: "#007acc", border: "#007acc" },
         };
         host.image = hostImg;
+        host.label = this.hostLabel(host);
         return host;
       });
 
@@ -339,7 +393,7 @@ export default {
           highlight: { background: "#007acc", border: "#007acc" },
         },
       };
-      host.label = `${host.name}`;
+      host.label = this.hostLabel(host);
       host.image = hostImg;
       if (position) {
         host.x = position.x;
@@ -840,5 +894,32 @@ export default {
 
 .confirm-reset__button--danger:hover {
   background: #dc2626;
+}
+
+.settings-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  color: #1e293b;
+}
+
+.settings-group {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.settings-toggle input {
+  width: 16px;
+  height: 16px;
 }
 </style>

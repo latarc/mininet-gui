@@ -149,6 +149,21 @@
       />
     </div>
 
+    <!-- Settings Group -->
+    <div class="sidebar-group flex flex-col gap-2">
+      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+        Settings
+      </h2>
+      <button
+        id="button-settings"
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        @click="$emit('openSettings')"
+      >
+        <span class="material-symbols-outlined">settings</span>
+        <span class="label">Open Settings</span>
+      </button>
+    </div>
+
     <!-- Draggable Nodes Group -->
     <div class="sidebar-group flex flex-col gap-2">
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
@@ -236,6 +251,7 @@ export default {
     "toggleSniffer",
     "exportSniffer",
     "toggleSidebar",
+    "openSettings",
   ],
   methods: {
     toggleSide() {

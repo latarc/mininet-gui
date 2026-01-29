@@ -403,19 +403,31 @@ def get_node_stats(node_id: str):
         parsed_flows = []
 
         for line in flow_table_raw.split("\n"):
-            fields = line.split(",")
+            line = line.strip()
+            if not line:
+                continue
             flow = {}
             match_fields = {}
+            actions = None
 
+            if " actions=" in line:
+                line, actions = line.split(" actions=", 1)
+            elif "actions=" in line:
+                line, actions = line.split("actions=", 1)
+
+            if actions is not None:
+                flow["actions"] = actions.strip()
+
+            fields = [f.strip() for f in line.split(",") if f.strip()]
             for field in fields:
-                key_val = field.strip().split("=")
-
-                if len(key_val) == 2:
-                    key, value = key_val
+                if "=" in field:
+                    key, value = field.split("=", 1)
                     if key in FLOW_FIELDS:
                         flow[key] = value
                     else:
                         match_fields[key] = value
+                else:
+                    match_fields[field] = True
 
             flow["match_fields"] = match_fields
             parsed_flows.append(flow)

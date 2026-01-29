@@ -16,6 +16,17 @@ FRONTEND_DIR="$MININET_GUI_DIR/mininet-gui-frontend"
 
 export MININET_GUI_ADDRESS="192.168.56.103"
 
+trim_log() {
+  local file="$1"
+  if [ -f "$file" ]; then
+    tail -n 10000 "$file" > "${file}.tmp"
+    mv "${file}.tmp" "$file"
+  fi
+}
+
+trim_log "$BACKEND_DIR/nohup.out"
+trim_log "$FRONTEND_DIR/nohup.out"
+
 echo "Running mininet-gui-backend in background"
 (cd $BACKEND_DIR ; sudo nohup uvicorn mininet_gui_backend.api:app --host=0.0.0.0 --port=8000 --log-level debug &)
 
