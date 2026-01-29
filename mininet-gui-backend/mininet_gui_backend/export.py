@@ -102,9 +102,9 @@ def export_net_to_json(
     links: List[Tuple[str, str]]
 ) -> str:
     net_data = {
-        "switches": [switch.dict() for switch in switches.values()],
-        "hosts": [host.dict() for host in hosts.values()],
-        "controllers": [controller.dict() for controller in controllers.values()],
+        "switches": [switch.model_dump() for switch in switches.values()],
+        "hosts": [host.model_dump() for host in hosts.values()],
+        "controllers": [controller.model_dump() for controller in controllers.values()],
         "links": [list(link) for link in links]
     }
 
