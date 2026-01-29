@@ -23,6 +23,10 @@ import {
   requestExportMininetScript,
   requestImportNetwork,
   removeAssociation,
+  getSnifferState,
+  startSniffer,
+  stopSniffer,
+  exportSnifferPcap,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -53,6 +57,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @createTopology="showTopologyFormModal"
           @resetTopology="showResetConfirmModal"
           @toggleSniffer="toggleSniffer"
+          @exportSniffer="exportSniffer"
           @exportTopology="exportTopology"
           @importTopology="importTopology"
           @doSelectAll="doSelectAll"
@@ -145,7 +150,12 @@ export default {
     }
   },
   async mounted() {
+    await this.syncSnifferState();
+    this.snifferStateTimer = setInterval(this.syncSnifferState, 5000);
     this.setupNetwork();
+  },
+  beforeUnmount() {
+    if (this.snifferStateTimer) clearInterval(this.snifferStateTimer);
   },
   methods: {
     computeNetwork() {
@@ -644,8 +654,41 @@ export default {
         this.network.redraw();
       }
     },
-    toggleSniffer() {
-      this.snifferActive = !this.snifferActive;
+    async toggleSniffer() {
+      try {
+        if (this.snifferActive) {
+          const response = await stopSniffer();
+          this.snifferActive = !!response.active;
+        } else {
+          const response = await startSniffer();
+          this.snifferActive = !!response.active;
+        }
+      } catch (error) {
+        this.snifferActive = false;
+      }
+    },
+    async syncSnifferState() {
+      try {
+        const state = await getSnifferState();
+        this.snifferActive = !!state.active;
+      } catch (error) {
+        // keep previous state; backend may not be ready yet
+      }
+    },
+    async exportSniffer() {
+      try {
+        const blob = await exportSnifferPcap();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "sniffer.pcap";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Failed to export sniffer", error);
+      }
     },
     showResetConfirmModal() {
       this.modalHeader = "Reset Topology";

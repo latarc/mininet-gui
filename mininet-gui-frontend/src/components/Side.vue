@@ -81,6 +81,14 @@
         <span class="material-symbols-outlined">radar</span>
         {{ snifferActive ? "Stop Sniffer" : "Start Sniffer" }}
       </button>
+      <button
+        id="button-export-sniffer"
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        @click="$emit('exportSniffer')"
+      >
+        <span class="material-symbols-outlined">download</span>
+        Export Sniffer (PCAP)
+      </button>
     </div>
 
     <!-- Export/Import Controls Group -->
@@ -207,6 +215,7 @@ export default {
     "importTopology",
     "doSelectAll",
     "toggleSniffer",
+    "exportSniffer",
   ],
   methods: {
     toggleSide() {

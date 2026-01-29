@@ -155,6 +155,77 @@ export const getInterfaces = async () => {
   }
 };
 
+export const getSnifferState = async () => {
+  try {
+    const response = await axios.get(baseUrl + "/api/mininet/sniffer/state", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const getSnifferHistory = async () => {
+  try {
+    const response = await axios.get(baseUrl + "/api/mininet/sniffer/history", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const startSniffer = async () => {
+  try {
+    const response = await axios.post(baseUrl + "/api/mininet/sniffer/start", null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const stopSniffer = async () => {
+  try {
+    const response = await axios.post(baseUrl + "/api/mininet/sniffer/stop", null, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const exportSnifferPcap = async () => {
+  try {
+    const response = await axios.get(baseUrl + "/api/mininet/sniffer/export", {
+      responseType: "blob",
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
 export const removeAssociation = async (srcId, dstId) => {
   try {
     console.log("sending removeAssociation for edge: ", srcId, dstId);

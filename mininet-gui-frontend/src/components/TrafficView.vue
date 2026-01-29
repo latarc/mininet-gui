@@ -74,7 +74,7 @@
 </template>
 
 <script>
-import { getInterfaces } from "@/core/api";
+import { getInterfaces, getSnifferHistory } from "@/core/api";
 
 export default {
   props: {
@@ -133,12 +133,14 @@ export default {
           this.connect();
         } else {
           this.disconnect();
+          this.events = [];
         }
       },
     },
   },
   mounted() {
     this.loadInterfaces();
+    this.loadHistory();
   },
   beforeUnmount() {
     this.disconnect();
@@ -150,6 +152,14 @@ export default {
         this.nodes = response.nodes || [];
       } catch (error) {
         this.nodes = [];
+      }
+    },
+    async loadHistory() {
+      try {
+        const response = await getSnifferHistory();
+        this.events = response.events || [];
+      } catch (error) {
+        this.events = [];
       }
     },
     connect() {
