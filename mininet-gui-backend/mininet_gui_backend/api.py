@@ -14,6 +14,9 @@ import pty
 import json
 import select
 import asyncio
+from mininet_gui_backend.sniffer import parse_tshark_packet
+import pyshark.ek_field_mapping as ek_field_mapping
+from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
 from typing import Tuple, Union
 from contextlib import asynccontextmanager
 
@@ -45,6 +48,7 @@ async def lifespan(app: FastAPI):
     app.hosts = dict()
     app.links = dict()
     app.terminals = dict()
+    app.sniffers = dict()
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
     app.net.is_started = False
@@ -84,9 +88,25 @@ app.add_middleware(
 def debug(msg, *args):
     _debug(str(msg)+" "+" ".join(map(str, args))+"\n")
 
+def list_mininet_interfaces():
+    nodes = []
+    if hasattr(app.net, "hosts"):
+        for host in app.net.hosts:
+            intfs = [i.name for i in host.intfList() if i.name and i.name not in ("lo", "lo0")]
+            nodes.append({"id": host.name, "type": "host", "intfs": intfs, "pid": host.pid})
+    if hasattr(app.net, "switches"):
+        for sw in app.net.switches:
+            intfs = [i.name for i in sw.intfList() if i.name and i.name not in ("lo", "lo0")]
+            nodes.append({"id": sw.name, "type": "switch", "intfs": intfs, "pid": sw.pid})
+    return nodes
+
 @app.get("/api/mininet/hosts")
 def list_hosts():
     return app.hosts
+
+@app.get("/api/mininet/interfaces")
+def list_interfaces():
+    return {"nodes": list_mininet_interfaces()}
 
 @app.get("/api/mininet/switches")
 def list_switches():
@@ -459,6 +479,48 @@ async def read_pty(master_fd, websocket: WebSocket):
     except Exception as e:
         debug(f"PTY Read Error: {e}")
 
+async def read_sniffer(process: asyncio.subprocess.Process, websocket: WebSocket):
+    """Reads tcpdump output and sends it to WebSocket"""
+    try:
+        while True:
+            line = await process.stdout.readline()
+            if not line:
+                break
+            await websocket.send_text(line.decode(errors="ignore").rstrip())
+    except Exception as e:
+        debug(f"Sniffer Read Error: {e}")
+
+
+async def start_sniffer_process(node_pid: int, intf: str):
+    if node_pid and node_pid > 0:
+        return await asyncio.create_subprocess_exec(
+            "mnexec",
+            "-a",
+            str(node_pid),
+            "tshark",
+            "-l",
+            "-n",
+            "-q",
+            "-i",
+            intf,
+            "-T",
+            "ek",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+    return await asyncio.create_subprocess_exec(
+        "tshark",
+        "-l",
+        "-n",
+        "-q",
+        "-i",
+        intf,
+        "-T",
+        "ek",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+
 @app.websocket("/api/mininet/terminal/{node_id}")
 async def websocket_terminal(websocket: WebSocket, node_id: str):
     """WebSocket endpoint for accessing a Mininet node terminal"""
@@ -489,3 +551,115 @@ async def websocket_terminal(websocket: WebSocket, node_id: str):
         os.close(master_fd)
         app.terminals.pop(node_id, None)
         print(f"Closed terminal session for {node_id}")
+
+@app.websocket("/api/mininet/sniffer")
+async def websocket_sniffer(websocket: WebSocket):
+    """WebSocket endpoint for streaming tcpdump output on all Mininet interfaces"""
+    await websocket.accept()
+
+    if not app.net.is_started:
+        await websocket.send_text("Error: network must be started to sniff.")
+        await websocket.close()
+        return
+
+    nodes = list_mininet_interfaces()
+    if not nodes:
+        await websocket.send_text("Error: no Mininet nodes available to sniff.")
+        await websocket.close()
+        return
+
+    try:
+        ek_field_mapping.MAPPING.load_mapping("3.2.3")
+    except Exception as e:
+        debug(f"EK mapping load failed: {e}")
+
+    processes = {}
+    tasks = {}
+    stop_event = asyncio.Event()
+
+    async def read_and_send(node_info, intf_name, process):
+        parser = TsharkEkJsonParser()
+        buffer = b""
+        got_first = False
+        try:
+            while not stop_event.is_set():
+                try:
+                    packet, buffer = await parser.get_packets_from_stream(
+                        process.stdout, buffer, got_first_packet=got_first
+                    )
+                except EOFError:
+                    break
+                if packet is None:
+                    continue
+                got_first = True
+                event = parse_tshark_packet(packet, node_info, intf_name)
+                if not event:
+                    continue
+                await websocket.send_json(event.dict(by_alias=True))
+        except Exception as e:
+            debug(f"Sniffer Read Error ({node_info['id']}:{intf_name}): {e}")
+
+    async def start_capture(node_info, intf_name):
+        key = (node_info["id"], intf_name)
+        if key in processes:
+            return
+        try:
+            process = await start_sniffer_process(node_info.get("pid", 0), intf_name)
+        except FileNotFoundError:
+            await websocket.send_text("Error: tshark or mnexec not found on server.")
+            await websocket.close()
+            stop_event.set()
+            return
+        processes[key] = process
+        tasks[key] = asyncio.create_task(read_and_send(node_info, intf_name, process))
+
+    async def refresh_interfaces():
+        while not stop_event.is_set():
+            current = list_mininet_interfaces()
+            current_keys = set()
+            for node_info in current:
+                for intf_name in node_info.get("intfs", []):
+                    key = (node_info["id"], intf_name)
+                    current_keys.add(key)
+                    await start_capture(node_info, intf_name)
+            # remove captures for interfaces no longer present
+            for key in list(processes.keys()):
+                if key not in current_keys:
+                    proc = processes.pop(key)
+                    task = tasks.pop(key, None)
+                    if task:
+                        task.cancel()
+                    proc.terminate()
+                    try:
+                        await proc.wait()
+                    except Exception:
+                        pass
+            await asyncio.sleep(1.0)
+
+    async def receiver_loop():
+        try:
+            while True:
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            pass
+        finally:
+            stop_event.set()
+
+    try:
+        for node_info in nodes:
+            for intf_name in node_info.get("intfs", []):
+                await start_capture(node_info, intf_name)
+
+        refresh_task = asyncio.create_task(refresh_interfaces())
+        recv_task = asyncio.create_task(receiver_loop())
+        await asyncio.wait([refresh_task, recv_task], return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        stop_event.set()
+        for task in tasks.values():
+            task.cancel()
+        for process in processes.values():
+            process.terminate()
+            try:
+                await process.wait()
+            except Exception:
+                pass

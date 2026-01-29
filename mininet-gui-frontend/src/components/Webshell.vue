@@ -9,6 +9,24 @@
         <i class="mdi mdi-console"></i>
         <span class="title">WebShell</span>
       </div>
+      <div class="view-tabs">
+        <button
+          type="button"
+          class="view-tab"
+          :class="{ active: activeView === 'terminal' }"
+          @click="activeView = 'terminal'"
+        >
+          Terminal
+        </button>
+        <button
+          type="button"
+          class="view-tab"
+          :class="{ active: activeView === 'traffic' }"
+          @click="activeView = 'traffic'"
+        >
+          Traffic
+        </button>
+      </div>
       <div class="webshell-actions">
         <button class="icon-button" type="button" @click="toggleMinimize">
           <span class="material-symbols-outlined">{{ isMinimized ? "expand_less" : "expand_more" }}</span>
@@ -16,7 +34,7 @@
       </div>
     </div>
 
-    <div v-show="!isMinimized" class="tabs">
+    <div v-show="!isMinimized && activeView === 'terminal'" class="tabs">
       <button
         v-for="node in getNodeList()"
         :key="node.id"
@@ -28,7 +46,7 @@
       </button>
     </div>
 
-    <div v-show="!isMinimized" class="terminal-window" @click="focusActiveTerminal">
+    <div v-show="!isMinimized && activeView === 'terminal'" class="terminal-window" @click="focusActiveTerminal">
       <div
         v-for="node in getNodeList()"
         :key="node.id"
@@ -39,6 +57,9 @@
         No nodes available.
       </div>
     </div>
+    <div v-show="!isMinimized && activeView === 'traffic'" class="traffic-window">
+      <TrafficView :enabled="snifferActive" />
+    </div>
   </div>
 </template>
 
@@ -46,9 +67,14 @@
 import "@xterm/xterm/css/xterm.css";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import TrafficView from "./TrafficView.vue";
 
 export default {
-  props: ["nodes"],
+  components: { TrafficView },
+  props: {
+    nodes: { type: Object, required: true },
+    snifferActive: { type: Boolean, default: false },
+  },
   data() {
     return {
       terminals: {},
@@ -61,6 +87,7 @@ export default {
       isMinimized: false,
       panelHeight: 320,
       isResizing: false,
+      activeView: "terminal",
     };
   },
   watch: {
@@ -69,6 +96,16 @@ export default {
         this.syncNodes();
       },
       deep: true,
+    },
+    snifferActive(value) {
+      if (value) this.activeView = "traffic";
+    },
+    activeView(value) {
+      if (value === "terminal") {
+        this.$nextTick(() => {
+          if (this.activeTab) this.fitTerminal(this.activeTab);
+        });
+      }
     },
   },
   mounted() {
@@ -295,6 +332,34 @@ export default {
   gap: 0.25rem;
 }
 
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.view-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #cccccc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.view-tab:hover {
+  background-color: #333333;
+}
+
+.view-tab.active {
+  border-color: #007acc;
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -361,6 +426,11 @@ export default {
   padding: 1rem;
   color: #8a8a8a;
   font-size: 0.9rem;
+}
+
+.traffic-window {
+  flex: 1;
+  min-height: 0;
 }
 
 .resize-handle-top {

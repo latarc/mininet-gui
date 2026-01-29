@@ -141,6 +141,20 @@ export const deleteLink = async (srcId, dstId) => {
   }
 };
 
+export const getInterfaces = async () => {
+  try {
+    const response = await axios.get(baseUrl + "/api/mininet/interfaces", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
 export const removeAssociation = async (srcId, dstId) => {
   try {
     console.log("sending removeAssociation for edge: ", srcId, dstId);

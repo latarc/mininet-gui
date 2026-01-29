@@ -72,6 +72,15 @@
         <span class="material-symbols-outlined">network_check</span>
         Run Pingall Test
       </button>
+      <button
+        id="button-sniffer"
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        :class="snifferActive ? 'border-[#007acc] bg-[#0b2b3b] text-[#e6f2ff] ring-1 ring-[#007acc]' : ''"
+        @click="$emit('toggleSniffer')"
+      >
+        <span class="material-symbols-outlined">radar</span>
+        {{ snifferActive ? "Stop Sniffer" : "Start Sniffer" }}
+      </button>
     </div>
 
     <!-- Export/Import Controls Group -->
@@ -176,6 +185,7 @@ export default {
     createLinkMode: { type: Boolean, default: false },
     networkStarted: { type: Boolean, default: true },
     addEdgeMode: { type: Boolean, default: false },
+    snifferActive: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -196,6 +206,7 @@ export default {
     "exportTopology",
     "importTopology",
     "doSelectAll",
+    "toggleSniffer",
   ],
   methods: {
     toggleSide() {

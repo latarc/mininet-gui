@@ -52,6 +52,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @toggleShowControllers="toggleShowControllers"
           @createTopology="showTopologyFormModal"
           @resetTopology="showResetConfirmModal"
+          @toggleSniffer="toggleSniffer"
           @exportTopology="exportTopology"
           @importTopology="importTopology"
           @doSelectAll="doSelectAll"
@@ -59,6 +60,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @keydown.ctrl.a.prevent="doSelectAll"
           :networkStarted="networkStarted"
           :addEdgeMode="addEdgeMode"
+          :snifferActive="snifferActive"
         />
       </div>
     
@@ -78,7 +80,7 @@ import controllerImg from "@/assets/light-controller.svg";
       ></div>
 
       <!-- WebShell at the bottom -->
-      <webshell class="webshell" :nodes="nodes" />
+      <webshell class="webshell" :nodes="nodes" :snifferActive="snifferActive" />
     </div>
   </div>
 
@@ -130,6 +132,7 @@ export default {
       edges: new DataSet(),
       addEdgeMode: false,
       networkStarted: true,
+      snifferActive: false,
       showModal: false,
       modalOption: null,
       modalData: {},
@@ -640,6 +643,9 @@ export default {
         this.network.setData({ nodes: this.nodes, edges: this.edges });
         this.network.redraw();
       }
+    },
+    toggleSniffer() {
+      this.snifferActive = !this.snifferActive;
     },
     showResetConfirmModal() {
       this.modalHeader = "Reset Topology";

@@ -1,7 +1,13 @@
 #!/bin/bash
+set -euo pipefail
 
-sudo pkill uvicorn
-sudo pkill vite
+echo "Stopping previous processes..."
+sudo pkill -9 -f "uvicorn|mininet_gui_backend.api" || true
+sudo pkill -9 -f "npm run dev|vite" || true
+sudo pkill -9 -f "tshark|dumpcap" || true
+sudo pkill -9 -f "mnexec" || true
+sudo pkill -9 -f "mininet:" || true
+sudo mn -c >/dev/null 2>&1 || true
 
 
 MININET_GUI_DIR="$HOME/mininet-gui"
@@ -17,7 +23,19 @@ echo "VITE_BACKEND_URL=http://$MININET_GUI_ADDRESS:8000" > $FRONTEND_DIR/.env
 echo "VITE_BACKEND_WS_URL=ws://$MININET_GUI_ADDRESS:8000" >> $FRONTEND_DIR/.env
 
 echo "Running mininet-gui-frontend in background"
-(cd $FRONTEND_DIR ; nvm use 18.20.7 ; nohup npm run dev -- --host 0.0.0.0 &)
+(
+  cd $FRONTEND_DIR
+  if command -v nvm >/dev/null 2>&1; then
+    nvm use 18.20.7
+  elif [ -s "$HOME/.nvm/nvm.sh" ]; then
+    . "$HOME/.nvm/nvm.sh"
+    nvm use 18.20.7 || true
+  elif [ -s "/usr/share/nvm/nvm.sh" ]; then
+    . "/usr/share/nvm/nvm.sh"
+    nvm use 18.20.7 || true
+  fi
+  nohup npm run dev -- --host 0.0.0.0 &
+)
 
 echo "Mininet-GUI bootstrap complete"
 echo "Backend log file: $BACKEND_DIR/nohup.out"
