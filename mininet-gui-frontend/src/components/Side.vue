@@ -67,10 +67,12 @@
       <button
         id="button-pingall"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        :class="pingallRunning ? 'opacity-60 cursor-not-allowed' : ''"
+        :disabled="pingallRunning"
         @click="$emit('runPingall')"
       >
         <span class="material-symbols-outlined">network_check</span>
-        Run Pingall Test
+        {{ pingallRunning ? "Pingall running..." : "Run Pingall Test" }}
       </button>
       <button
         id="button-sniffer"
@@ -194,6 +196,7 @@ export default {
     networkStarted: { type: Boolean, default: true },
     addEdgeMode: { type: Boolean, default: false },
     snifferActive: { type: Boolean, default: false },
+    pingallRunning: { type: Boolean, default: false },
   },
   data() {
     return {

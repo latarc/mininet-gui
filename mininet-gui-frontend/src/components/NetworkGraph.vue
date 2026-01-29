@@ -66,6 +66,7 @@ import controllerImg from "@/assets/light-controller.svg";
           :networkStarted="networkStarted"
           :addEdgeMode="addEdgeMode"
           :snifferActive="snifferActive"
+          :pingallRunning="pingallRunning"
         />
       </div>
     
@@ -137,6 +138,7 @@ export default {
       edges: new DataSet(),
       addEdgeMode: false,
       networkStarted: true,
+      pingallRunning: false,
       snifferActive: false,
       showModal: false,
       modalOption: null,
@@ -518,13 +520,21 @@ export default {
       this.network.setSelection({nodes: this.nodes.getIds()});
     },
     async showPingallModal() {
+      if (this.pingallRunning) return;
       this.closeAllActiveModes();
-      this.modalHeader = "Pingall Results";
-      this.modalOption = "pingall";
-      this.showModal = true;
+      this.pingallRunning = true;
 
       let pingallResults = await requestRunPingall();
-      this.modalData = pingallResults || null;
+      if (pingallResults && pingallResults.running) {
+        this.pingallRunning = false;
+        return;
+      } else {
+        this.modalHeader = "Pingall Results";
+        this.modalOption = "pingall";
+        this.modalData = pingallResults || null;
+        this.showModal = true;
+      }
+      this.pingallRunning = false;
     },
     async showStatsModal(nodeId) {
       this.closeAllActiveModes();

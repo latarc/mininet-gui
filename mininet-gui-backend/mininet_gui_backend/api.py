@@ -50,6 +50,7 @@ async def lifespan(app: FastAPI):
     app.terminals = dict()
     app.sniffers = dict()
     app.sniffer_manager = SnifferManager(list_mininet_interfaces, start_sniffer_process)
+    app.pingall_running = False
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
     app.net.is_started = False
@@ -175,9 +176,20 @@ def run_pingall():
     """Build network and start nodes"""
     if not app.net.is_started:
         raise HTTPException(status_code=400, detail="network must be started to run pingall")
-    pingall_results = app.net.pingFull()
-    debug(pingall_results)
-    return "\n".join([f"{p[0]}->{p[1]}: {p[2][0]}/{p[2][1]}, rtt min/avg/max/mdev {p[2][2]:.3f}/{p[2][3]:.3f}/{p[2][4]:.3f}/{p[2][5]:.3f} ms" for p in pingall_results])
+    if app.pingall_running:
+        raise HTTPException(status_code=409, detail="pingall already running")
+    app.pingall_running = True
+    try:
+        pingall_results = app.net.pingFull()
+        debug(pingall_results)
+        return "\n".join(
+            [
+                f"{p[0]}->{p[1]}: {p[2][0]}/{p[2][1]}, rtt min/avg/max/mdev {p[2][2]:.3f}/{p[2][3]:.3f}/{p[2][4]:.3f}/{p[2][5]:.3f} ms"
+                for p in pingall_results
+            ]
+        )
+    finally:
+        app.pingall_running = False
 
 @app.post("/api/mininet/hosts")
 def create_host(host: Host):

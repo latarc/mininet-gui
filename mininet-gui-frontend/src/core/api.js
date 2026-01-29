@@ -379,9 +379,12 @@ export const requestRunPingall = async () => {
     );
     return response.data;
   } catch (error) {
+    if (error.response?.status === 409) {
+      return { running: true };
+    }
     alert(error.response ? error.response.data["detail"] : "Network Error");
     return false;
-  }i
+  }
 };
 
 export const sendGet = async (url) => {
