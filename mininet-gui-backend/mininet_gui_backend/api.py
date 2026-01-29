@@ -15,10 +15,11 @@ import json
 import select
 import asyncio
 import subprocess
+import logging
 from mininet_gui_backend.sniffer import SnifferManager
 import pyshark.ek_field_mapping as ek_field_mapping
 from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 from contextlib import asynccontextmanager
 
 from mininet.net import Mininet
@@ -26,7 +27,9 @@ from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
 from mininet.node import RemoteController, Controller as ReferenceController
+from mininet.link import TCLink
 from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
@@ -35,16 +38,31 @@ from mininet_gui_backend.cli import CLISession
 from mininet_gui_backend.schema import Switch, Host, Controller
 from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
 
+LOG_FILE = os.path.join(os.path.dirname(__file__), "mininet.log")
 
 FLOW_FIELDS = [
     "cookie", "duration", "table", "n_packets", "n_bytes", 
     "idle_timeout", "priority", "actions"
 ]
 
+class LinkOptions(BaseModel):
+    bw: Optional[float] = Field(None, ge=0)
+    delay: Optional[Union[str, float]] = None
+    jitter: Optional[Union[str, float]] = None
+    loss: Optional[float] = Field(None, ge=0, le=100)
+    max_queue_size: Optional[int] = Field(None, ge=0)
+    use_htb: Optional[bool] = None
+
+class LinkCreate(BaseModel):
+    src: str
+    dst: str
+    options: Optional[LinkOptions] = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # start
     mn_cleanup()
+    setup_log_file()
     app.controllers = dict()
     app.switches = dict()
     app.hosts = dict()
@@ -91,6 +109,27 @@ app.add_middleware(
 
 def debug(msg, *args):
     _debug(str(msg)+" "+" ".join(map(str, args))+"\n")
+
+def setup_log_file():
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    handler = logging.FileHandler(LOG_FILE)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+    if not any(isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", None) == handler.baseFilename for h in root_logger.handlers):
+        root_logger.addHandler(handler)
+    try:
+        from mininet.log import lg
+        lg.setLevel(logging.DEBUG)
+        if not any(isinstance(h, logging.FileHandler) and getattr(h, "baseFilename", None) == handler.baseFilename for h in lg.handlers):
+            lg.addHandler(handler)
+    except Exception:
+        pass
+
+def clear_log_file():
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    with open(LOG_FILE, "w", encoding="utf-8"):
+        pass
 
 def list_mininet_interfaces():
     nodes = []
@@ -174,6 +213,7 @@ async def reset_network():
         await app.sniffer_manager.stop()
     except Exception:
         pass
+    clear_log_file()
     stop_network()
     return start_network()
 
@@ -284,16 +324,35 @@ def associate_switch(data: dict):
     return "OK"
 
 @app.post("/api/mininet/links")
-def create_link(link: Tuple[str, str]):
-    # Create the link in the Mininet network using the link data
-    if link[0] not in app.net.nameToNode or link[1] not in app.net.nameToNode:
+def create_link(payload: Union[Tuple[str, str], LinkCreate]):
+    if isinstance(payload, (list, tuple)):
+        src, dst = payload
+        options = None
+    else:
+        src, dst = payload.src, payload.dst
+        options = payload.options
+
+    if src not in app.net.nameToNode or dst not in app.net.nameToNode:
         raise HTTPException(status_code=400, detail=f'node not in net')
-    key = frozenset((link[0], link[1]))
+    if app.net.nameToNode[src].type == "host" and app.net.nameToNode[src].intfList() and len([i for i in app.net.nameToNode[src].intfList() if i.name and i.name not in ("lo", "lo0")]) >= 1:
+        raise HTTPException(status_code=400, detail="host already has a link")
+    if app.net.nameToNode[dst].type == "host" and app.net.nameToNode[dst].intfList() and len([i for i in app.net.nameToNode[dst].intfList() if i.name and i.name not in ("lo", "lo0")]) >= 1:
+        raise HTTPException(status_code=400, detail="host already has a link")
+    key = frozenset((src, dst))
     if key in app.links:
         raise HTTPException(status_code=400, detail=f'link already exists')
-    new_link = app.net.addLink(link[0], link[1])
+    link_kwargs = {}
+    if options:
+        opt = options.model_dump(exclude_none=True)
+        if "delay" in opt and isinstance(opt["delay"], (int, float)):
+            opt["delay"] = f"{opt['delay']}ms"
+        if "jitter" in opt and isinstance(opt["jitter"], (int, float)):
+            opt["jitter"] = f"{opt['jitter']}ms"
+        link_kwargs.update(opt)
+        link_kwargs["cls"] = TCLink
+    new_link = app.net.addLink(src, dst, **link_kwargs)
     if app.net.is_started:
-        for node in link:
+        for node in (src, dst):
             node = app.net.nameToNode[node]
             if node.type == "host":
                 node.configDefault()
@@ -303,7 +362,7 @@ def create_link(link: Tuple[str, str]):
     # It is important to store this Link object because
     # mininet (apparently) doesn't have an easy way to access this
     app.links[key] = new_link
-    return {"from": link[0], "to": link[1]}
+    return {"from": src, "to": dst}
 
 
 @app.post("/api/mininet/node_position")
@@ -392,7 +451,7 @@ def get_node_stats(node_id: str):
     base_data = app.switches.get(node_id) or app.hosts.get(node_id) or app.controllers.get(node_id)
     if not base_data:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
-    result = dict(**base_data.dict())
+    result = dict(**base_data.model_dump())
 
     if node.type == "sw":
         ports_raw = node.dpctl("dump-ports")
@@ -713,7 +772,17 @@ async def websocket_terminal(websocket: WebSocket, node_id: str):
 
     master_fd, slave_fd = pty.openpty()
 
-    process = node.popen(["/bin/bash", "-i"], stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, text=True, close_fds=True)
+    env = dict(os.environ)
+    env["PS1"] = f"root@{node_id}:\\w$ "
+    process = node.popen(
+        ["/bin/bash", "--noprofile", "--norc", "-i"],
+        stdin=slave_fd,
+        stdout=slave_fd,
+        stderr=slave_fd,
+        text=True,
+        close_fds=True,
+        env=env,
+    )
 
     app.terminals[node_id] = (master_fd, process)
 
@@ -729,6 +798,32 @@ async def websocket_terminal(websocket: WebSocket, node_id: str):
         os.close(master_fd)
         app.terminals.pop(node_id, None)
         print(f"Closed terminal session for {node_id}")
+
+@app.websocket("/api/mininet/logs")
+async def websocket_logs(websocket: WebSocket):
+    await websocket.accept()
+    if not os.path.exists(LOG_FILE):
+        clear_log_file()
+    process = await asyncio.create_subprocess_exec(
+        "tail",
+        "-n",
+        "1000",
+        "-f",
+        LOG_FILE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    try:
+        while True:
+            line = await process.stdout.readline()
+            if not line:
+                await asyncio.sleep(0.05)
+                continue
+            await websocket.send_text(line.decode(errors="ignore").rstrip())
+    except WebSocketDisconnect:
+        pass
+    finally:
+        process.terminate()
 
 @app.websocket("/api/mininet/sniffer")
 async def websocket_sniffer(websocket: WebSocket):

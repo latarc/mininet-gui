@@ -64,12 +64,13 @@ export const deployController = async (ctl) => {
   }
 };
 
-export const deployLink = async (src, dst) => {
+export const deployLink = async (src, dst, options = null) => {
   try {
-    console.log(src, dst);
+    console.log(src, dst, options);
+    const payload = options ? { src, dst, options } : [src, dst];
     const response = await axios.post(
       baseUrl + "/api/mininet/links",
-      JSON.stringify([src, dst]),
+      JSON.stringify(payload),
       {
         headers: {
           "Access-Control-Allow-Origin": "*",

@@ -88,7 +88,16 @@ import controllerImg from "@/assets/light-controller.svg";
       ></div>
 
       <!-- WebShell at the bottom -->
-      <webshell class="webshell" :nodes="nodes" :snifferActive="snifferActive" />
+      <webshell
+        class="webshell"
+        :nodes="nodes"
+        :edges="edges"
+        :snifferActive="snifferActive"
+        :preferredView="webshellView"
+        :focusNodeId="webshellFocusId"
+        :openaiKey="settings.openaiApiKey"
+        :llmHandlers="llmHandlers"
+      />
     </div>
   </div>
 
@@ -112,6 +121,48 @@ import controllerImg from "@/assets/light-controller.svg";
               <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
               <span>Show host IP addresses</span>
             </label>
+            <label class="settings-toggle">
+              <input type="checkbox" v-model="settings.showSwitchDpids" @change="persistSettings" />
+              <span>Show switch DPIDs</span>
+            </label>
+            <label class="settings-input">
+              <span>OpenAI API Key</span>
+              <input
+                type="password"
+                v-model="settings.openaiApiKey"
+                @change="persistSettings"
+                placeholder="sk-..."
+              />
+            </label>
+            <div class="settings-link">
+              <div class="settings-link-title">Default Link Attributes</div>
+              <div class="settings-link-grid">
+                <label>
+                  Bandwidth (Mbps)
+                  <input type="number" v-model="settings.linkOptions.bw" @change="persistSettings" min="0" />
+                </label>
+                <label>
+                  Delay (ms)
+                  <input type="number" v-model="settings.linkOptions.delay" @change="persistSettings" min="0" />
+                </label>
+                <label>
+                  Jitter (ms)
+                  <input type="number" v-model="settings.linkOptions.jitter" @change="persistSettings" min="0" />
+                </label>
+                <label>
+                  Loss (%)
+                  <input type="number" v-model="settings.linkOptions.loss" @change="persistSettings" min="0" max="100" />
+                </label>
+                <label>
+                  Max Queue
+                  <input type="number" v-model="settings.linkOptions.max_queue_size" @change="persistSettings" min="0" />
+                </label>
+                <label class="settings-toggle settings-inline">
+                  <input type="checkbox" v-model="settings.linkOptions.use_htb" @change="persistSettings" />
+                  <span>Use HTB</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
         <div v-if="modalOption === 'confirmReset'" class="confirm-reset">
@@ -159,8 +210,20 @@ export default {
       modalHeader: "",
       modalOption: null,
       modalData: {},
+      webshellView: null,
+      webshellFocusId: null,
       settings: {
         showHostIp: false,
+        showSwitchDpids: false,
+        openaiApiKey: "",
+        linkOptions: {
+          bw: "",
+          delay: "",
+          jitter: "",
+          loss: "",
+          max_queue_size: "",
+          use_htb: false,
+        },
       },
     };
   },
@@ -168,6 +231,16 @@ export default {
     network() {
       console.log("computed ran again");
       return this.computeNetwork();
+    },
+    llmHandlers() {
+      return {
+        createHost: this.llmCreateHost,
+        createSwitch: this.llmCreateSwitch,
+        createLink: this.llmCreateLink,
+        runCommand: this.llmRunCommand,
+        runPingall: this.llmRunPingall,
+        deleteNode: this.llmDeleteNode,
+      };
     }
   },
   async mounted() {
@@ -198,6 +271,31 @@ export default {
         console.warn("Failed to persist settings", error);
       }
       this.applyHostLabels();
+      this.applySwitchLabels();
+    },
+    getLinkOptionsPayload() {
+      const opts = this.settings.linkOptions || {};
+      const payload = {};
+      if (opts.bw !== "" && opts.bw !== null && opts.bw !== undefined) payload.bw = Number(opts.bw);
+      if (opts.delay !== "" && opts.delay !== null && opts.delay !== undefined) payload.delay = Number(opts.delay);
+      if (opts.jitter !== "" && opts.jitter !== null && opts.jitter !== undefined) payload.jitter = Number(opts.jitter);
+      if (opts.loss !== "" && opts.loss !== null && opts.loss !== undefined) payload.loss = Number(opts.loss);
+      if (opts.max_queue_size !== "" && opts.max_queue_size !== null && opts.max_queue_size !== undefined) {
+        payload.max_queue_size = Number(opts.max_queue_size);
+      }
+      if (opts.use_htb) payload.use_htb = true;
+      return Object.keys(payload).length ? payload : null;
+    },
+    formatLinkTitle(options) {
+      if (!options) return "No link attributes";
+      const parts = [];
+      if (options.bw !== undefined) parts.push(`bw: ${options.bw} Mbps`);
+      if (options.delay !== undefined) parts.push(`delay: ${options.delay} ms`);
+      if (options.jitter !== undefined) parts.push(`jitter: ${options.jitter} ms`);
+      if (options.loss !== undefined) parts.push(`loss: ${options.loss} %`);
+      if (options.max_queue_size !== undefined) parts.push(`queue: ${options.max_queue_size}`);
+      if (options.use_htb) parts.push("htb: true");
+      return parts.length ? parts.join(" | ") : "No link attributes";
     },
     hostLabel(host) {
       if (!host) return "";
@@ -206,11 +304,28 @@ export default {
       }
       return `${host.name}`;
     },
+    switchLabel(sw) {
+      if (!sw) return "";
+      if (this.settings.showSwitchDpids) {
+        const num = Number(String(sw.id || sw.name).replace(/^s/, ""));
+        if (!Number.isNaN(num)) {
+          return `${sw.name} <${this.intToDpid(num)}>`;
+        }
+      }
+      return `${sw.name}`;
+    },
     applyHostLabels() {
       Object.values(this.hosts || {}).forEach((host) => {
         const label = this.hostLabel(host);
         host.label = label;
         this.nodes.update({ id: host.id, label });
+      });
+    },
+    applySwitchLabels() {
+      Object.values(this.switches || {}).forEach((sw) => {
+        const label = this.switchLabel(sw);
+        sw.label = label;
+        this.nodes.update({ id: sw.id, label });
       });
     },
     showSettingsModal() {
@@ -251,6 +366,7 @@ export default {
           highlight: { background: "#007acc", border: "#007acc" },
         };
         sw.image = switchImg;
+        sw.label = this.switchLabel(sw);
         return sw;
       });
 
@@ -271,6 +387,7 @@ export default {
           from: link[0],
           to: link[1],
           color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+          title: "No link attributes",
         });
       }
       for (const sw in this.switches) {
@@ -290,6 +407,7 @@ export default {
         ...Object.values(this.controllers),
       ]);
       this.nodes = nodes;
+      this.selectInitialWebshell();
       console.log("network inside mounted, before setup:", this.network);
       this.network.setOptions({
         manipulation: {
@@ -305,6 +423,12 @@ export default {
             if (from.type === "controller" && to.type === "controller") {
                 alert("cannot connect controller with controller");
                 return;
+            } else if (from.type === "host" && this.hostHasLink(from.id)) {
+                alert("host already has a link");
+                return;
+            } else if (to.type === "host" && this.hostHasLink(to.id)) {
+                alert("host already has a link");
+                return;
             } else if (from.type === "controller" || to.type === "controller") {
                 if (from.type === "host" || to.type === "host") {
                     alert("cannot associate host with controller");
@@ -316,9 +440,11 @@ export default {
                 data.color = {color: "#777788af"};
                 data.dashes = [10, 10];
             } else {
-              let link = await deployLink(data.from, data.to);
+              const options = this.getLinkOptionsPayload();
+              let link = await deployLink(data.from, data.to, options);
               data.id = link.id;
               data.color = {color: this.networkStarted ? "#00aa00ff" : "#999999ff"};
+              data.title = this.formatLinkTitle(options);
             }
             callback(data);
             this.enterAddEdgeMode();
@@ -371,6 +497,138 @@ export default {
         this.handleNodeDragEnd(event);
       });
     },
+    selectInitialWebshell() {
+      const allNodes = [
+        ...Object.values(this.hosts || {}),
+        ...Object.values(this.switches || {}),
+        ...Object.values(this.controllers || {}),
+      ];
+      if (allNodes.length === 0) {
+        this.webshellView = "logs";
+        this.webshellFocusId = null;
+        return;
+      }
+      const lowest = this.getLowestNodeId(allNodes.map((node) => node.id));
+      this.webshellView = "terminal";
+      this.webshellFocusId = null;
+      this.$nextTick(() => {
+        this.webshellFocusId = lowest;
+      });
+    },
+    getLowestNodeId(ids) {
+      return [...ids].sort(this.compareNodeIds)[0];
+    },
+    compareNodeIds(a, b) {
+      const parse = (value) => {
+        const match = String(value).match(/^([a-zA-Z]+)(\d+)$/);
+        if (!match) return { prefix: String(value), num: Number.MAX_SAFE_INTEGER };
+        return { prefix: match[1], num: Number(match[2]) };
+      };
+      const pa = parse(a);
+      const pb = parse(b);
+      if (pa.prefix === pb.prefix) return pa.num - pb.num;
+      return pa.prefix.localeCompare(pb.prefix);
+    },
+    focusWebshell(nodeId) {
+      this.webshellView = "terminal";
+      this.webshellFocusId = null;
+      this.$nextTick(() => {
+        this.webshellFocusId = nodeId;
+      });
+    },
+    hostHasLink(hostId) {
+      const edges = this.edges?.get ? this.edges.get() : [];
+      return edges.some((edge) => edge.from === hostId || edge.to === hostId);
+    },
+    async createLinkBetween(fromId, toId) {
+      const fromNode = this.nodes.get(fromId);
+      const toNode = this.nodes.get(toId);
+      if (!fromNode || !toNode) {
+        throw new Error("Invalid node ids for link.");
+      }
+      const options = this.getLinkOptionsPayload();
+      const link = await deployLink(fromId, toId, options);
+      this.edges.add({
+        from: fromId,
+        to: toId,
+        color: { color: this.networkStarted ? "#00aa00ff" : "#999999ff" },
+        title: this.formatLinkTitle(options),
+      });
+      return link;
+    },
+    async llmCreateHost({ x, y, nodes } = {}) {
+      if (Array.isArray(nodes) && nodes.length > 0) {
+        const created = [];
+        for (const entry of nodes) {
+          const pos = Number.isFinite(entry?.x) && Number.isFinite(entry?.y)
+            ? { x: entry.x, y: entry.y }
+            : undefined;
+          const host = await this.createHost(pos);
+          created.push(host.id);
+        }
+        return { ids: created };
+      }
+      const position = Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
+      const host = await this.createHost(position);
+      return { id: host.id };
+    },
+    async llmCreateSwitch({ x, y, nodes } = {}) {
+      if (Array.isArray(nodes) && nodes.length > 0) {
+        const created = [];
+        for (const entry of nodes) {
+          const pos = Number.isFinite(entry?.x) && Number.isFinite(entry?.y)
+            ? { x: entry.x, y: entry.y }
+            : undefined;
+          const sw = await this.createSwitch({ x: pos?.x, y: pos?.y });
+          created.push(sw.id);
+        }
+        return { ids: created };
+      }
+      const position = Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
+      const sw = await this.createSwitch({ x: position?.x, y: position?.y });
+      return { id: sw.id };
+    },
+    async llmCreateLink({ from, to } = {}) {
+      if (!from || !to) throw new Error("from and to are required.");
+      const link = await this.createLinkBetween(from, to);
+      return { from: link.from ?? from, to: link.to ?? to };
+    },
+    async llmRunCommand({ node_id, command } = {}) {
+      if (!node_id || !command) throw new Error("node_id and command are required.");
+      const wsUrl = `${import.meta.env.VITE_BACKEND_WS_URL}/api/mininet/terminal/${node_id}`;
+      return await new Promise((resolve, reject) => {
+        const ws = new WebSocket(wsUrl);
+        const timeout = setTimeout(() => {
+          ws.close();
+          reject(new Error("Command timed out."));
+        }, 4000);
+        ws.onopen = () => {
+          ws.send(command + "\n");
+          setTimeout(() => {
+            clearTimeout(timeout);
+            ws.close();
+            resolve({ ok: true });
+          }, 300);
+        };
+        ws.onerror = () => {
+          clearTimeout(timeout);
+          reject(new Error("WebSocket error while running command."));
+        };
+      });
+    },
+    async llmRunPingall() {
+      const result = await requestRunPingall();
+      return result || { ok: true };
+    },
+    async llmDeleteNode({ node_id } = {}) {
+      if (!node_id) throw new Error("node_id is required.");
+      await deleteNode(node_id);
+      this.nodes.remove(node_id);
+      delete this.hosts[node_id];
+      delete this.switches[node_id];
+      delete this.controllers[node_id];
+      return { deleted: node_id };
+    },
     intToDpid (number) {
       return number.toString(16).padStart(16, '0').replace(/(..)(..)(..)(..)(..)(..)(..)(..)/, '$1:$2:$3:$4:$5:$6:$7:$8');
     },
@@ -402,6 +660,7 @@ export default {
       if (await deployHost(host)) {
         this.nodes.add(host);
         this.hosts[host.name] = host;
+        this.focusWebshell(host.id);
       } else {
         throw "Could not create host " + hostId;
       }
@@ -426,7 +685,7 @@ export default {
           highlight: { background: "#007acc", border: "#007acc" },
         },
       };
-      sw.label = `${sw.name} <${this.intToDpid(swId)}>`;
+      sw.label = this.switchLabel(sw);
       sw.image = switchImg;
       if (switchData) {
         sw.x = switchData.x;
@@ -435,6 +694,7 @@ export default {
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
+        this.focusWebshell(sw.id);
       } else {
         throw "Could not create sw " + swId;
       }
@@ -497,6 +757,7 @@ export default {
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
         this.controllers[ctl.name] = ctl;
+        this.focusWebshell(ctl.id);
       } else {
         throw "Could not create controller " + ctlId;
       }
@@ -506,17 +767,22 @@ export default {
       event.preventDefault();
       console.log("drop event triggered, text/plain", event.dataTransfer.getData("text/plain"));
       var data = event.dataTransfer.getData("text/plain");
+      const rect = this.$refs.graph.getBoundingClientRect();
+      const domPoint = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
       if (data === "draggable-host") {
         this.createHost(
-          this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
+          this.network.DOMtoCanvas(domPoint),
         );
       } else if (data === "draggable-switch") {
         this.createSwitch(
-          this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
+          this.network.DOMtoCanvas(domPoint),
         );
       } else if (data === "draggable-controller") {
         this.showControllerFormModal(
-          this.network.DOMtoCanvas({ x: event.clientX, y: event.clientY }),
+          this.network.DOMtoCanvas(domPoint),
         );
       }
     },
@@ -921,5 +1187,56 @@ export default {
 .settings-toggle input {
   width: 16px;
   height: 16px;
+}
+
+.settings-input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.settings-input input {
+  border: 1px solid #cbd5f5;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
+
+.settings-link {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.settings-link-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.settings-link-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.settings-link-grid input {
+  border: 1px solid #cbd5f5;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+}
+
+.settings-inline {
+  align-items: center;
+  flex-direction: row;
 }
 </style>

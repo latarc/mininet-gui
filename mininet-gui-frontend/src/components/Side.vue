@@ -35,7 +35,7 @@
       </button>
     </div>
     <div class="w-full border-t border-[#333]" aria-hidden="true"></div>
-    <div class="side-scroll flex flex-col gap-4 overflow-x-hidden overflow-y-auto p-3">
+    <div class="side-scroll flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-3">
     <!-- Topology Controls Group -->
     <div class="sidebar-group flex flex-col gap-2">
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
@@ -149,58 +149,6 @@
       />
     </div>
 
-    <!-- Settings Group -->
-    <div class="sidebar-group flex flex-col gap-2">
-      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Settings
-      </h2>
-      <button
-        id="button-settings"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        @click="$emit('openSettings')"
-      >
-        <span class="material-symbols-outlined">settings</span>
-        <span class="label">Open Settings</span>
-      </button>
-    </div>
-
-    <!-- Draggable Nodes Group -->
-    <div class="sidebar-group flex flex-col gap-2">
-      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Nodes Palette
-      </h2>
-      <div class="draggable-container flex flex-col items-center gap-3 py-2">
-        <figure
-          id="draggable-host"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-        >
-          <img alt="host" class="h-10 w-10" src="@/assets/host.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc]">Host</figcaption>
-        </figure>
-        <figure
-          id="draggable-switch"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-        >
-          <img alt="switch" class="h-10 w-10" src="@/assets/switch.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc]">Switch</figcaption>
-        </figure>
-        <figure
-          id="draggable-controller"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-        >
-          <img
-            alt="controller"
-            class="h-10 w-10"
-            src="@/assets/controller.svg"
-            draggable="false"
-          />
-          <figcaption class="text-[11px] text-[#cccccc]">Controller</figcaption>
-        </figure>
-      </div>
-    </div>
 
     <!-- Hotkeys Help Group
     <div class="sidebar-group hotkeys">
@@ -210,6 +158,62 @@
       <p><strong>h</strong>: Toggle hosts visibility</p>
       <p><strong>c</strong>: Toggle controllers visibility</p>
     </div> -->
+    </div>
+
+    <div class="side-bottom flex flex-col gap-3 p-3 pt-2" :class="{ 'collapsed-hint': !sideIsActive }">
+      <!-- Draggable Nodes Group -->
+      <div class="w-full border-t border-[#333]" aria-hidden="true"></div>
+      <div class="sidebar-group flex flex-col gap-2">
+        <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+          Nodes Palette
+        </h2>
+        <div class="draggable-container flex flex-col items-center gap-3 py-2">
+          <figure
+            id="draggable-host"
+            class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+            draggable="true"
+          >
+            <img alt="host" class="h-10 w-10" src="@/assets/host.svg" draggable="false" />
+            <figcaption class="text-[11px] text-[#cccccc]">Host</figcaption>
+          </figure>
+          <figure
+            id="draggable-switch"
+            class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+            draggable="true"
+          >
+            <img alt="switch" class="h-10 w-10" src="@/assets/switch.svg" draggable="false" />
+            <figcaption class="text-[11px] text-[#cccccc]">Switch</figcaption>
+          </figure>
+          <figure
+            id="draggable-controller"
+            class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+            draggable="true"
+          >
+            <img
+              alt="controller"
+              class="h-10 w-10"
+              src="@/assets/controller.svg"
+              draggable="false"
+            />
+            <figcaption class="text-[11px] text-[#cccccc]">Controller</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <!-- Settings Group -->
+      <div class="sidebar-group flex flex-col gap-2">
+        <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+          Settings
+        </h2>
+        <button
+          id="button-settings"
+          class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+          @click="$emit('openSettings')"
+        >
+          <span class="material-symbols-outlined">settings</span>
+          <span class="label">Open Settings</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -339,6 +343,23 @@ export default {
   max-height: 40px;
 }
 
+.collapsed-hint {
+  position: relative;
+  padding-top: 14px;
+}
+
+.collapsed-hint::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 4px;
+  height: 10px;
+  background: linear-gradient(to bottom, rgba(0, 122, 204, 0.4), rgba(0, 122, 204, 0));
+  border-radius: 999px;
+  pointer-events: none;
+}
+
 .icon-button {
   width: 40px;
   height: 40px;
@@ -361,13 +382,16 @@ export default {
 .side-scroll::-webkit-scrollbar {
   width: 8px;
 }
+
 .side-scroll::-webkit-scrollbar-track {
   background: #1e1e1e;
 }
+
 .side-scroll::-webkit-scrollbar-thumb {
   background-color: #007acc;
   border-radius: 4px;
 }
+
 .side-scroll::-webkit-scrollbar-thumb:hover {
   background-color: #005a9e;
 }
