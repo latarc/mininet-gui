@@ -428,3 +428,69 @@ export const isNetworkStarted = async () => {
 export const getNodeStats = async (nodeId) => {
   return await sendGet(baseUrl + `/api/mininet/stats/${nodeId}`);
 };
+
+export const listFlows = async (switchId) => {
+  try {
+    const response = await axios.get(baseUrl + `/api/mininet/flows/${switchId}`, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const addFlow = async (flow) => {
+  try {
+    const response = await axios.post(
+      baseUrl + "/api/mininet/flows",
+      JSON.stringify(flow),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const deleteFlows = async (flow) => {
+  try {
+    const response = await axios.delete(baseUrl + "/api/mininet/flows", {
+      data: flow,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
+export const deleteFlowById = async (switchId, flowId) => {
+  try {
+    const response = await axios.delete(
+      baseUrl + `/api/mininet/flows/${switchId}/${flowId}`,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};

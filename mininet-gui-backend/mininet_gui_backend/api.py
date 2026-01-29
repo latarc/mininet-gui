@@ -14,6 +14,7 @@ import pty
 import json
 import select
 import asyncio
+import subprocess
 from mininet_gui_backend.sniffer import SnifferManager
 import pyshark.ek_field_mapping as ek_field_mapping
 from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
@@ -32,6 +33,7 @@ from fastapi.responses import PlainTextResponse, Response
 from mininet_gui_backend.export import export_net_to_script, export_net_to_json
 from mininet_gui_backend.cli import CLISession
 from mininet_gui_backend.schema import Switch, Host, Controller
+from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
 
 
 FLOW_FIELDS = [
@@ -436,6 +438,149 @@ def get_node_stats(node_id: str):
     result.pop("y", None)
     
     return result
+
+@app.post("/api/mininet/flows")
+def add_flow(rule: FlowRuleCreate):
+    if not app.net.is_started:
+        raise HTTPException(status_code=400, detail="network must be started to add flows")
+    if rule.switch not in app.net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Switch {rule.switch} not found")
+    node = app.net.nameToNode[rule.switch]
+    if getattr(node, "type", None) not in ("sw", "switch"):
+        raise HTTPException(status_code=400, detail="node is not a switch")
+
+    flow = build_flow(rule)
+    cmd = ["ovs-ofctl"]
+    if rule.of_version:
+        cmd.extend(["-O", rule.of_version])
+    cmd.extend(["add-flow", rule.switch, flow])
+    result = subprocess.run(cmd, text=True, capture_output=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "ovs-ofctl add-flow failed").strip()
+        raise HTTPException(status_code=400, detail=detail)
+
+    return {"status": "ok", "flow": flow}
+
+@app.get("/api/mininet/flows/{switch_id}")
+def list_flows(switch_id: str):
+    if not app.net.is_started:
+        raise HTTPException(status_code=400, detail="network must be started to list flows")
+    if switch_id not in app.net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Switch {switch_id} not found")
+    node = app.net.nameToNode[switch_id]
+    if getattr(node, "type", None) not in ("sw", "switch"):
+        raise HTTPException(status_code=400, detail="node is not a switch")
+
+    cmd = ["ovs-ofctl", "dump-flows", switch_id]
+    result = subprocess.run(cmd, text=True, capture_output=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "ovs-ofctl dump-flows failed").strip()
+        raise HTTPException(status_code=400, detail=detail)
+    return {"switch": switch_id, "flows": result.stdout.strip()}
+
+@app.delete("/api/mininet/flows")
+def delete_flows(rule: FlowRuleDelete):
+    if not app.net.is_started:
+        raise HTTPException(status_code=400, detail="network must be started to delete flows")
+    if rule.switch not in app.net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Switch {rule.switch} not found")
+    node = app.net.nameToNode[rule.switch]
+    if getattr(node, "type", None) not in ("sw", "switch"):
+        raise HTTPException(status_code=400, detail="node is not a switch")
+
+    match = build_flow_match(rule)
+    cmd = ["ovs-ofctl"]
+    if rule.of_version:
+        cmd.extend(["-O", rule.of_version])
+    if rule.strict:
+        cmd.append("--strict")
+    cmd.extend(["del-flows", rule.switch])
+    if match:
+        cmd.append(match)
+    result = subprocess.run(cmd, text=True, capture_output=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "ovs-ofctl del-flows failed").strip()
+        raise HTTPException(status_code=400, detail=detail)
+
+    return {"status": "ok", "match": match or "all"}
+
+def _parse_flow_match_from_dump(line: str) -> str:
+    line = line.strip()
+    if "actions=" not in line:
+        raise ValueError("flow line missing actions")
+    head = line.split(" actions=", 1)[0].strip()
+    parts = [p.strip() for p in head.split(",") if p.strip()]
+    match_parts = []
+    cookie_value = None
+    table_value = None
+    priority_value = None
+    skip_keys = {
+        "duration",
+        "n_packets",
+        "n_bytes",
+        "idle_timeout",
+        "hard_timeout",
+    }
+    for part in parts:
+        if part.startswith("cookie="):
+            cookie_value = part.split("=", 1)[1]
+            continue
+        if part.startswith("table="):
+            table_value = part.split("=", 1)[1]
+            continue
+        if part.startswith("priority="):
+            priority_value = part.split("=", 1)[1]
+            continue
+        key = part.split("=", 1)[0]
+        if key in skip_keys:
+            continue
+        match_parts.append(part)
+    if cookie_value:
+        if "/" not in cookie_value:
+            cookie_value = f"{cookie_value}/-1"
+        match_parts.insert(0, f"cookie={cookie_value}")
+    if table_value is not None:
+        match_parts.insert(0, f"table={table_value}")
+    if priority_value is not None:
+        match_parts.insert(0, f"priority={priority_value}")
+    if not match_parts:
+        raise ValueError("could not build match")
+    return ",".join(match_parts)
+
+@app.delete("/api/mininet/flows/{switch_id}/{flow_id}")
+def delete_flow_by_id(switch_id: str, flow_id: int):
+    if not app.net.is_started:
+        raise HTTPException(status_code=400, detail="network must be started to delete flows")
+    if switch_id not in app.net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Switch {switch_id} not found")
+    node = app.net.nameToNode[switch_id]
+    if getattr(node, "type", None) not in ("sw", "switch"):
+        raise HTTPException(status_code=400, detail="node is not a switch")
+    if flow_id <= 0:
+        raise HTTPException(status_code=400, detail="flow_id must be >= 1")
+
+    dump = subprocess.run(["ovs-ofctl", "dump-flows", switch_id], text=True, capture_output=True)
+    if dump.returncode != 0:
+        detail = (dump.stderr or dump.stdout or "ovs-ofctl dump-flows failed").strip()
+        raise HTTPException(status_code=400, detail=detail)
+    lines = [l for l in dump.stdout.splitlines() if "actions=" in l]
+    if flow_id > len(lines):
+        raise HTTPException(status_code=404, detail="flow_id not found")
+    line = lines[flow_id - 1]
+    try:
+        match = _parse_flow_match_from_dump(line)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    result = subprocess.run(
+        ["ovs-ofctl", "--strict", "del-flows", switch_id, match],
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "ovs-ofctl del-flows failed").strip()
+        raise HTTPException(status_code=400, detail=detail)
+    return {"status": "ok", "match": match}
 
 @app.get("/api/mininet/export_script", response_class=PlainTextResponse)
 def export_network():

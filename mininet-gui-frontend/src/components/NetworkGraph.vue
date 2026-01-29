@@ -92,7 +92,11 @@ import controllerImg from "@/assets/light-controller.svg";
   </div>
 
   <Teleport to="body">
-    <modal :show="showModal" @close="closeModal" @keydown.esc="closeModal">
+    <modal
+      :show="showModal"
+      @close="closeModal"
+      @keydown.esc="closeModal"
+    >
       <template #header>
         <h3>{{ modalHeader }}</h3>
       </template>
