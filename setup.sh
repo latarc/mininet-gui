@@ -2,7 +2,7 @@
 
 sudo apt update && sudo apt install -y curl npm
 
-MININET_GUI_DIR="/home/mininet/mininet-gui"
+MININET_GUI_DIR="$HOME/mininet-gui"
 BACKEND_DIR="$MININET_GUI_DIR/mininet-gui-backend"
 FRONTEND_DIR="$MININET_GUI_DIR/mininet-gui-frontend"
 
@@ -21,4 +21,4 @@ nvm install 18.20.7
 echo "Installing frontend deps"
 (cd $FRONTEND_DIR ; npm install)
 
-echo "alias mininet_gui=$MININET_GUI_DIR/run.sh" >> /home/mininet/.bashrc
+echo "alias mininet_gui=$MININET_GUI_DIR/run.sh" >> $HOME/.bashrc
