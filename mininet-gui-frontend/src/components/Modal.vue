@@ -1,95 +1,45 @@
 <script setup>
+import { computed } from "vue";
+import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from "radix-vue";
+
 const props = defineProps({
-  show: Boolean
-})
+  show: Boolean,
+});
+
+const emit = defineEmits(["close"]);
+
+const open = computed({
+  get: () => props.show,
+  set: (value) => {
+    if (!value) emit("close");
+  },
+});
 </script>
 
 <template>
-  <Transition name="modal">
-    <div v-if="show" class="modal-mask">
-      <div class="modal-container">
-        <div class="modal-header">
-          <slot name="header">default header</slot>
-          <button
-              class="modal-default-button"
-              @click="$emit('close')"
-            >X</button>
+  <DialogRoot v-model:open="open">
+    <DialogPortal>
+      <DialogOverlay
+        class="fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      />
+      <DialogContent
+        class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg"
+      >
+        <div class="flex items-start justify-between gap-3 border-b bg-gradient-to-b from-slate-50 to-white px-6 py-5">
+          <DialogTitle class="text-left text-lg font-semibold tracking-tight">
+            <slot name="header">default header</slot>
+          </DialogTitle>
+          <DialogClose
+            class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+            aria-label="Close"
+          >
+            <span aria-hidden="true">x</span>
+          </DialogClose>
         </div>
-
-        <div class="modal-body">
+        <div class="max-h-[70vh] overflow-y-auto px-6 pb-6 pt-4 text-left text-slate-700">
           <slot name="body">default body</slot>
         </div>
-      </div>
-    </div>
-  </Transition>
+      </DialogContent>
+    </DialogPortal>
+  </DialogRoot>
 </template>
-
-<style>
-.modal-mask {
-  position: fixed;
-  z-index: 9998;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.3s ease;
-  overflow: hidden;
-}
-
-.modal-container {
-  min-width: 200px;
-  max-width: 90vw;
-  width: auto;
-  max-height: 80vh;
-  overflow-y: auto;
-  padding: 20px 30px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);
-  transition: all 0.3s ease;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-direction: row;
-}
-
-.modal-header h3 {
-  margin-top: 0;
-  color: #42b983;
-}
-
-.modal-body {
-  margin: 10px 0;
-  word-wrap: break-word;
-  text-align: center;
-}
-
-.modal-default-button {
-  background: none;
-  color: inherit;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  outline: inherit;
-}
-
-.modal-enter-from {
-  opacity: 0;
-}
-
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-container,
-.modal-leave-to .modal-container {
-  transform: scale(1.1);
-}
-</style>

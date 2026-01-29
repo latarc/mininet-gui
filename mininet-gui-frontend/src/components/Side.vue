@@ -1,7 +1,7 @@
 <template>
   <div
     id="side"
-    class="side"
+    class="side flex h-full w-[80vw] min-w-[220px] max-w-[320px] flex-col gap-4 overflow-x-hidden overflow-y-auto bg-[#1e1e1e] p-3 text-[#cccccc] outline-none sm:w-[60vw] lg:w-[280px]"
     tabindex="0"
     @dragstart="handleDragStart"
     @keydown.esc="$emit('closeAllActiveModes')"
@@ -12,48 +12,94 @@
     @keydown.delete="$emit('deleteSelected')"
     @keydown.ctrl.a.prevent="$emit('doSelectAll')"
   >
+    <div class="flex w-full items-center justify-center py-3">
+      <img
+        src="@/assets/logo-mininet-gui.png"
+        alt="Mininet GUI"
+        class="w-full h-auto object-contain"
+      />
+    </div>
     <!-- Topology Controls Group -->
-    <div class="sidebar-group">
-      <h2>Topology Controls</h2>
-      <button class="button-control-network" id="button-create-topology" @click="createTopology()">
+    <div class="sidebar-group flex flex-col gap-2">
+      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+        Topology Controls
+      </h2>
+      <button
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        id="button-create-topology"
+        @click="createTopology()"
+      >
         <span class="material-symbols-outlined">scatter_plot</span>
         Generate Topology
       </button>
-      <button class="button-control-network" id="button-reset-topology" @click="$emit('resetTopology')">
+      <button
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        id="button-reset-topology"
+        @click="$emit('resetTopology')"
+      >
         <span class="material-symbols-outlined">restart_alt</span>
         Reset Topology
       </button>
     </div>
 
     <!-- Link & Delete Actions Group -->
-    <div class="sidebar-group">
-      <h2>Actions</h2>
-      <button id="button-create-link" class="button-control-network" @click="$emit('toggleAddEdgeMode')">
+    <div class="sidebar-group flex flex-col gap-2">
+      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+        Actions
+      </h2>
+      <button
+        id="button-create-link"
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        :class="addEdgeMode ? 'border-[#007acc] bg-[#0b2b3b] text-[#e6f2ff] ring-1 ring-[#007acc]' : ''"
+        @click="$emit('toggleAddEdgeMode')"
+      >
         <span class="material-symbols-outlined">link</span>
         {{ !addEdgeMode ? "Create Link" : "Cancel Add Link" }}
       </button>
-      <button id="button-delete-selected" class="button-control-network" @click="$emit('deleteSelected')">
+      <button
+        id="button-delete-selected"
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        @click="$emit('deleteSelected')"
+      >
         <span class="material-symbols-outlined">delete</span>
         Delete Selected
       </button>
-      <button id="button-pingall" class="button-control-network" @click="$emit('runPingall')">
+      <button
+        id="button-pingall"
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        @click="$emit('runPingall')"
+      >
         <span class="material-symbols-outlined">network_check</span>
         Run Pingall Test
       </button>
     </div>
 
     <!-- Export/Import Controls Group -->
-    <div class="sidebar-group">
-      <h2>Export/Import</h2>
-      <button class="button-control-network" id="button-export-topology" @click="$emit('exportTopology')">
+    <div class="sidebar-group flex flex-col gap-2">
+      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+        Export/Import
+      </h2>
+      <button
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        id="button-export-topology"
+        @click="$emit('exportTopology')"
+      >
         <span class="material-symbols-outlined">upload_file</span>
         Export Topology (JSON)
       </button>
-      <button class="button-control-network" id="button-import-topology" @click="openFileDialog">
+      <button
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        id="button-import-topology"
+        @click="openFileDialog"
+      >
         <span class="material-symbols-outlined">download</span>
         Import Topology (JSON)
       </button>
-      <button class="button-control-network" id="button-export-script" @click="$emit('exportMininetScript')">
+      <button
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        id="button-export-script"
+        @click="$emit('exportMininetScript')"
+      >
         <span class="material-symbols-outlined">code</span>
         Export Mininet Script
       </button>
@@ -68,20 +114,39 @@
     </div>
 
     <!-- Draggable Nodes Group -->
-    <div class="sidebar-group">
-      <h2>Nodes Palette</h2>
-      <div class="draggable-container">
-        <figure id="draggable-host" class="draggable-node" draggable="true">
-          <img alt="host" src="@/assets/host.svg" draggable="false" />
-          <figcaption>Host</figcaption>
+    <div class="sidebar-group flex flex-col gap-2">
+      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+        Nodes Palette
+      </h2>
+      <div class="draggable-container flex flex-col items-center gap-3 py-2">
+        <figure
+          id="draggable-host"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+        >
+          <img alt="host" class="h-10 w-10" src="@/assets/host.svg" draggable="false" />
+          <figcaption class="text-[11px] text-[#cccccc]">Host</figcaption>
         </figure>
-        <figure id="draggable-switch" class="draggable-node" draggable="true">
-          <img alt="switch" src="@/assets/switch.svg" draggable="false" />
-          <figcaption>Switch</figcaption>
+        <figure
+          id="draggable-switch"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+        >
+          <img alt="switch" class="h-10 w-10" src="@/assets/switch.svg" draggable="false" />
+          <figcaption class="text-[11px] text-[#cccccc]">Switch</figcaption>
         </figure>
-        <figure id="draggable-controller" class="draggable-node" draggable="true">
-          <img alt="controller" src="@/assets/controller.svg" draggable="false" />
-          <figcaption>Controller</figcaption>
+        <figure
+          id="draggable-controller"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+        >
+          <img
+            alt="controller"
+            class="h-10 w-10"
+            src="@/assets/controller.svg"
+            draggable="false"
+          />
+          <figcaption class="text-[11px] text-[#cccccc]">Controller</figcaption>
         </figure>
       </div>
     </div>
@@ -96,7 +161,11 @@
     </div> -->
   </div>
 
-  <button id="button-hide-side" class="button-hide-side" @click="toggleSide()">
+  <button
+    id="button-hide-side"
+    class="button-hide-side flex h-12 w-10 items-center justify-center rounded-r-lg border-none bg-[#1e1e1e] text-[#cccccc] transition-colors hover:bg-[#2d2d2d] sm:h-full sm:w-6"
+    @click="toggleSide()"
+  >
     <span class="material-symbols-outlined">chevron_left</span>
   </button>
 </template>
@@ -168,18 +237,8 @@ export default {
 @import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0");
 
 .side {
-  background-color: #1e1e1e;
-  height: 100%;
-  min-width: 10vw;
-  width: 15vw;
   position: relative;
   z-index: 2;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 10px;
-  box-sizing: border-box;
-
-  /* SCROLLBAR FOR FIREFOX */
   scrollbar-width: thin;
   scrollbar-color: #007acc #1e1e1e;
 }
@@ -199,90 +258,9 @@ export default {
   background-color: #005a9e;
 }
 
-.side h2 {
-  color: #cccccc;
-  font-family: 'Fira Sans', sans-serif;
-  margin: 10px 5px;
-  font-size: 14pt;
-  border-bottom: 1px solid #333;
-  padding-bottom: 5px;
-}
-
-.side p,
-figcaption {
-  color: #cccccc;
-  font-family: 'Fira Sans', sans-serif;
-  /* margin: 5px 5px; */
-  padding: 2px;
-  font-size: 10pt;
-}
-
 .side input,
 .side select {
   color: #000;
-}
-
-.sidebar-group {
-  margin-bottom: 15px;
-}
-
-.button-control-network {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: #cccccc;
-  background-color: #2d2d2d;
-  border: solid 1px #333;
-  border-radius: 4px;
-  font-size: 10pt;
-  font-family: 'Fira Sans', sans-serif;
-  margin: 5px;
-  padding: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.button-control-network:hover {
-  background-color: #3e3e3e;
-}
-
-.button-control-network:active {
-  background-color: #007acc;
-}
-
-.button-hide-side {
-  position: relative;
-  z-index: 4;
-  padding: 0;
-  height: 100%;
-  width: 24px;
-  font-size: 14pt;
-  border: none;
-  border-radius: 0 4px 4px 0;
-  background-color: #1e1e1e;
-  color: #cccccc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.button-hide-side:hover {
-  background-color: #2d2d2d;
-}
-
-.draggable-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 5px;
-  /* gap: 5px; */
-}
-
-.draggable-node {
-  width: 40px;
-  text-align: center;
-  padding: 5px;
 }
 
 .draggable-node > img {
@@ -290,19 +268,8 @@ figcaption {
   filter: brightness(0) invert(1);
 }
 
-.draggable-node figcaption {
-  color: #cccccc;
-  font-size: 9pt;
-  margin-top: 4px;
-}
-
 .draggable-node:hover {
   cursor: grab;
   opacity: 0.9;
-}
-
-.hotkeys p {
-  font-size: 9pt;
-  margin: 3px 5px;
 }
 </style>

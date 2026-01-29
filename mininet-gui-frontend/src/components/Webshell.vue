@@ -1,13 +1,24 @@
 <template>
-  <div class="webshell-container">
+  <div
+    class="webshell-container"
+    :style="{ height: isMinimized ? '48px' : panelHeight + 'px' }"
+  >
+    <div v-show="!isMinimized" class="resize-handle-top" @mousedown.prevent="startResize"></div>
     <div class="webshell-header">
-      <i class="mdi mdi-console"></i>
-      <span class="title">WebShell</span>
+      <div class="webshell-title">
+        <i class="mdi mdi-console"></i>
+        <span class="title">WebShell</span>
+      </div>
+      <div class="webshell-actions">
+        <button class="icon-button" type="button" @click="toggleMinimize">
+          <span class="material-symbols-outlined">{{ isMinimized ? "expand_less" : "expand_more" }}</span>
+        </button>
+      </div>
     </div>
 
-    <div class="tabs">
+    <div v-show="!isMinimized" class="tabs">
       <button
-        v-for="node in nodes.get()"
+        v-for="node in getNodeList()"
         :key="node.id"
         @click="setActiveTab(node.id)"
         :class="{ active: activeTab === node.id }"
@@ -17,58 +28,131 @@
       </button>
     </div>
 
-    <div class="terminal-window" @click="focusInput">
-      <pre ref="terminalOutput" class="terminal-output">
-        <!-- the cursor MUST be in the same line as the terminal text or else it breaks -->
-        {{ sanitizedTerminals[activeTab] }}<span :class="['cursor', isFocused ? 'filled' : 'empty']"></span>
-      </pre>
-      <input
-        ref="inputField"
-        v-model="userInputs[activeTab]"
-        @keydown.prevent="handleKeydown"
-        @keyup="handleKeyup"
-        @focus="isFocused = true"
-        @blur="isFocused = false"
-        class="hidden-input"
-        tabindex="-1"
-      />
+    <div v-show="!isMinimized" class="terminal-window" @click="focusActiveTerminal">
+      <div
+        v-for="node in getNodeList()"
+        :key="node.id"
+        :ref="el => setTerminalRef(node.id, el)"
+        :class="['terminal-instance', { active: activeTab === node.id }]"
+      ></div>
+      <div v-if="getNodeList().length === 0" class="terminal-empty">
+        No nodes available.
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import "@xterm/xterm/css/xterm.css";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+
 export default {
   props: ["nodes"],
   data() {
     return {
       terminals: {},
-      sanitizedTerminals: {},
+      fitAddons: {},
+      terminalRefs: {},
       sockets: {},
-      userInputs: {},
       activeTab: null,
-      isFocused: false,
-      ctrlPressed: false,
       backendWsUrl: import.meta.env.VITE_BACKEND_WS_URL,
+      resizeObserver: null,
+      isMinimized: false,
+      panelHeight: 320,
+      isResizing: false,
     };
   },
   watch: {
     nodes: {
       handler(newNodes) {
-        if (newNodes.length === 0) {
-          this.clearTerminals();
-        }
+        this.syncNodes();
       },
       deep: true,
     },
   },
+  mounted() {
+    this.syncNodes();
+    this.resizeObserver = new ResizeObserver(() => {
+      if (this.activeTab) this.fitTerminal(this.activeTab);
+    });
+  },
   beforeUnmount() {
     Object.values(this.sockets).forEach(ws => ws?.close());
+    Object.values(this.terminals).forEach(term => term?.dispose());
+    if (this.resizeObserver) this.resizeObserver.disconnect();
+    window.removeEventListener("mousemove", this.handleResize);
+    window.removeEventListener("mouseup", this.stopResize);
   },
   methods: {
+    getNodeList() {
+      return this.nodes?.get ? this.nodes.get() : [];
+    },
+
+    syncNodes() {
+      const nodeList = this.getNodeList();
+      if (nodeList.length === 0) {
+        this.clearTerminals();
+        return;
+      }
+
+      if (!this.activeTab) {
+        this.activeTab = nodeList[0]?.id ?? null;
+      }
+
+      const existingIds = new Set(nodeList.map(node => node.id));
+      Object.keys(this.terminals).forEach(nodeId => {
+        if (!existingIds.has(nodeId)) {
+          this.disposeTerminal(nodeId);
+        }
+      });
+    },
+
+    setTerminalRef(nodeId, el) {
+      if (!el) return;
+      this.terminalRefs[nodeId] = el;
+      if (!this.terminals[nodeId]) {
+        this.createTerminal(nodeId, el);
+      }
+      if (this.resizeObserver) this.resizeObserver.observe(el);
+    },
+
+    createTerminal(nodeId, el) {
+      const term = new Terminal({
+        convertEol: true,
+        cursorBlink: true,
+        fontFamily: "Fira Code, Consolas, monospace",
+        fontSize: 13,
+        theme: {
+          background: "#1e1e1e",
+          foreground: "#cccccc",
+          cursor: "#cccccc",
+          selection: "#264f78",
+        },
+      });
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(el);
+      fitAddon.fit();
+
+      term.onData(data => {
+        this.sendChar(nodeId, data);
+      });
+
+      this.terminals[nodeId] = term;
+      this.fitAddons[nodeId] = fitAddon;
+      this.initWebSocket(nodeId);
+
+      if (this.activeTab === nodeId) this.focusActiveTerminal();
+    },
+
     setActiveTab(nodeId) {
       this.activeTab = nodeId;
-      this.focusInput();
       if (!this.sockets[nodeId]) this.initWebSocket(nodeId);
+      this.$nextTick(() => {
+        this.fitTerminal(nodeId);
+        this.focusActiveTerminal();
+      });
     },
 
     initWebSocket(nodeId) {
@@ -84,33 +168,9 @@ export default {
     },
 
     handleTerminalData(nodeId, data) {
-      if (!this.terminals[nodeId]) this.terminals[nodeId] = "";
-
-      // backspace
-      if (data === ("\b \b") || data === "\b\x1b[K") {
-        this.terminals[nodeId] = this.terminals[nodeId].replace(/.$/, "");
-        this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
-        return;
-      }
-
-      // Ignore "bell" char
-      if (data === "\u0007") return;
-
-      if (data.includes("[H\u001b[2J\u001b[3J\u001b")) {
-        this.terminals[nodeId] = "";
-        this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
-        return;
-      }
-
-      data = data.replace(/\x1b\]0;.*?\x07/g, "");
-      data = data.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, "");
-      data = data.replace(/\x1b\[\?2004[hl]/g, "");
-      data = data.replace(/\u001b/g, "");
-
-      this.terminals[nodeId] += data;
-      this.sanitizedTerminals[nodeId] = this.terminals[nodeId];
-
-      if (this.activeTab === nodeId) this.scrollToBottom();
+      const term = this.terminals[nodeId];
+      if (!term) return;
+      term.write(data);
     },
 
     sendChar(nodeId, char) {
@@ -123,67 +183,67 @@ export default {
       }
     },
 
-    handleKeydown(event) {
-      const nodeId = this.activeTab;
-      if (!nodeId) return;
-
-      if (["Shift", "CapsLock", "Dead", "Alt"].includes(event.key)) {
-        return;
-      }
-
-      if (event.key === "Control") {
-        this.ctrlPressed = true;
-        return;
-      }
-
-      // Ctrl + C
-      if (this.ctrlPressed && event.key.toLowerCase() === "c") {
-        this.sendChar(nodeId, "\x03");
-      }
-      // Ctrl + L
-      else if (this.ctrlPressed && event.key.toLowerCase() === "l") {
-        this.sendChar(nodeId, "\u001b[H\u001b[2J\u001b[3J\u001b");
-      }
-      else if (event.key === "Backspace") {
-        this.sendChar(nodeId, "\b");
-      }
-      else if (event.key === "Enter") {
-        this.sendChar(nodeId, "\n");
-      }
-      else if (event.key === "Tab") {
-        this.sendChar(nodeId, "\t");
-      }
-      else {
-        this.sendChar(nodeId, event.key);
-      }
-
-      this.scrollToBottom();
+    focusActiveTerminal() {
+      const term = this.terminals[this.activeTab];
+      if (term) term.focus();
     },
 
-    handleKeyup(event) {
-      if (event.key === "Control") {
-        this.ctrlPressed = false;
+    fitTerminal(nodeId) {
+      const fitAddon = this.fitAddons[nodeId];
+      if (fitAddon) fitAddon.fit();
+    },
+
+    disposeTerminal(nodeId) {
+      if (this.resizeObserver && this.terminalRefs[nodeId]) {
+        this.resizeObserver.unobserve(this.terminalRefs[nodeId]);
+      }
+      this.sockets[nodeId]?.close();
+      this.terminals[nodeId]?.dispose();
+      delete this.sockets[nodeId];
+      delete this.terminals[nodeId];
+      delete this.fitAddons[nodeId];
+      delete this.terminalRefs[nodeId];
+      if (this.activeTab === nodeId) this.activeTab = null;
+    },
+
+    toggleMinimize() {
+      this.isMinimized = !this.isMinimized;
+      if (!this.isMinimized) {
+        this.$nextTick(() => {
+          if (this.activeTab) this.fitTerminal(this.activeTab);
+        });
       }
     },
 
-    focusInput() {
-      this.$refs.inputField?.focus();
+    startResize(event) {
+      if (this.isMinimized) return;
+      this.isResizing = true;
+      this.startY = event.clientY;
+      this.startHeight = this.panelHeight;
+      window.addEventListener("mousemove", this.handleResize);
+      window.addEventListener("mouseup", this.stopResize);
     },
 
-    scrollToBottom() {
-      this.$nextTick(() => {
-        const terminalOutput = this.$refs.terminalOutput;
-        if (terminalOutput) {
-          terminalOutput.scrollTop = terminalOutput.scrollHeight;
-        }
-      });
+    handleResize(event) {
+      if (!this.isResizing) return;
+      const delta = this.startY - event.clientY;
+      const nextHeight = Math.min(720, Math.max(160, this.startHeight + delta));
+      this.panelHeight = nextHeight;
+      if (this.activeTab) this.fitTerminal(this.activeTab);
+    },
+
+    stopResize() {
+      this.isResizing = false;
+      window.removeEventListener("mousemove", this.handleResize);
+      window.removeEventListener("mouseup", this.stopResize);
     },
 
     clearTerminals() {
       Object.values(this.sockets).forEach(ws => ws?.close());
+      Object.values(this.terminals).forEach(term => term?.dispose());
       this.terminals = {};
-      this.sanitizedTerminals = {};
-      this.userInputs = {};
+      this.fitAddons = {};
+      this.terminalRefs = {};
       this.sockets = {};
       this.activeTab = null;
     }
@@ -195,21 +255,28 @@ export default {
 .webshell-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
   background-color: #1e1e1e;
   color: #cccccc;
   font-family: "Fira Code", Consolas, monospace;
   border: 1px solid #333;
   border-radius: 4px;
   border-top: 3px solid #007acc;
+  position: relative;
 }
 
 .webshell-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  position: relative;
   background-color: #2d2d2d;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #333;
+}
+
+.webshell-title {
+  display: flex;
+  align-items: center;
 }
 
 .webshell-header i {
@@ -220,6 +287,29 @@ export default {
 .webshell-header .title {
   font-weight: bold;
   font-size: 1rem;
+}
+
+.webshell-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #cccccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.icon-button:hover {
+  background-color: #333333;
 }
 
 .tabs {
@@ -254,42 +344,33 @@ export default {
   display: flex;
   position: relative;
   flex-direction: column;
-  padding: 1rem;
   overflow: hidden;
 }
 
-.terminal-output {
+.terminal-instance {
   flex: 1;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  display: none;
 }
 
-.hidden-input {
+.terminal-instance.active {
+  display: block;
+  height: 100%;
+}
+
+.terminal-empty {
+  padding: 1rem;
+  color: #8a8a8a;
+  font-size: 0.9rem;
+}
+
+.resize-handle-top {
   position: absolute;
-  bottom: 0;
+  top: 0;
   left: 0;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.cursor {
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  margin-left: 2px;
-  vertical-align: middle;
-}
-
-.filled {
-  background-color: #cccccc;
-}
-
-.empty {
-  border: 1px solid #cccccc;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  background: transparent;
+  z-index: 2;
 }
 </style>

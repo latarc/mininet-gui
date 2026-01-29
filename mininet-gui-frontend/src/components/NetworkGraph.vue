@@ -51,7 +51,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @toggleShowHosts="toggleShowHosts"
           @toggleShowControllers="toggleShowControllers"
           @createTopology="showTopologyFormModal"
-          @resetTopology="resetTopology"
+          @resetTopology="showResetConfirmModal"
           @exportTopology="exportTopology"
           @importTopology="importTopology"
           @doSelectAll="doSelectAll"
@@ -92,6 +92,19 @@ import controllerImg from "@/assets/light-controller.svg";
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
+        <div v-if="modalOption === 'confirmReset'" class="confirm-reset">
+          <p class="confirm-reset__text">
+            Are you sure you want to reset the topology? This action cannot be undone.
+          </p>
+          <div class="confirm-reset__actions">
+            <button class="confirm-reset__button confirm-reset__button--cancel" @click="closeModal">
+              Cancel
+            </button>
+            <button class="confirm-reset__button confirm-reset__button--danger" @click="confirmResetTopology">
+              Reset Topology
+            </button>
+          </div>
+        </div>
       </template>
     </modal>
   </Teleport>
@@ -616,9 +629,7 @@ export default {
       }
     },
     async resetTopology() {
-      const confirmed = window.confirm("Are you sure you want to reset the topology? This action cannot be undone.");
-
-      if (confirmed && await requestResetNetwork()) {
+      if (await requestResetNetwork()) {
         console.log("Resetting topology");
         this.hosts = new Object();
         this.switches = new Object();
@@ -629,6 +640,16 @@ export default {
         this.network.setData({ nodes: this.nodes, edges: this.edges });
         this.network.redraw();
       }
+    },
+    showResetConfirmModal() {
+      this.modalHeader = "Reset Topology";
+      this.modalOption = "confirmReset";
+      this.modalData = null;
+      this.showModal = true;
+    },
+    async confirmResetTopology() {
+      await this.resetTopology();
+      this.closeModal();
     },
     async exportTopology() {
       await requestExportNetwork();
@@ -659,6 +680,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 0;
 }
 
 .side-container {
@@ -671,17 +693,59 @@ export default {
 }
 
 .network-graph {
-  flex-grow: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   background: #252526;
   overflow: hidden;
 }
 
 .webshell {
-  height: 30%;
+  flex: 0 0 auto;
+  height: auto;
   background: black;
   color: white;
   border-top: 2px solid #444;
   overflow: auto;
   position: relative;
+}
+
+.confirm-reset {
+  text-align: left;
+  color: #1e293b;
+}
+
+.confirm-reset__text {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+}
+
+.confirm-reset__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-reset__button {
+  border: 1px solid #cbd5f5;
+  border-radius: 6px;
+  padding: 6px 12px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.confirm-reset__button--cancel:hover {
+  background: #e2e8f0;
+}
+
+.confirm-reset__button--danger {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.confirm-reset__button--danger:hover {
+  background: #dc2626;
 }
 </style>
