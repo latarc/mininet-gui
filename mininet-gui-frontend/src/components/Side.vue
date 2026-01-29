@@ -13,11 +13,15 @@
     @keydown.delete="$emit('deleteSelected')"
     @keydown.ctrl.a.prevent="$emit('doSelectAll')"
   >
-    <div class="flex w-full flex-col items-center gap-2 p-3">
+    <div
+      class="flex w-full flex-col items-center gap-2"
+      :class="sideIsActive ? 'p-3' : 'py-3 px-0'"
+    >
       <img
-        src="@/assets/logo-mininet-gui.png"
+        :src="sideIsActive ? logoFull : logoSmall"
         alt="Mininet GUI"
         class="h-10 w-auto object-contain"
+        :class="!sideIsActive ? 'w-full px-0' : ''"
       />
       <button
         id="button-hide-side"
@@ -25,6 +29,7 @@
         type="button"
         @click="toggleSide()"
         aria-label="Toggle sidebar"
+        :class="!sideIsActive ? 'w-full rounded-none' : ''"
       >
         <span class="material-symbols-outlined">{{ sideIsActive ? "menu_open" : "menu" }}</span>
       </button>
@@ -196,6 +201,9 @@
 </template>
 
 <script>
+import logoFull from "@/assets/logo-mininet-gui.png";
+import logoSmall from "@/assets/logo-mininet-gui-small.png";
+
 export default {
   props: {
     createLinkMode: { type: Boolean, default: false },
@@ -206,6 +214,8 @@ export default {
   },
   data() {
     return {
+      logoFull,
+      logoSmall,
       sideIsActive: true,
     };
   },
@@ -275,6 +285,14 @@ export default {
   max-width: 64px !important;
 }
 
+.side.collapsed .side-scroll {
+  scrollbar-width: none;
+}
+
+.side.collapsed .side-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .side.collapsed .label,
 .side.collapsed h2,
 .side.collapsed figcaption {
@@ -306,8 +324,8 @@ export default {
 }
 
 .icon-button {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border: none;
   background: transparent;
   color: #cccccc;
@@ -324,17 +342,17 @@ export default {
 }
 
 /* SCROLLBAR FOR WEBKIT (Chrome, Edge, Safari) */
-.side::-webkit-scrollbar {
+.side-scroll::-webkit-scrollbar {
   width: 8px;
 }
-.side::-webkit-scrollbar-track {
+.side-scroll::-webkit-scrollbar-track {
   background: #1e1e1e;
 }
-.side::-webkit-scrollbar-thumb {
+.side-scroll::-webkit-scrollbar-thumb {
   background-color: #007acc;
   border-radius: 4px;
 }
-.side::-webkit-scrollbar-thumb:hover {
+.side-scroll::-webkit-scrollbar-thumb:hover {
   background-color: #005a9e;
 }
 
