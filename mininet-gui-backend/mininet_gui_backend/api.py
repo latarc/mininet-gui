@@ -166,8 +166,12 @@ def stop_network():
     return {"status": "ok"}
 
 @app.post("/api/mininet/reset")
-def reset_network():
+async def reset_network():
     """Restart network and nodes"""
+    try:
+        await app.sniffer_manager.stop()
+    except Exception:
+        pass
     stop_network()
     return start_network()
 
@@ -504,7 +508,7 @@ async def read_sniffer(process: asyncio.subprocess.Process, websocket: WebSocket
         debug(f"Sniffer Read Error: {e}")
 
 
-async def start_sniffer_process(node_pid: int, intf: str):
+async def start_sniffer_process(node_pid: int, intf: str, pcap_path: str):
     if node_pid and node_pid > 0:
         return await asyncio.create_subprocess_exec(
             "mnexec",
@@ -518,6 +522,8 @@ async def start_sniffer_process(node_pid: int, intf: str):
             intf,
             "-T",
             "ek",
+            "-w",
+            pcap_path,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -530,6 +536,8 @@ async def start_sniffer_process(node_pid: int, intf: str):
         intf,
         "-T",
         "ek",
+        "-w",
+        pcap_path,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.DEVNULL,
     )

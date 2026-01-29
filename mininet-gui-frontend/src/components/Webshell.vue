@@ -7,7 +7,7 @@
     <div class="webshell-header">
       <div class="webshell-title">
         <i class="mdi mdi-console"></i>
-        <span class="title">WebShell</span>
+        <span class="title">Network Tools</span>
       </div>
       <div class="view-tabs">
         <button

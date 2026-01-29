@@ -43,7 +43,7 @@ import controllerImg from "@/assets/light-controller.svg";
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <!-- Side panel (left) -->
 
       <div class="side-container">
@@ -58,6 +58,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @resetTopology="showResetConfirmModal"
           @toggleSniffer="toggleSniffer"
           @exportSniffer="exportSniffer"
+          @toggleSidebar="handleSidebarToggle"
           @exportTopology="exportTopology"
           @importTopology="importTopology"
           @doSelectAll="doSelectAll"
@@ -140,6 +141,7 @@ export default {
       networkStarted: true,
       pingallRunning: false,
       snifferActive: false,
+      sidebarCollapsed: false,
       showModal: false,
       modalOption: null,
       modalData: {},
@@ -653,6 +655,7 @@ export default {
     },
     async resetTopology() {
       if (await requestResetNetwork()) {
+        this.snifferActive = false;
         console.log("Resetting topology");
         this.hosts = new Object();
         this.switches = new Object();
@@ -663,6 +666,9 @@ export default {
         this.network.setData({ nodes: this.nodes, edges: this.edges });
         this.network.redraw();
       }
+    },
+    handleSidebarToggle(isActive) {
+      this.sidebarCollapsed = !isActive;
     },
     async toggleSniffer() {
       try {
@@ -732,23 +738,46 @@ export default {
   display: flex;
   height: 100vh;
   overflow: hidden;
+  width: 100%;
+  --sidebar-width: 220px;
+}
+
+.layout.sidebar-collapsed {
+  --sidebar-width: 64px;
+}
+
+.side-wrapper {
+  padding: 8px;
+  display: flex;
+  flex-shrink: 0;
+  width: calc(var(--sidebar-width) + 16px);
+  min-width: calc(var(--sidebar-width) + 16px);
+  max-width: calc(var(--sidebar-width) + 16px);
 }
 
 .main-content {
-  flex-grow: 1;
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   height: 100vh;
   min-height: 0;
+  min-width: 0;
+  position: relative;
+  z-index: 0;
+  width: calc(100% - var(--sidebar-width));
 }
 
 .side-container {
   position: relative;
   /* min-width: 10vw; */
-  max-width: 15vw;
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  max-width: var(--sidebar-width);
   display: flex;
   flex-direction: row;
   justify-content: stretch;
+  flex-shrink: 0;
+  z-index: 1;
 }
 
 .network-graph {
@@ -766,6 +795,7 @@ export default {
   border-top: 2px solid #444;
   overflow: auto;
   position: relative;
+  z-index: 1;
 }
 
 .confirm-reset {

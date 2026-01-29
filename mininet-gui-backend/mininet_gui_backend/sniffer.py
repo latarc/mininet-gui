@@ -1,4 +1,7 @@
 import asyncio
+import os
+import subprocess
+import tempfile
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
@@ -100,7 +103,7 @@ class SnifferManager:
     def __init__(
         self,
         interface_provider: Callable[[], List[dict]],
-        process_factory: Callable[[int, str], asyncio.subprocess.Process],
+        process_factory: Callable[[int, str, str], asyncio.subprocess.Process],
     ):
         self._interface_provider = interface_provider
         self._process_factory = process_factory
@@ -108,11 +111,11 @@ class SnifferManager:
         self._history: List[dict] = []
         self._processes: Dict[Tuple[str, str], asyncio.subprocess.Process] = {}
         self._tasks: Dict[Tuple[str, str], asyncio.Task] = {}
+        self._pcap_files: Dict[Tuple[str, str], str] = {}
         self._subscribers: Set[asyncio.Queue] = set()
         self._stop_event = asyncio.Event()
         self._lock = asyncio.Lock()
         self._runner_task: Optional[asyncio.Task] = None
-        self._history_pcap: List[Tuple[int, bytes]] = []
 
     @property
     def active(self) -> bool:
@@ -139,7 +142,7 @@ class SnifferManager:
         await self._shutdown()
         async with self._lock:
             self._history = []
-            self._history_pcap = []
+        self._cleanup_pcaps()
 
     async def _run(self):
         while not self._stop_event.is_set():
@@ -162,7 +165,11 @@ class SnifferManager:
 
     async def _start_capture(self, node_info, intf_name):
         key = (node_info["id"], intf_name)
-        process = await self._process_factory(node_info.get("pid", 0), intf_name)
+        pcap_path = self._pcap_files.get(key)
+        if not pcap_path:
+            pcap_path = self._create_pcap_path(node_info["id"], intf_name)
+            self._pcap_files[key] = pcap_path
+        process = await self._process_factory(node_info.get("pid", 0), intf_name, pcap_path)
         self._processes[key] = process
         self._tasks[key] = asyncio.create_task(self._read_and_publish(node_info, intf_name, process))
 
@@ -175,6 +182,12 @@ class SnifferManager:
             process.terminate()
             try:
                 await process.wait()
+            except Exception:
+                pass
+        pcap_path = self._pcap_files.pop(key, None)
+        if pcap_path and os.path.exists(pcap_path):
+            try:
+                os.remove(pcap_path)
             except Exception:
                 pass
 
@@ -199,11 +212,6 @@ class SnifferManager:
                 payload = event.model_dump(by_alias=True)
                 async with self._lock:
                     self._history.append(payload)
-                    try:
-                        raw_bytes = packet.get_raw_packet()
-                        self._history_pcap.append((event.ts or 0, raw_bytes))
-                    except Exception:
-                        pass
                     for queue in list(self._subscribers):
                         if queue.full():
                             continue
@@ -220,30 +228,23 @@ class SnifferManager:
             return list(self._history)
 
     async def get_pcap(self) -> bytes:
-        async with self._lock:
-            packets = list(self._history_pcap)
-        if not packets:
+        files = [path for path in self._pcap_files.values() if os.path.exists(path)]
+        if not files:
             return b""
-        # Build a pcap global header + records
-        header = b""
-        header += (0xA1B2C3D4).to_bytes(4, "little")  # magic
-        header += (2).to_bytes(2, "little")  # major
-        header += (4).to_bytes(2, "little")  # minor
-        header += (0).to_bytes(4, "little")  # thiszone
-        header += (0).to_bytes(4, "little")  # sigfigs
-        header += (262144).to_bytes(4, "little")  # snaplen
-        header += (1).to_bytes(4, "little")  # network (Ethernet)
-
-        records = bytearray()
-        for ts_ns, pkt in packets:
-            ts_sec = int(ts_ns / 1_000_000_000)
-            ts_usec = int((ts_ns % 1_000_000_000) / 1_000)
-            records += ts_sec.to_bytes(4, "little")
-            records += ts_usec.to_bytes(4, "little")
-            records += len(pkt).to_bytes(4, "little")
-            records += len(pkt).to_bytes(4, "little")
-            records += pkt
-        return header + records
+        if len(files) == 1:
+            with open(files[0], "rb") as f:
+                return f.read()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pcap") as tmp:
+            out_path = tmp.name
+        try:
+            subprocess.run(["mergecap", "-w", out_path, *files], check=True)
+            with open(out_path, "rb") as f:
+                return f.read()
+        finally:
+            try:
+                os.remove(out_path)
+            except Exception:
+                pass
 
     async def subscribe(self) -> asyncio.Queue:
         queue = asyncio.Queue(maxsize=2000)
@@ -254,3 +255,18 @@ class SnifferManager:
     async def unsubscribe(self, queue: asyncio.Queue):
         async with self._lock:
             self._subscribers.discard(queue)
+
+    def _create_pcap_path(self, node_id: str, intf_name: str) -> str:
+        safe_node = node_id.replace("/", "_")
+        safe_intf = intf_name.replace("/", "_")
+        filename = f"sniffer_{safe_node}_{safe_intf}.pcap"
+        return os.path.join(tempfile.gettempdir(), filename)
+
+    def _cleanup_pcaps(self):
+        for path in list(self._pcap_files.values()):
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
+        self._pcap_files.clear()
