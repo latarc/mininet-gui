@@ -97,6 +97,7 @@ import controllerImg from "@/assets/light-controller.svg";
         :focusNodeId="webshellFocusId"
         :openaiKey="settings.openaiApiKey"
         :llmHandlers="llmHandlers"
+        @viewChange="handleWebshellViewChange"
       />
     </div>
   </div>
@@ -212,6 +213,7 @@ export default {
       modalData: {},
       webshellView: null,
       webshellFocusId: null,
+      webshellActiveView: null,
       settings: {
         showHostIp: false,
         showSwitchDpids: false,
@@ -236,9 +238,11 @@ export default {
       return {
         createHost: this.llmCreateHost,
         createSwitch: this.llmCreateSwitch,
+        createController: this.llmCreateController,
         createLink: this.llmCreateLink,
+        associateSwitch: this.llmAssociateSwitch,
+        getTopology: this.llmGetTopology,
         runCommand: this.llmRunCommand,
-        runPingall: this.llmRunPingall,
         deleteNode: this.llmDeleteNode,
       };
     }
@@ -383,11 +387,12 @@ export default {
 
       this.links = await getEdges();
       for (const link of this.links) {
+        const options = link.options || null;
         this.edges.add({
-          from: link[0],
-          to: link[1],
+          from: link.from,
+          to: link.to,
           color: this.networkStarted ? "#00aa00ff" : "#999999ff",
-          title: "No link attributes",
+          title: this.formatLinkTitle(options),
         });
       }
       for (const sw in this.switches) {
@@ -530,11 +535,15 @@ export default {
       return pa.prefix.localeCompare(pb.prefix);
     },
     focusWebshell(nodeId) {
+      if (this.webshellActiveView === "chat") return;
       this.webshellView = "terminal";
       this.webshellFocusId = null;
       this.$nextTick(() => {
         this.webshellFocusId = nodeId;
       });
+    },
+    handleWebshellViewChange(view) {
+      this.webshellActiveView = view;
     },
     hostHasLink(hostId) {
       const edges = this.edges?.get ? this.edges.get() : [];
@@ -556,42 +565,92 @@ export default {
       });
       return link;
     },
-    async llmCreateHost({ x, y, nodes } = {}) {
-      if (Array.isArray(nodes) && nodes.length > 0) {
-        const created = [];
-        for (const entry of nodes) {
-          const pos = Number.isFinite(entry?.x) && Number.isFinite(entry?.y)
-            ? { x: entry.x, y: entry.y }
-            : undefined;
-          const host = await this.createHost(pos);
-          created.push(host.id);
-        }
-        return { ids: created };
+    async llmCreateHost({ nodes } = {}) {
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        throw new Error("nodes array is required.");
       }
-      const position = Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
-      const host = await this.createHost(position);
-      return { id: host.id };
+      const created = [];
+      for (const entry of nodes) {
+        if (!Number.isFinite(entry?.x) || !Number.isFinite(entry?.y)) {
+          throw new Error("Each node requires numeric x and y.");
+        }
+        const host = await this.createHost({ x: entry.x, y: entry.y });
+        created.push(host.id);
+      }
+      return { ids: created };
     },
-    async llmCreateSwitch({ x, y, nodes } = {}) {
-      if (Array.isArray(nodes) && nodes.length > 0) {
-        const created = [];
-        for (const entry of nodes) {
-          const pos = Number.isFinite(entry?.x) && Number.isFinite(entry?.y)
-            ? { x: entry.x, y: entry.y }
-            : undefined;
-          const sw = await this.createSwitch({ x: pos?.x, y: pos?.y });
-          created.push(sw.id);
-        }
-        return { ids: created };
+    async llmCreateSwitch({ nodes } = {}) {
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        throw new Error("nodes array is required.");
       }
-      const position = Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
-      const sw = await this.createSwitch({ x: position?.x, y: position?.y });
-      return { id: sw.id };
+      const created = [];
+      for (const entry of nodes) {
+        if (!Number.isFinite(entry?.x) || !Number.isFinite(entry?.y)) {
+          throw new Error("Each node requires numeric x and y.");
+        }
+        const sw = await this.createSwitch({ x: entry.x, y: entry.y });
+        created.push(sw.id);
+      }
+      return { ids: created };
+    },
+    async llmCreateController({ nodes } = {}) {
+      if (!Array.isArray(nodes) || nodes.length === 0) {
+        throw new Error("nodes array is required.");
+      }
+      const created = [];
+      for (const entry of nodes) {
+        if (!Number.isFinite(entry?.x) || !Number.isFinite(entry?.y)) {
+          throw new Error("Each node requires numeric x and y.");
+        }
+        const remote = Boolean(entry?.remote);
+        const ip = remote ? entry?.ip : null;
+        const port = remote ? entry?.port : null;
+        await this.createController({ x: entry.x, y: entry.y }, remote, ip, port);
+        const lastId = Object.keys(this.controllers).sort(this.compareNodeIds).pop();
+        if (lastId) created.push(lastId);
+      }
+      return { ids: created };
     },
     async llmCreateLink({ from, to } = {}) {
       if (!from || !to) throw new Error("from and to are required.");
       const link = await this.createLinkBetween(from, to);
       return { from: link.from ?? from, to: link.to ?? to };
+    },
+    async llmAssociateSwitch({ switch_id, controller_id } = {}) {
+      if (!switch_id || !controller_id) throw new Error("switch_id and controller_id are required.");
+      await assocSwitch(switch_id, controller_id);
+      this.edges.add({
+        from: switch_id,
+        to: controller_id,
+        color: { color: "#777788af" },
+        dashes: [10, 10],
+      });
+      if (this.switches[switch_id]) {
+        this.switches[switch_id].controller = controller_id;
+      }
+      return { ok: true };
+    },
+    async llmGetTopology() {
+      const nodes = [
+        ...Object.values(this.hosts || {}),
+        ...Object.values(this.switches || {}),
+        ...Object.values(this.controllers || {}),
+      ].map((node) => ({
+        id: node.id,
+        type: node.type,
+        name: node.name,
+        label: node.label,
+        ip: node.ip,
+        controller: node.controller,
+      }));
+      const edges = (this.edges?.get ? this.edges.get() : []).map((edge) => ({
+        from: edge.from,
+        to: edge.to,
+        title: edge.title,
+        dashes: edge.dashes,
+        color: edge.color,
+      }));
+      return { nodes, edges };
     },
     async llmRunCommand({ node_id, command } = {}) {
       if (!node_id || !command) throw new Error("node_id and command are required.");
@@ -615,10 +674,6 @@ export default {
           reject(new Error("WebSocket error while running command."));
         };
       });
-    },
-    async llmRunPingall() {
-      const result = await requestRunPingall();
-      return result || { ok: true };
     },
     async llmDeleteNode({ node_id } = {}) {
       if (!node_id) throw new Error("node_id is required.");

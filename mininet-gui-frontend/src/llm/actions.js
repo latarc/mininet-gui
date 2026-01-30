@@ -3,12 +3,10 @@ export const llmTools = [
     type: "function",
     function: {
       name: "create_host",
-      description: "Create a host node in the topology.",
+      description: "Create host nodes in batch.",
       parameters: {
         type: "object",
         properties: {
-          x: { type: "number", description: "Optional x position in canvas coordinates." },
-          y: { type: "number", description: "Optional y position in canvas coordinates." },
           nodes: {
             type: "array",
             description: "Batch create hosts with positions.",
@@ -18,11 +16,11 @@ export const llmTools = [
                 x: { type: "number" },
                 y: { type: "number" }
               },
-              required: []
+              required: ["x", "y"]
             }
           }
         },
-        required: []
+        required: ["nodes"]
       }
     }
   },
@@ -30,12 +28,10 @@ export const llmTools = [
     type: "function",
     function: {
       name: "create_switch",
-      description: "Create a switch node in the topology.",
+      description: "Create switch nodes in batch.",
       parameters: {
         type: "object",
         properties: {
-          x: { type: "number", description: "Optional x position in canvas coordinates." },
-          y: { type: "number", description: "Optional y position in canvas coordinates." },
           nodes: {
             type: "array",
             description: "Batch create switches with positions.",
@@ -45,11 +41,39 @@ export const llmTools = [
                 x: { type: "number" },
                 y: { type: "number" }
               },
-              required: []
+              required: ["x", "y"]
             }
           }
         },
-        required: []
+        required: ["nodes"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_controller",
+      description: "Create a controller (default or remote) in batch.",
+      parameters: {
+        type: "object",
+        properties: {
+          nodes: {
+            type: "array",
+            description: "Batch create controllers.",
+            items: {
+              type: "object",
+              properties: {
+                x: { type: "number" },
+                y: { type: "number" },
+                remote: { type: "boolean", description: "True for remote controller." },
+                ip: { type: "string", description: "Remote controller IP." },
+                port: { type: "number", description: "Remote controller port." }
+              },
+              required: ["x", "y"]
+            }
+          }
+        },
+        required: ["nodes"]
       }
     }
   },
@@ -71,6 +95,32 @@ export const llmTools = [
   {
     type: "function",
     function: {
+      name: "associate_switch",
+      description: "Associate a switch to a controller.",
+      parameters: {
+        type: "object",
+        properties: {
+          switch_id: { type: "string", description: "Switch id, e.g. s1" },
+          controller_id: { type: "string", description: "Controller id, e.g. c1" }
+        },
+        required: ["switch_id", "controller_id"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_topology",
+      description: "Get current topology nodes and edges as JSON.",
+      parameters: {
+        type: "object",
+        properties: {}
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "run_command",
       description: "Run a shell command in a node terminal.",
       parameters: {
@@ -80,17 +130,6 @@ export const llmTools = [
           command: { type: "string", description: "Command to execute" }
         },
         required: ["node_id", "command"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "run_pingall",
-      description: "Run Mininet pingall test.",
-      parameters: {
-        type: "object",
-        properties: {}
       }
     }
   },
@@ -117,14 +156,20 @@ export const buildLlmsActions = (handlers) => ({
   async create_switch(args = {}) {
     return handlers.createSwitch?.(args);
   },
+  async create_controller(args = {}) {
+    return handlers.createController?.(args);
+  },
   async create_link(args = {}) {
     return handlers.createLink?.(args);
   },
+  async associate_switch(args = {}) {
+    return handlers.associateSwitch?.(args);
+  },
+  async get_topology(args = {}) {
+    return handlers.getTopology?.(args);
+  },
   async run_command(args = {}) {
     return handlers.runCommand?.(args);
-  },
-  async run_pingall(args = {}) {
-    return handlers.runPingall?.(args);
   },
   async delete_node(args = {}) {
     return handlers.deleteNode?.(args);

@@ -24,7 +24,7 @@
           :class="{ active: activeView === 'traffic' }"
           @click="activeView = 'traffic'"
         >
-          Traffic
+          Sniffer
         </button>
         <button
           type="button"
@@ -83,7 +83,7 @@
       ></div>
     </div>
     <div v-show="!isMinimized && activeView === 'chat'" class="chat-window">
-      <div class="chat-messages">
+      <div class="chat-messages" ref="chatMessages">
         <div
           v-for="(message, index) in chatMessages.filter(m => m.role !== 'system')"
           :key="index"
@@ -119,6 +119,7 @@ import { buildSystemPrompt } from "@/llm/systemPrompt";
 
 export default {
   components: { TrafficView },
+  emits: ["viewChange"],
   props: {
     nodes: { type: Object, required: true },
     edges: { type: Object, default: null },
@@ -180,6 +181,7 @@ export default {
       this.chatError = "";
     },
     activeView(value) {
+      this.$emit("viewChange", value);
       if (value === "terminal") {
         this.$nextTick(() => {
           if (this.activeTab) this.fitTerminal(this.activeTab);
@@ -435,6 +437,7 @@ export default {
       const userMessage = { role: "user", content: this.chatInput.trim() };
       console.log("[AI] user message", userMessage);
       this.chatMessages.push(userMessage);
+      this.$nextTick(this.scrollChatToBottom);
       this.chatInput = "";
       this.chatError = "";
       this.chatBusy = true;
@@ -445,17 +448,20 @@ export default {
         if (!assistant) throw new Error("No assistant response.");
         console.log("[AI] assistant message", assistant);
         this.chatMessages.push(assistant);
+        this.$nextTick(this.scrollChatToBottom);
         while (assistant?.tool_calls?.length) {
           console.log("[AI] tool_calls", assistant.tool_calls);
           const toolMessages = await runToolCalls(assistant.tool_calls, this.llmHandlers);
           console.log("[AI] tool responses", toolMessages);
           this.chatMessages.push(...toolMessages);
+          this.$nextTick(this.scrollChatToBottom);
           response = await this.callOpenAI(this.chatMessages);
           console.log("[AI] follow-up response", response);
           assistant = response?.choices?.[0]?.message;
           if (!assistant) break;
           console.log("[AI] assistant message", assistant);
           this.chatMessages.push(assistant);
+          this.$nextTick(this.scrollChatToBottom);
         }
       } catch (error) {
         this.chatError = error?.message || String(error);
@@ -488,6 +494,11 @@ export default {
         throw new Error(text || "OpenAI request failed.");
       }
       return response.json();
+    },
+    scrollChatToBottom() {
+      const el = this.$refs.chatMessages;
+      if (!el) return;
+      el.scrollTop = el.scrollHeight;
     },
     buildGraphContext() {
       try {

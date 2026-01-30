@@ -2,23 +2,23 @@
   <div class="traffic-view">
     <div class="traffic-toolbar">
       <div class="traffic-status" :class="{ active: enabled, inactive: !enabled }">
-        {{ enabled ? (connected ? "Sniffer ativo" : "Conectando...") : "Sniffer desativado" }}
+        {{ enabled ? (connected ? "Sniffer active" : "Connecting...") : "Sniffer inactive" }}
       </div>
       <div class="traffic-filters">
         <select v-model="selectedDevice" class="traffic-select">
-          <option value="all">Todos dispositivos</option>
+          <option value="all">All devices</option>
           <option v-for="node in nodes" :key="node.id" :value="node.id">
             {{ node.id }}
           </option>
         </select>
         <select v-model="selectedInterface" class="traffic-select">
-          <option value="all">Todas portas</option>
+          <option value="all">All interfaces</option>
           <option v-for="intf in availableInterfaces" :key="intf" :value="intf">
             {{ intf }}
           </option>
         </select>
         <select v-model="selectedProto" class="traffic-select">
-          <option value="all">Todos protocolos</option>
+          <option value="all">All protocols</option>
           <option value="IP">IP</option>
           <option value="IP6">IP6</option>
           <option value="ARP">ARP</option>
@@ -33,24 +33,24 @@
           <option value="SSH">SSH</option>
           <option value="TLS">TLS</option>
           <option value="LLDP">LLDP</option>
-          <option value="OTHER">Outros</option>
+          <option value="OTHER">Other</option>
         </select>
-        <input v-model="textFilter" class="traffic-input" placeholder="Filtro (IP, porta, texto)" />
+        <input v-model="textFilter" class="traffic-input" placeholder="Filter (IP, port, text)" />
       </div>
       <div class="traffic-actions">
         <button class="traffic-button" type="button" @click="clearEvents" :disabled="events.length === 0">
-          Limpar
+          Clear
         </button>
       </div>
     </div>
     <div class="traffic-table">
       <div class="traffic-row header">
-        <span class="cell time">Tempo</span>
-        <span class="cell node">Dispositivo</span>
-        <span class="cell intf">Porta</span>
+        <span class="cell time">Time</span>
+        <span class="cell node">Device</span>
+        <span class="cell intf">Interface</span>
         <span class="cell proto">Proto</span>
-        <span class="cell src">Origem</span>
-        <span class="cell dst">Destino</span>
+        <span class="cell src">Source</span>
+        <span class="cell dst">Destination</span>
         <span class="cell len">Len</span>
         <span class="cell info">Info</span>
       </div>
@@ -66,7 +66,7 @@
           <span class="cell info">{{ item.info || item.raw }}</span>
         </div>
         <div v-if="filteredEvents.length === 0" class="traffic-empty">
-          Nenhum evento de rede.
+          No network events.
         </div>
       </div>
     </div>

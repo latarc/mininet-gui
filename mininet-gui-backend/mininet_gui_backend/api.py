@@ -67,6 +67,7 @@ async def lifespan(app: FastAPI):
     app.switches = dict()
     app.hosts = dict()
     app.links = dict()
+    app.link_attrs = dict()
     app.terminals = dict()
     app.sniffers = dict()
     app.sniffer_manager = SnifferManager(list_mininet_interfaces, start_sniffer_process)
@@ -161,7 +162,13 @@ def list_controllers():
 
 @app.get("/api/mininet/links")
 def list_edges():
-    return [e for e in app.links]
+    edges = []
+    for key in app.links:
+        nodes = list(key)
+        attrs = app.link_attrs.get(key) or {}
+        if len(nodes) == 2:
+            edges.append({"from": nodes[0], "to": nodes[1], "options": attrs})
+    return edges
 
 @app.get("/api/mininet/start")
 def get_network_started():
@@ -198,6 +205,7 @@ def stop_network():
     app.switches.clear()
     app.hosts.clear()
     app.links.clear()
+    app.link_attrs.clear()
 
     # Create the Mininet network
     setLogLevel("debug")
@@ -362,7 +370,11 @@ def create_link(payload: Union[Tuple[str, str], LinkCreate]):
     # It is important to store this Link object because
     # mininet (apparently) doesn't have an easy way to access this
     app.links[key] = new_link
-    return {"from": src, "to": dst}
+    if options:
+        app.link_attrs[key] = options.model_dump(exclude_none=True)
+    else:
+        app.link_attrs[key] = {}
+    return {"from": src, "to": dst, "options": app.link_attrs[key]}
 
 
 @app.post("/api/mininet/node_position")
@@ -420,6 +432,7 @@ def delete_link(src_id: str, dst_id: str):
         raise HTTPException(status_code=404, detail=f"Node not found")
     app.net.delLink(app.links[key])
     del app.links[key]
+    app.link_attrs.pop(key, None)
     return {"message": f"Link {key} deleted successfully"}
 
 @app.delete("/api/mininet/remove_association/{src_id}/{dst_id}")
@@ -705,10 +718,21 @@ async def read_pty(master_fd, websocket: WebSocket):
     try:
         while True:
             await asyncio.sleep(0.01)
-            r, _, _ = select.select([master_fd], [], [], 0)
+            try:
+                r, _, _ = select.select([master_fd], [], [], 0)
+            except OSError as e:
+                if getattr(e, "errno", None) == 9:
+                    break
+                raise
             if master_fd in r:
-                output = os.read(master_fd, 1024).decode(errors="ignore")
-                await websocket.send_text(output)
+                try:
+                    output = os.read(master_fd, 1024).decode(errors="ignore")
+                except OSError as e:
+                    if getattr(e, "errno", None) == 9:
+                        break
+                    raise
+                if output:
+                    await websocket.send_text(output)
     except Exception as e:
         debug(f"PTY Read Error: {e}")
 
