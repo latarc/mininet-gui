@@ -13,6 +13,8 @@
     "axios": "^1.2.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.4",
     "radix-vue": "^1.9.17",
     "vis-data": "^7.1.4",
     "vis-network": "^9.1.2",

@@ -430,6 +430,20 @@ export const getNodeStats = async (nodeId) => {
   return await sendGet(baseUrl + `/api/mininet/stats/${nodeId}`);
 };
 
+export const getAddressingPlan = async () => {
+  try {
+    const response = await axios.get(baseUrl + "/api/mininet/addressing_plan", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    throw error;
+  }
+};
+
 export const listFlows = async (switchId) => {
   try {
     const response = await axios.get(baseUrl + `/api/mininet/flows/${switchId}`, {

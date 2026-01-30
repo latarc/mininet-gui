@@ -16,6 +16,8 @@ import select
 import asyncio
 import subprocess
 import logging
+import re
+from datetime import datetime
 from mininet_gui_backend.sniffer import SnifferManager
 import pyshark.ek_field_mapping as ek_field_mapping
 from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
@@ -143,6 +145,49 @@ def list_mininet_interfaces():
             intfs = [i.name for i in sw.intfList() if i.name and i.name not in ("lo", "lo0")]
             nodes.append({"id": sw.name, "type": "switch", "intfs": intfs, "pid": sw.pid})
     return nodes
+
+def _parse_ip_addrs(output: str):
+    addrs = []
+    for line in output.splitlines():
+        match = re.search(r"\sinet6?\s+([0-9a-fA-F:.]+/\d+)", line)
+        if match:
+            addrs.append(match.group(1))
+    return addrs
+
+@app.get("/api/mininet/addressing_plan")
+def addressing_plan():
+    if not app.net.is_started:
+        raise HTTPException(status_code=400, detail="network must be started")
+    nodes = []
+    for node_id, node in app.net.nameToNode.items():
+        if not getattr(node, "type", None):
+            continue
+        intfs = []
+        for intf in node.intfList():
+            if not intf.name or intf.name in ("lo", "lo0"):
+                continue
+            ipv4 = _parse_ip_addrs(node.cmd(f"ip -o -4 addr show {intf.name}"))
+            ipv6 = _parse_ip_addrs(node.cmd(f"ip -o -6 addr show {intf.name}"))
+            mac = None
+            try:
+                mac = intf.MAC()
+            except Exception:
+                pass
+            intfs.append({
+                "name": intf.name,
+                "mac": mac,
+                "ipv4": ipv4,
+                "ipv6": ipv6,
+            })
+        nodes.append({
+            "id": node_id,
+            "type": node.type,
+            "intfs": intfs,
+        })
+    return {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "nodes": nodes,
+    }
 
 @app.get("/api/mininet/hosts")
 def list_hosts():

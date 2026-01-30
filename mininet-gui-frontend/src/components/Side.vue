@@ -139,6 +139,14 @@
         <span class="material-symbols-outlined">code</span>
         <span class="label">Export Mininet Script</span>
       </button>
+      <button
+        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        id="button-export-addressing-plan"
+        @click="$emit('exportAddressingPlan')"
+      >
+        <span class="material-symbols-outlined">description</span>
+        <span class="label">Export Addressing Plan (PDF)</span>
+      </button>
       <!-- Hidden file input -->
       <input 
         type="file" 
@@ -256,6 +264,7 @@ export default {
     "exportSniffer",
     "toggleSidebar",
     "openSettings",
+    "exportAddressingPlan",
   ],
   methods: {
     toggleSide() {

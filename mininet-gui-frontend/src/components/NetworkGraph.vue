@@ -23,6 +23,7 @@ import {
   requestExportMininetScript,
   requestImportNetwork,
   removeAssociation,
+  getAddressingPlan,
   getSnifferState,
   startSniffer,
   stopSniffer,
@@ -36,6 +37,8 @@ import NodeStats from "./NodeStats.vue";
 import PingallResults from "./PingallResults.vue";
 import ControllerForm from "./ControllerForm.vue";
 import TopologyForm from "./TopologyForm.vue";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import switchImg from "@/assets/light-switch.svg";
 import hostImg from "@/assets/light-host.svg";
@@ -64,6 +67,7 @@ import controllerImg from "@/assets/light-controller.svg";
           @doSelectAll="doSelectAll"
           @exportMininetScript="exportMininetScript"
           @openSettings="showSettingsModal"
+          @exportAddressingPlan="exportAddressingPlan"
           @keydown.ctrl.a.prevent="doSelectAll"
           :networkStarted="networkStarted"
           :addEdgeMode="addEdgeMode"
@@ -1100,6 +1104,108 @@ export default {
     },
     async exportMininetScript() {
       await requestExportMininetScript();
+    },
+    async exportAddressingPlan() {
+      try {
+        const plan = await getAddressingPlan();
+        const createdAt = new Date().toLocaleString();
+        const nodes = plan?.nodes || [];
+        const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("Addressing Plan", 40, 40);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Created in Mininet GUI – ${createdAt}`, 40, 60);
+        doc.text("Repository: https://github.com/latarc/mininet-gui", 40, 74);
+
+        const body = [];
+        nodes.forEach((node) => {
+          if (!node.intfs || node.intfs.length === 0) {
+            body.push([node.id, node.type, "-", "-", "-", "-"]);
+            return;
+          }
+          node.intfs.forEach((intf, idx) => {
+            const ipv4 = (intf.ipv4 || []).join("\n");
+            const ipv6 = (intf.ipv6 || []).join("\n");
+            const mac = intf.mac || "";
+            const row = [
+              idx === 0 ? node.id : "",
+              idx === 0 ? node.type : "",
+              intf.name,
+              mac,
+              ipv4 || "-",
+              ipv6 || "-",
+            ];
+            body.push(row);
+          });
+        });
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("Nodes", 40, 86);
+        doc.setFont("helvetica", "normal");
+        autoTable(doc, {
+          startY: 90,
+          head: [["Node", "Type", "Interface", "MAC", "IPv4", "IPv6"]],
+          body,
+          styles: { fontSize: 8, cellPadding: 3, valign: "top" },
+          headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+        });
+
+        const afterNodes = doc.lastAutoTable?.finalY ? doc.lastAutoTable.finalY + 24 : 120;
+        const linkRows = [];
+        const edges = this.edges?.get ? this.edges.get() : [];
+        edges.forEach((edge) => {
+          linkRows.push([
+            edge.from,
+            edge.to,
+            edge.title || "-",
+          ]);
+        });
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("Links", 40, afterNodes - 8);
+        doc.setFont("helvetica", "normal");
+        autoTable(doc, {
+          startY: afterNodes,
+          head: [["From", "To", "Attributes"]],
+          body: linkRows.length ? linkRows : [["-", "-", "No links"]],
+          styles: { fontSize: 8, cellPadding: 3, valign: "top" },
+          headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+        });
+
+        const canvas = this.$refs.graph?.querySelector?.("canvas");
+        const imageData = canvas ? canvas.toDataURL("image/png") : null;
+        if (imageData) {
+          doc.addPage();
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(14);
+          doc.text("Network Graph", 40, 40);
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const maxWidth = pageWidth - 80;
+          const maxHeight = pageHeight - 120;
+          const img = new Image();
+          img.src = imageData;
+          const imgRatio = img.width && img.height ? img.width / img.height : 1.6;
+          let imgWidth = maxWidth;
+          let imgHeight = imgWidth / imgRatio;
+          if (imgHeight > maxHeight) {
+            imgHeight = maxHeight;
+            imgWidth = imgHeight * imgRatio;
+          }
+          const x = (pageWidth - imgWidth) / 2;
+          const y = 60;
+          doc.addImage(imageData, "PNG", x, y, imgWidth, imgHeight, undefined, "FAST");
+        }
+
+        doc.save("addressing-plan.pdf");
+      } catch (error) {
+        console.error("Failed to export addressing plan", error);
+        alert("Failed to export addressing plan.");
+      }
     },
     async importTopology(file) {
       await this.resetTopology();
