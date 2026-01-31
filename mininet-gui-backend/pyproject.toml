@@ -1,0 +1,6 @@
+[project]
+name = "mininet-gui-backend"
+version = "0.2.0"
+description = "Backend API for Mininet GUI"
+requires-python = ">=3.10"
+

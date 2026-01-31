@@ -64,6 +64,17 @@ export const deployController = async (ctl) => {
   }
 };
 
+export const getBackendVersion = async () => {
+  try {
+    const root = baseUrl?.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+    const response = await axios.get(`${root}/version`);
+    return response.data || null;
+  } catch (error) {
+    console.warn("Failed to fetch backend version", error);
+    return null;
+  }
+};
+
 export const deployLink = async (src, dst, options = null) => {
   try {
     console.log(src, dst, options);

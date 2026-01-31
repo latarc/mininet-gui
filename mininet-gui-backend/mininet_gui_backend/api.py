@@ -17,6 +17,7 @@ import asyncio
 import subprocess
 import logging
 import re
+import uuid
 from datetime import datetime
 from mininet_gui_backend.sniffer import SnifferManager
 import pyshark.ek_field_mapping as ek_field_mapping
@@ -83,12 +84,18 @@ async def lifespan(app: FastAPI):
     # stop
     mn_cleanup()
 
+from mininet_gui_backend import __version__ as BACKEND_VERSION
+try:
+    from mininet.net import VERSION as MININET_VERSION
+except Exception:
+    MININET_VERSION = None
+
 app = FastAPI(
     debug=True,
     lifespan=lifespan,
     title="Mininet-GUI-API",
     description=__doc__,
-    version="0.0.1",
+    version=BACKEND_VERSION,
     terms_of_service="http://example.com/terms/",
     contact={
         "name": "Lucas Schneider",
@@ -109,6 +116,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/api/version")
+def get_version():
+    return {"version": app.version, "mininet_version": MININET_VERSION}
 
 def debug(msg, *args):
     _debug(str(msg)+" "+" ".join(map(str, args))+"\n")
@@ -853,7 +864,10 @@ async def websocket_terminal(websocket: WebSocket, node_id: str):
         env=env,
     )
 
-    app.terminals[node_id] = (master_fd, process)
+    session_id = f"{node_id}-{uuid.uuid4().hex}"
+    sessions = app.terminals.get(node_id, {})
+    sessions[session_id] = (master_fd, process)
+    app.terminals[node_id] = sessions
 
     asyncio.create_task(read_pty(master_fd, websocket))
 
@@ -865,8 +879,13 @@ async def websocket_terminal(websocket: WebSocket, node_id: str):
     except WebSocketDisconnect:
         process.terminate()
         os.close(master_fd)
-        app.terminals.pop(node_id, None)
-        print(f"Closed terminal session for {node_id}")
+        sessions = app.terminals.get(node_id, {})
+        sessions.pop(session_id, None)
+        if not sessions:
+            app.terminals.pop(node_id, None)
+        else:
+            app.terminals[node_id] = sessions
+        print(f"Closed terminal session for {node_id} ({session_id})")
 
 @app.websocket("/api/mininet/logs")
 async def websocket_logs(websocket: WebSocket):

@@ -59,7 +59,7 @@
         @click="$emit('toggleAddEdgeMode')"
       >
         <span class="material-symbols-outlined">link</span>
-        <span class="label">{{ !addEdgeMode ? "Create Link" : "Cancel Add Link" }}</span>
+        <span class="label">{{ !addEdgeMode ? "Connect Nodes" : "Cancel Connect" }}</span>
       </button>
       <button
         id="button-delete-selected"

@@ -1,6 +1,15 @@
 <template>
   <div class="traffic-view">
     <div class="traffic-toolbar">
+      <button
+        class="sniffer-toggle"
+        type="button"
+        :class="{ active: enabled }"
+        @click="$emit('toggleSniffer')"
+      >
+        <span class="material-symbols-outlined">radar</span>
+        <span>{{ enabled ? (connected ? "Stop Sniffer" : "Connecting...") : "Start Sniffer" }}</span>
+      </button>
       <div class="traffic-filters">
         <select v-model="selectedDevice" class="traffic-select">
           <option value="all">All devices</option>
@@ -39,20 +48,6 @@
           Clear
         </button>
       </div>
-    </div>
-    <div class="traffic-footer">
-      <button
-        class="sniffer-toggle"
-        type="button"
-        :class="{ active: enabled }"
-        @click="$emit('toggleSniffer')"
-      >
-        <span class="material-symbols-outlined">radar</span>
-        <span>{{ enabled ? (connected ? "Stop Sniffer" : "Connecting...") : "Start Sniffer" }}</span>
-      </button>
-      <span class="sniffer-status" :class="{ active: enabled, inactive: !enabled }">
-        {{ enabled ? (connected ? "Sniffer active" : "Connecting...") : "Sniffer inactive" }}
-      </span>
     </div>
     <div class="traffic-table">
       <div class="traffic-row header">
@@ -323,16 +318,6 @@ export default {
   cursor: not-allowed;
 }
 
-.traffic-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  border-top: 1px solid #333;
-  background: #1f1f1f;
-}
-
 .sniffer-toggle {
   display: inline-flex;
   align-items: center;
@@ -351,15 +336,6 @@ export default {
   background: #0b2b3b;
   color: #e6f2ff;
   box-shadow: 0 0 0 1px #007acc;
-}
-
-.sniffer-status {
-  font-size: 0.85rem;
-  color: #8a8a8a;
-}
-
-.sniffer-status.active {
-  color: #9cdcfe;
 }
 
 .traffic-table {

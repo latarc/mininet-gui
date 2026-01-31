@@ -16,7 +16,7 @@
           :class="{ active: activeView === 'terminal' }"
           @click="activeView = 'terminal'"
         >
-          Terminal
+          Webshell
         </button>
         <button
           type="button"
@@ -52,25 +52,37 @@
 
     <div v-show="!isMinimized && activeView === 'terminal'" class="tabs">
       <button
-        v-for="node in getNodeList()"
-        :key="node.id"
-        @click="setActiveTab(node.id)"
-        :class="{ active: activeTab === node.id }"
+        v-for="session in getSessionList()"
+        :key="session.id"
+        @click="setActiveTab(session.id)"
+        :class="{ active: activeTab === session.id }"
         class="tab-button"
+        type="button"
       >
-        {{ node.id }}
+        <span class="tab-label">{{ session.label || session.nodeId }}</span>
+        <span
+          class="tab-close"
+          role="button"
+          tabindex="0"
+          aria-label="Close terminal"
+          @click.stop="closeSession(session.id)"
+          @keydown.enter.stop.prevent="closeSession(session.id)"
+          @keydown.space.stop.prevent="closeSession(session.id)"
+        >
+          ×
+        </span>
       </button>
     </div>
 
     <div v-show="!isMinimized && activeView === 'terminal'" class="terminal-window" @click="focusActiveTerminal">
       <div
-        v-for="node in getNodeList()"
-        :key="node.id"
-        :ref="el => setTerminalRef(node.id, el)"
-        :class="['terminal-instance', { active: activeTab === node.id }]"
+        v-for="session in getSessionList()"
+        :key="session.id"
+        :ref="el => setTerminalRef(session.id, session.nodeId, el)"
+        :class="['terminal-instance', { active: activeTab === session.id }]"
       ></div>
-      <div v-if="getNodeList().length === 0" class="terminal-empty">
-        No nodes available.
+      <div v-if="getSessionList().length === 0" class="terminal-empty">
+        No webshells yet. Right-click a node and choose "Open Webshell".
       </div>
     </div>
     <div v-show="!isMinimized && activeView === 'traffic'" class="traffic-window">
@@ -119,12 +131,12 @@ import { buildSystemPrompt } from "@/llm/systemPrompt";
 
 export default {
   components: { TrafficView },
-  emits: ["viewChange", "toggleSniffer"],
+  emits: ["viewChange", "toggleSniffer", "closeSession"],
   props: {
     nodes: { type: Object, required: true },
     edges: { type: Object, default: null },
     snifferActive: { type: Boolean, default: false },
-    terminalNodeIds: { type: Array, default: () => [] },
+    terminalSessions: { type: Array, default: () => [] },
     preferredView: { type: String, default: null },
     focusNodeId: { type: String, default: null },
     openaiKey: { type: String, default: "" },
@@ -136,6 +148,7 @@ export default {
       fitAddons: {},
       terminalRefs: {},
       sockets: {},
+      sessionNodeIds: {},
       logTerminal: null,
       logFitAddon: null,
       logSocket: null,
@@ -156,7 +169,7 @@ export default {
   },
   computed: {
     nodeCount() {
-      return this.getNodeList().length;
+      return this.getSessionList().length;
     },
   },
   watch: {
@@ -166,7 +179,7 @@ export default {
       },
       deep: true,
     },
-    terminalNodeIds() {
+    terminalSessions() {
       this.syncNodes();
     },
     snifferActive(value) {
@@ -224,41 +237,40 @@ export default {
   },
   methods: {
     getNodeList() {
-      if (!this.nodes?.get) return [];
-      const list = this.nodes.get();
-      if (!this.terminalNodeIds?.length) return [];
-      const allowed = new Set(this.terminalNodeIds);
-      return list.filter(node => allowed.has(node.id));
+      return [];
+    },
+    getSessionList() {
+      return Array.isArray(this.terminalSessions) ? this.terminalSessions : [];
     },
     syncNodes() {
-      const nodeList = this.getNodeList();
-      if (nodeList.length === 0) {
+      const sessionList = this.getSessionList();
+      if (sessionList.length === 0) {
         this.clearTerminals();
         return;
       }
 
       if (!this.activeTab) {
-        this.activeTab = nodeList[0]?.id ?? null;
+        this.activeTab = sessionList[0]?.id ?? null;
       }
 
-      const existingIds = new Set(nodeList.map(node => node.id));
-      Object.keys(this.terminals).forEach(nodeId => {
-        if (!existingIds.has(nodeId)) {
-          this.disposeTerminal(nodeId);
+      const existingIds = new Set(sessionList.map(session => session.id));
+      Object.keys(this.terminals).forEach(sessionId => {
+        if (!existingIds.has(sessionId)) {
+          this.disposeTerminal(sessionId);
         }
       });
     },
 
-    setTerminalRef(nodeId, el) {
+    setTerminalRef(sessionId, nodeId, el) {
       if (!el) return;
-      this.terminalRefs[nodeId] = el;
-      if (!this.terminals[nodeId]) {
-        this.createTerminal(nodeId, el);
+      this.terminalRefs[sessionId] = el;
+      if (!this.terminals[sessionId]) {
+        this.createTerminal(sessionId, nodeId, el);
       }
       if (this.resizeObserver) this.resizeObserver.observe(el);
     },
 
-    createTerminal(nodeId, el) {
+    createTerminal(sessionId, nodeId, el) {
       const term = new Terminal({
         convertEol: true,
         cursorBlink: true,
@@ -277,39 +289,42 @@ export default {
       fitAddon.fit();
 
       term.onData(data => {
-        this.sendChar(nodeId, data);
+        this.sendChar(sessionId, data);
       });
 
-      this.terminals[nodeId] = term;
-      this.fitAddons[nodeId] = fitAddon;
-      this.initWebSocket(nodeId);
+      this.terminals[sessionId] = term;
+      this.fitAddons[sessionId] = fitAddon;
+      this.sessionNodeIds[sessionId] = nodeId;
+      this.initWebSocket(sessionId, nodeId);
 
-      if (this.activeTab === nodeId) this.focusActiveTerminal();
+      if (this.activeTab === sessionId) this.focusActiveTerminal();
     },
 
-    setActiveTab(nodeId) {
-      this.activeTab = nodeId;
-      if (!this.sockets[nodeId]) this.initWebSocket(nodeId);
+    setActiveTab(sessionId) {
+      this.activeTab = sessionId;
+      if (!this.sockets[sessionId]) this.initWebSocket(sessionId);
       this.$nextTick(() => {
-        this.fitTerminal(nodeId);
+        this.fitTerminal(sessionId);
         this.focusActiveTerminal();
       });
     },
 
-    initWebSocket(nodeId) {
-      if (this.sockets[nodeId]) return;
-      const ws = new WebSocket(`${this.backendWsUrl}/api/mininet/terminal/${nodeId}`);
+    initWebSocket(sessionId, nodeId = null) {
+      if (this.sockets[sessionId]) return;
+      const targetNodeId = nodeId || this.sessionNodeIds[sessionId];
+      if (!targetNodeId) return;
+      const ws = new WebSocket(`${this.backendWsUrl}/api/mininet/terminal/${targetNodeId}`);
       
-      ws.onopen = () => console.log(`Connected to ${nodeId}`);
-      ws.onmessage = event => this.handleTerminalData(nodeId, event.data);
-      ws.onerror = error => console.error(`WebSocket error (${nodeId}):`, error);
-      ws.onclose = () => console.log(`WebSocket closed (${nodeId})`);
+      ws.onopen = () => console.log(`Connected to ${targetNodeId} (${sessionId})`);
+      ws.onmessage = event => this.handleTerminalData(sessionId, event.data);
+      ws.onerror = error => console.error(`WebSocket error (${targetNodeId}):`, error);
+      ws.onclose = () => console.log(`WebSocket closed (${targetNodeId})`);
       
-      this.sockets[nodeId] = ws;
+      this.sockets[sessionId] = ws;
     },
 
-    handleTerminalData(nodeId, data) {
-      const term = this.terminals[nodeId];
+    handleTerminalData(sessionId, data) {
+      const term = this.terminals[sessionId];
       if (!term) return;
       term.write(data);
     },
@@ -359,13 +374,13 @@ export default {
       if (this.logTerminal) this.logTerminal.focus();
     },
 
-    sendChar(nodeId, char) {
-      const ws = this.sockets[nodeId];
+    sendChar(sessionId, char) {
+      const ws = this.sockets[sessionId];
       if (ws?.readyState === WebSocket.OPEN) {
         ws.send(char);
       } else {
-        console.log(`WebSocket for ${nodeId} is not connected. Reconnecting...`);
-        this.initWebSocket(nodeId);
+        console.log(`WebSocket for ${sessionId} is not connected. Reconnecting...`);
+        this.initWebSocket(sessionId);
       }
     },
 
@@ -374,22 +389,31 @@ export default {
       if (term) term.focus();
     },
 
-    fitTerminal(nodeId) {
-      const fitAddon = this.fitAddons[nodeId];
+    fitTerminal(sessionId) {
+      const fitAddon = this.fitAddons[sessionId];
       if (fitAddon) fitAddon.fit();
     },
 
-    disposeTerminal(nodeId) {
-      if (this.resizeObserver && this.terminalRefs[nodeId]) {
-        this.resizeObserver.unobserve(this.terminalRefs[nodeId]);
+    disposeTerminal(sessionId) {
+      if (this.resizeObserver && this.terminalRefs[sessionId]) {
+        this.resizeObserver.unobserve(this.terminalRefs[sessionId]);
       }
-      this.sockets[nodeId]?.close();
-      this.terminals[nodeId]?.dispose();
-      delete this.sockets[nodeId];
-      delete this.terminals[nodeId];
-      delete this.fitAddons[nodeId];
-      delete this.terminalRefs[nodeId];
-      if (this.activeTab === nodeId) this.activeTab = null;
+      this.sockets[sessionId]?.close();
+      this.terminals[sessionId]?.dispose();
+      delete this.sockets[sessionId];
+      delete this.terminals[sessionId];
+      delete this.fitAddons[sessionId];
+      delete this.terminalRefs[sessionId];
+      delete this.sessionNodeIds[sessionId];
+      if (this.activeTab === sessionId) this.activeTab = null;
+    },
+    closeSession(sessionId) {
+      const remaining = this.getSessionList().filter(session => session.id !== sessionId);
+      if (this.activeTab === sessionId) {
+        this.activeTab = remaining[0]?.id ?? null;
+      }
+      this.disposeTerminal(sessionId);
+      this.$emit("closeSession", sessionId);
     },
 
     toggleMinimize() {
@@ -433,6 +457,7 @@ export default {
       this.fitAddons = {};
       this.terminalRefs = {};
       this.sockets = {};
+      this.sessionNodeIds = {};
       this.activeTab = null;
     },
     async sendChat() {
@@ -645,6 +670,9 @@ export default {
   font-size: 0.9rem;
   text-transform: uppercase;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .tab-button.active {
@@ -654,6 +682,27 @@ export default {
 
 .tab-button:hover {
   background-color: #333333;
+}
+
+.tab-label {
+  pointer-events: none;
+}
+
+.tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  color: #9aa0a6;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tab-close:hover {
+  background: #444;
+  color: #e6e6e6;
 }
 
 .terminal-window {

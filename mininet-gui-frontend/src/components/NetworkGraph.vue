@@ -28,6 +28,7 @@ import {
   startSniffer,
   stopSniffer,
   exportSnifferPcap,
+  getBackendVersion,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -37,6 +38,7 @@ import NodeStats from "./NodeStats.vue";
 import PingallResults from "./PingallResults.vue";
 import ControllerForm from "./ControllerForm.vue";
 import TopologyForm from "./TopologyForm.vue";
+import frontendPackage from "../../package.json";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -67,7 +69,7 @@ import controllerImg from "@/assets/light-controller.svg";
               Open Topology...
             </button>
             <button type="button" class="menu-action" @click="handleSaveTopology">
-              Save Topology
+              Save Topology As...
             </button>
             <div class="menu-separator"></div>
             <button type="button" class="menu-action" @click="handleExportScript">
@@ -91,7 +93,24 @@ import controllerImg from "@/assets/light-controller.svg";
         <button type="button" class="menu-item" disabled>Edit</button>
         <button type="button" class="menu-item" disabled>View</button>
         <button type="button" class="menu-item" disabled>Run</button>
-        <button type="button" class="menu-item" disabled>Help</button>
+        <div class="menu-item-wrapper">
+          <button
+            type="button"
+            class="menu-item"
+            :class="{ open: helpMenuOpen }"
+            @click.stop="toggleHelpMenu"
+          >
+            Help
+          </button>
+          <div v-if="helpMenuOpen" class="menu-dropdown" @click.stop>
+            <button type="button" class="menu-action" @click="handleOpenUsage">
+              Usage
+            </button>
+            <button type="button" class="menu-action" @click="handleOpenAbout">
+              About
+            </button>
+          </div>
+        </div>
       </div>
       <input
         ref="topologyFileInput"
@@ -153,6 +172,9 @@ import controllerImg from "@/assets/light-controller.svg";
         <button type="button" class="node-context-item" @click="openWebshellFromMenu">
           Open Webshell
         </button>
+        <button type="button" class="node-context-item" @click="openNodeStatsFromMenu">
+          View Node Stats
+        </button>
       </div>
 
       <!-- WebShell at the bottom -->
@@ -161,13 +183,14 @@ import controllerImg from "@/assets/light-controller.svg";
         :nodes="nodes"
         :edges="edges"
         :snifferActive="snifferActive"
-        :terminalNodeIds="terminalNodeIds"
+        :terminalSessions="terminalSessions"
         :preferredView="webshellView"
         :focusNodeId="webshellFocusId"
         :openaiKey="settings.openaiApiKey"
         :llmHandlers="llmHandlers"
         @viewChange="handleWebshellViewChange"
         @toggleSniffer="toggleSniffer"
+        @closeSession="handleCloseSession"
       />
       </div>
     </div>
@@ -187,8 +210,57 @@ import controllerImg from "@/assets/light-controller.svg";
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
+        <div v-if="modalOption === 'usage'" class="help-modal">
+          <h4>Creating nodes</h4>
+          <p>Drag a node (Host, Switch, Controller) from the sidebar onto the canvas.</p>
+          <h4>Moving the topology</h4>
+          <p>Pan with right click or middle mouse button. Zoom with the mouse wheel.</p>
+          <h4>Opening a webshell</h4>
+          <p>Right-click a node and choose "Open Webshell". Each click opens a new session.</p>
+          <h4>Keyboard shortcuts</h4>
+          <ul>
+            <li>H: toggle hosts visibility</li>
+            <li>C: toggle controllers visibility</li>
+            <li>E: connect nodes mode</li>
+            <li>D or Delete: delete selected</li>
+            <li>Ctrl + A: select all nodes</li>
+            <li>Esc: exit modes / close dialogs</li>
+          </ul>
+          <h4>Tabs and features</h4>
+          <p>Webshell: terminal sessions per node.</p>
+          <p>Sniffer: live traffic view with filters.</p>
+          <p>Logs: backend logs stream.</p>
+          <p>Chat: assistant to modify the topology.</p>
+        </div>
+        <div v-if="modalOption === 'about'" class="help-modal">
+          <h4>Mininet GUI</h4>
+          <p>Frontend version: {{ frontendVersion }}</p>
+          <p>Backend version: {{ backendVersion }}</p>
+          <p>Mininet version: {{ mininetVersion }}</p>
+          <p>Authors: Lucas Schneider, Emidio Neto, Felipe Dantas</p>
+          <p>
+            Repository:
+            <a
+              class="help-link"
+              href="https://github.com/latarc/mininet-gui"
+              target="_blank"
+              rel="noreferrer"
+            >
+              https://github.com/latarc/mininet-gui
+            </a>
+          </p>
+          <p>License: MIT</p>
+        </div>
         <div v-if="modalOption === 'settings'" class="settings-modal">
           <div class="settings-group">
+            <label class="settings-toggle">
+              <input type="checkbox" v-model="settings.showHosts" @change="handleShowHostsSetting" />
+              <span>Show hosts</span>
+            </label>
+            <label class="settings-toggle">
+              <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
+              <span>Show controllers</span>
+            </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
               <span>Show host IP addresses</span>
@@ -277,6 +349,8 @@ export default {
       networkStarted: true,
       pingallRunning: false,
       snifferActive: false,
+      hostsHidden: false,
+      controllersHidden: false,
       sidebarCollapsed: false,
       showModal: false,
       modalHeader: "",
@@ -285,7 +359,8 @@ export default {
       webshellView: null,
       webshellFocusId: null,
       webshellActiveView: null,
-      terminalNodeIds: [],
+      terminalSessions: [],
+      terminalSessionCounters: {},
       contextMenu: {
         visible: false,
         x: 0,
@@ -293,7 +368,11 @@ export default {
         nodeId: null,
       },
       fileMenuOpen: false,
+      helpMenuOpen: false,
       boundHandleGlobalClick: null,
+      frontendVersion: frontendPackage?.version || "unknown",
+      backendVersion: "unknown",
+      mininetVersion: "unknown",
       selectionBox: {
         active: false,
         startX: 0,
@@ -319,6 +398,8 @@ export default {
       boundPanMouseUp: null,
       boundContextMenu: null,
       settings: {
+        showHosts: true,
+        showControllers: true,
         showHostIp: false,
         showSwitchDpids: false,
         openaiApiKey: "",
@@ -370,6 +451,7 @@ export default {
     this.setupNetwork();
     this.bindSelectionEvents();
     this.bindTopbarEvents();
+    this.loadVersions();
   },
   beforeUnmount() {
     if (this.snifferStateTimer) clearInterval(this.snifferStateTimer);
@@ -377,6 +459,12 @@ export default {
     this.unbindTopbarEvents();
   },
   methods: {
+    async loadVersions() {
+      const backendInfo = await getBackendVersion();
+      if (!backendInfo) return;
+      if (backendInfo.version) this.backendVersion = backendInfo.version;
+      if (backendInfo.mininet_version) this.mininetVersion = backendInfo.mininet_version;
+    },
     bindTopbarEvents() {
       if (!this.boundHandleGlobalClick) {
         this.boundHandleGlobalClick = this.handleGlobalClick.bind(this);
@@ -390,16 +478,27 @@ export default {
     },
     handleGlobalClick(event) {
       const topbar = this.$refs.topbar;
-      if (!topbar || !this.fileMenuOpen) return;
-      if (!topbar.contains(event.target)) {
+      if (!topbar) return;
+      if (this.fileMenuOpen && !topbar.contains(event.target)) {
         this.fileMenuOpen = false;
+      }
+      if (this.helpMenuOpen && !topbar.contains(event.target)) {
+        this.helpMenuOpen = false;
       }
     },
     toggleFileMenu() {
       this.fileMenuOpen = !this.fileMenuOpen;
+      if (this.fileMenuOpen) this.helpMenuOpen = false;
+    },
+    toggleHelpMenu() {
+      this.helpMenuOpen = !this.helpMenuOpen;
+      if (this.helpMenuOpen) this.fileMenuOpen = false;
     },
     closeFileMenu() {
       this.fileMenuOpen = false;
+    },
+    closeHelpMenu() {
+      this.helpMenuOpen = false;
     },
     handleNewTopology() {
       this.closeFileMenu();
@@ -411,7 +510,7 @@ export default {
     },
     handleSaveTopology() {
       this.closeFileMenu();
-      this.exportTopology();
+      this.saveTopologyAs();
     },
     handleExportScript() {
       this.closeFileMenu();
@@ -432,6 +531,20 @@ export default {
     handleOpenSettings() {
       this.closeFileMenu();
       this.showSettingsModal();
+    },
+    handleOpenUsage() {
+      this.closeHelpMenu();
+      this.modalHeader = "Usage";
+      this.modalOption = "usage";
+      this.modalData = null;
+      this.showModal = true;
+    },
+    handleOpenAbout() {
+      this.closeHelpMenu();
+      this.modalHeader = "About";
+      this.modalOption = "about";
+      this.modalData = null;
+      this.showModal = true;
     },
     openFileDialog() {
       this.$refs.topologyFileInput?.click();
@@ -621,6 +734,7 @@ export default {
       } catch (error) {
         console.warn("Failed to load settings", error);
       }
+      this.applyVisibilitySettings();
     },
     persistSettings() {
       try {
@@ -628,8 +742,17 @@ export default {
       } catch (error) {
         console.warn("Failed to persist settings", error);
       }
+      this.applyVisibilitySettings();
       this.applyHostLabels();
       this.applySwitchLabels();
+    },
+    handleShowHostsSetting() {
+      this.applyHostsVisibility();
+      this.persistSettings();
+    },
+    handleShowControllersSetting() {
+      this.applyControllersVisibility();
+      this.persistSettings();
     },
     getLinkOptionsPayload() {
       const opts = this.settings.linkOptions || {};
@@ -686,6 +809,30 @@ export default {
         this.nodes.update({ id: sw.id, label });
       });
     },
+    applyHostsVisibility() {
+      this.hostsHidden = !this.settings.showHosts;
+      if (!this.nodes || !this.nodes.forEach) return;
+      this.nodes.forEach((node) => {
+        if (node.type === "host") {
+          node.hidden = this.hostsHidden;
+          this.nodes.updateOnly(node);
+        }
+      });
+    },
+    applyControllersVisibility() {
+      this.controllersHidden = !this.settings.showControllers;
+      if (!this.nodes || !this.nodes.forEach) return;
+      this.nodes.forEach((node) => {
+        if (node.type === "controller") {
+          node.hidden = this.controllersHidden;
+          this.nodes.updateOnly(node);
+        }
+      });
+    },
+    applyVisibilitySettings() {
+      this.applyHostsVisibility();
+      this.applyControllersVisibility();
+    },
     showSettingsModal() {
       this.closeAllActiveModes();
       this.modalHeader = "Settings";
@@ -713,6 +860,7 @@ export default {
         };
         host.image = hostImg;
         host.label = this.hostLabel(host);
+        host.hidden = this.hostsHidden;
         return host;
       });
 
@@ -736,6 +884,7 @@ export default {
           highlight: { background: "#007acc", border: "#007acc" },
         };
         ctl.image = controllerImg;
+        ctl.hidden = this.controllersHidden;
         return ctl;
       });
 
@@ -766,6 +915,7 @@ export default {
         ...Object.values(this.controllers),
       ]);
       this.nodes = nodes;
+      this.applyVisibilitySettings();
       this.selectInitialWebshell();
       console.log("network inside mounted, before setup:", this.network);
       this.network.setOptions({
@@ -900,13 +1050,21 @@ export default {
     },
     openWebshellForNode(nodeId) {
       if (!nodeId) return;
-      if (!this.terminalNodeIds.includes(nodeId)) {
-        this.terminalNodeIds = [...this.terminalNodeIds, nodeId];
-      }
+      const nextCount = (this.terminalSessionCounters[nodeId] || 0) + 1;
+      this.terminalSessionCounters = {
+        ...this.terminalSessionCounters,
+        [nodeId]: nextCount,
+      };
+      const sessionId = `${nodeId}-${nextCount}-${Date.now()}`;
+      const label = `${nodeId}(${nextCount})`;
+      this.terminalSessions = [
+        ...this.terminalSessions,
+        { id: sessionId, nodeId, label },
+      ];
       this.webshellView = "terminal";
       this.webshellFocusId = null;
       this.$nextTick(() => {
-        this.webshellFocusId = nodeId;
+        this.webshellFocusId = sessionId;
       });
     },
     hideContextMenu() {
@@ -922,6 +1080,14 @@ export default {
       const nodeId = this.contextMenu.nodeId;
       this.hideContextMenu();
       this.openWebshellForNode(nodeId);
+    },
+    openNodeStatsFromMenu() {
+      const nodeId = this.contextMenu.nodeId;
+      this.hideContextMenu();
+      if (nodeId) this.showStatsModal(nodeId);
+    },
+    handleCloseSession(sessionId) {
+      this.terminalSessions = this.terminalSessions.filter(session => session.id !== sessionId);
     },
     handleWebshellViewChange(view) {
       this.webshellActiveView = view;
@@ -1089,6 +1255,7 @@ export default {
       };
       host.label = this.hostLabel(host);
       host.image = hostImg;
+      host.hidden = !this.settings.showHosts;
       if (position) {
         host.x = position.x;
         host.y = position.y;
@@ -1188,6 +1355,7 @@ export default {
       if (remote) ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
       else ctl.label = `${ctl.name}`;
       ctl.image = controllerImg;
+      ctl.hidden = !this.settings.showControllers;
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
         this.controllers[ctl.name] = ctl;
@@ -1253,22 +1421,14 @@ export default {
       }
     },
     toggleShowHosts() {
-      this.hostsHidden = !this.hostsHidden;
-      this.nodes.forEach((node, id) => {
-        if (node.type == "host") {
-          node.hidden = this.hostsHidden;
-          this.nodes.updateOnly(node);
-        }
-      });
+      this.settings.showHosts = !this.settings.showHosts;
+      this.applyHostsVisibility();
+      this.persistSettings();
     },
     toggleShowControllers () {
-      this.controllersHidden = !this.controllersHidden;
-      this.nodes.forEach((node, id) => {
-        if (node.type == "controller") {
-          node.hidden = this.controllersHidden;
-          this.nodes.updateOnly(node);
-        }
-      });
+      this.settings.showControllers = !this.settings.showControllers;
+      this.applyControllersVisibility();
+      this.persistSettings();
     },
     async doDeleteSelected() {
       this.closeAllActiveModes();
@@ -1493,6 +1653,41 @@ export default {
     async exportTopology() {
       await requestExportNetwork();
     },
+    async saveTopologyAs() {
+      const payload = this.buildTopologyExportPayload();
+      const jsonData = JSON.stringify(payload, null, 2);
+      const fileName = "topology.json";
+
+      if ("showSaveFilePicker" in window) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [
+              {
+                description: "JSON",
+                accept: { "application/json": [".json"] },
+              },
+            ],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(jsonData);
+          await writable.close();
+          return;
+        } catch (error) {
+          if (error?.name === "AbortError") return;
+        }
+      }
+
+      const blob = new Blob([jsonData], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    },
     async exportMininetScript() {
       await requestExportMininetScript();
     },
@@ -1604,7 +1799,58 @@ export default {
       await this.setupNetwork();
       this.network.setData({nodes: this.nodes, edges: this.edges});
       this.network.redraw();
-    }
+    },
+    buildTopologyExportPayload() {
+      try {
+        const nodes = this.nodes?.get ? this.nodes.get() : [];
+        const edges = this.edges?.get ? this.edges.get() : [];
+        const nodesExport = nodes.map((node) => {
+          if (node.type === "host") {
+            return {
+              id: node.id,
+              type: "host",
+              name: node.name,
+              ip: node.ip,
+              mac: node.mac,
+              x: node.x,
+              y: node.y,
+            };
+          }
+          if (node.type === "controller") {
+            return {
+              id: node.id,
+              type: "controller",
+              name: node.name,
+              remote: node.remote ?? false,
+              ip: node.ip ?? null,
+              port: node.port ?? null,
+              x: node.x,
+              y: node.y,
+            };
+          }
+          return {
+            id: node.id,
+            type: "switch",
+            name: node.name,
+            dpid: node.dpid,
+            ports: node.ports,
+            controller: node.controller ?? null,
+            x: node.x,
+            y: node.y,
+          };
+        });
+        const edgesExport = edges.map((edge) => ({
+          from: edge.from,
+          to: edge.to,
+          options: edge.options ?? null,
+          title: edge.title ?? null,
+        }));
+        return { nodes: nodesExport, edges: edgesExport };
+      } catch (error) {
+        console.warn("Failed to build topology export payload", error);
+        return { nodes: [], edges: [] };
+      }
+    },
   }
 };
 </script>
@@ -1829,6 +2075,28 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.help-modal {
+  color: #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.help-modal h4 {
+  margin: 4px 0 0;
+  font-size: 0.95rem;
+}
+
+.help-modal p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.help-link {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 .confirm-reset__button {
