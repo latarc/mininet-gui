@@ -108,6 +108,20 @@
           />
           <figcaption class="text-[11px] text-[#cccccc]">Controller</figcaption>
         </figure>
+        <figure
+          id="draggable-nat"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+          @dragstart="handleDragStart"
+        >
+          <img
+            alt="nat"
+            class="h-10 w-10"
+            src="@/assets/nat.svg"
+            draggable="false"
+          />
+          <figcaption class="text-[11px] text-[#cccccc]">NAT</figcaption>
+        </figure>
       </div>
     </div>
 

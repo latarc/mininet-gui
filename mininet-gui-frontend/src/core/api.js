@@ -64,6 +64,26 @@ export const deployController = async (ctl) => {
   }
 };
 
+export const deployNat = async (nat) => {
+  try {
+    console.log(nat);
+    const response = await axios.post(
+      baseUrl + "/api/mininet/nats",
+      JSON.stringify(nat),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return false;
+  }
+};
+
 export const getBackendVersion = async () => {
   try {
     const root = baseUrl?.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
@@ -427,6 +447,10 @@ export const getSwitches = async () => {
 
 export const getControllers = async () => {
   return await sendGet(baseUrl + "/api/mininet/controllers");
+};
+
+export const getNats = async () => {
+  return await sendGet(baseUrl + "/api/mininet/nats");
 };
 
 export const getEdges = async () => {

@@ -5,6 +5,8 @@
         <select id="type" v-model="controllerType">
           <option value="default">Default</option>
           <option value="remote">Remote</option>
+          <option value="ryu">Ryu</option>
+          <option value="nox">NOX</option>
         </select>
   
         <div v-if="controllerType === 'remote'" class="remote-options">

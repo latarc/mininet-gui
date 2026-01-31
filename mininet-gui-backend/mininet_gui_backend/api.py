@@ -29,7 +29,7 @@ from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
-from mininet.node import RemoteController, Controller as ReferenceController
+from mininet.node import RemoteController, Controller as ReferenceController, Ryu, NOX
 from mininet.link import TCLink
 from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ from fastapi.responses import PlainTextResponse, Response
 
 from mininet_gui_backend.export import export_net_to_script, export_net_to_json
 from mininet_gui_backend.cli import CLISession
-from mininet_gui_backend.schema import Switch, Host, Controller
+from mininet_gui_backend.schema import Switch, Host, Controller, Nat
 from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "mininet.log")
@@ -69,6 +69,7 @@ async def lifespan(app: FastAPI):
     app.controllers = dict()
     app.switches = dict()
     app.hosts = dict()
+    app.nats = dict()
     app.links = dict()
     app.link_attrs = dict()
     app.terminals = dict()
@@ -216,6 +217,10 @@ def list_switches():
 def list_controllers():
     return app.controllers
 
+@app.get("/api/mininet/nats")
+def list_nats():
+    return app.nats
+
 @app.get("/api/mininet/links")
 def list_edges():
     edges = []
@@ -260,6 +265,7 @@ def stop_network():
     app.controllers.clear()
     app.switches.clear()
     app.hosts.clear()
+    app.nats.clear()
     app.links.clear()
     app.link_attrs.clear()
 
@@ -318,6 +324,29 @@ def create_host(host: Host):
     # Return an OK status code
     return {"status": "ok"}
 
+@app.post("/api/mininet/nats")
+def create_nat(nat: Nat):
+    if nat.id in app.nats:
+        app.nats[nat.id] = nat
+        return {"status": "updated"}
+    debug(nat)
+    params = {}
+    if nat.ip:
+        params["ip"] = nat.ip
+    if nat.mac:
+        params["mac"] = nat.mac
+    new_nat = app.net.addNAT(nat.name, connect=False, **params)
+    new_nat.x = nat.x
+    new_nat.y = nat.y
+    new_nat.type = "nat"
+    if nat.ip:
+        new_nat.ip = nat.ip
+    if nat.mac:
+        new_nat.mac = nat.mac
+    app.nats[nat.name] = nat
+    debug(new_nat)
+    return {"status": "ok"}
+
 
 @app.post("/api/mininet/switches")
 def create_switch(switch: Switch):
@@ -344,13 +373,22 @@ def create_switch(switch: Switch):
 def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
-    if controller.remote:
-        # TODO aqui o mininet verifica se a porta está open com timeout de 60s e blocka a request 
+    controller_type = (controller.controller_type or "").lower()
+    if controller.remote or controller_type == "remote":
+        # TODO aqui o mininet verifica se a porta está open com timeout de 60s e blocka a request
         new_controller = app.net.addController(
             controller.name,
             controller=RemoteController,
             ip=controller.ip,
             port=controller.port,
+        )
+    elif controller_type == "ryu":
+        new_controller = app.net.addController(
+            controller.name, controller=Ryu
+        )
+    elif controller_type == "nox":
+        new_controller = app.net.addController(
+            controller.name, controller=NOX
         )
     else:
         new_controller = app.net.addController(
@@ -418,7 +456,7 @@ def create_link(payload: Union[Tuple[str, str], LinkCreate]):
     if app.net.is_started:
         for node in (src, dst):
             node = app.net.nameToNode[node]
-            if node.type == "host":
+            if node.type in ("host", "nat"):
                 node.configDefault()
             elif node.type == "sw" and node.controller:
                 # Important, otherwise switch doesnt init the port
@@ -458,6 +496,9 @@ def node_position(data: dict):
     elif node.type == "controller":
         app.controllers[node_id].x = x
         app.controllers[node_id].y = y
+    elif node.type == "nat":
+        app.nats[node_id].x = x
+        app.nats[node_id].y = y
     return {"message": f"Node {node_id} updated successfully"}
 
 
@@ -479,6 +520,8 @@ def delete_node(node_id: str):
                 debug("CONTROLLER", switch.controller, node_id)
                 app.switches[switch_id].controller = None
                 app.net.nameToNode[switch_id].start([])
+    elif node.type == "nat":
+        del app.nats[node_id]
     return {"message": f"Node {node_id} deleted successfully"}
 
 @app.delete("/api/mininet/delete_link/{src_id}/{dst_id}")
@@ -517,7 +560,7 @@ def get_node_stats(node_id: str):
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     
     node = app.net.nameToNode[node_id]
-    base_data = app.switches.get(node_id) or app.hosts.get(node_id) or app.controllers.get(node_id)
+    base_data = app.switches.get(node_id) or app.hosts.get(node_id) or app.controllers.get(node_id) or app.nats.get(node_id)
     if not base_data:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     result = dict(**base_data.model_dump())
@@ -725,12 +768,12 @@ def delete_flow_by_id(switch_id: str, flow_id: int):
 @app.get("/api/mininet/export_script", response_class=PlainTextResponse)
 def export_network():
     debug(app.net)
-    return export_net_to_script(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
+    return export_net_to_script(app.switches, app.hosts, app.controllers, app.nats, app.links).encode("utf-8")
 
 @app.get("/api/mininet/export_json", response_class=PlainTextResponse)
 def export_network():
     debug(app.net)
-    return export_net_to_json(app.switches, app.hosts, app.controllers, app.links).encode("utf-8")
+    return export_net_to_json(app.switches, app.hosts, app.controllers, app.nats, app.links).encode("utf-8")
 
 @app.post("/api/mininet/import_json")
 async def import_json(file: UploadFile = File(...)):
@@ -758,6 +801,10 @@ async def import_json(file: UploadFile = File(...)):
         for host_data in data.get("hosts", []):
             host = Host(**host_data)
             create_host(host)
+
+        for nat_data in data.get("nats", []):
+            nat = Nat(**nat_data)
+            create_nat(nat)
 
         for link in data.get("links", []):
             debug("LINKS: ", data["links"])

@@ -6,9 +6,11 @@ import {
   getHosts,
   getSwitches,
   getControllers,
+  getNats,
   getEdges,
   getNodeStats,
   deployHost,
+  deployNat,
   deployLink,
   deployController,
   deploySwitch,
@@ -45,6 +47,7 @@ import autoTable from "jspdf-autotable";
 import switchImg from "@/assets/light-switch.svg";
 import hostImg from "@/assets/light-host.svg";
 import controllerImg from "@/assets/light-controller.svg";
+import natImg from "@/assets/light-nat.svg";
 </script>
 
 <template>
@@ -342,6 +345,7 @@ export default {
       hosts: {},
       switches: {},
       controllers: {},
+      nats: {},
       links: [],
       nodes: new DataSet(),
       edges: new DataSet(),
@@ -849,6 +853,7 @@ export default {
       this.hosts = await getHosts();
       this.switches = await getSwitches();
       this.controllers = await getControllers();
+      this.nats = await getNats();
 
       Object.values(this.hosts).map((host) => {
         host.shape = "circularImage";
@@ -888,6 +893,18 @@ export default {
         return ctl;
       });
 
+      Object.values(this.nats).map((nat) => {
+        nat.shape = "circularImage";
+        nat.color = {
+          background: "#252526",
+          border: "#00000000",
+          highlight: { background: "#007acc", border: "#007acc" },
+        };
+        nat.image = natImg;
+        nat.label = nat.name || nat.id;
+        return nat;
+      });
+
       this.links = await getEdges();
       for (const link of this.links) {
         const options = link.options || null;
@@ -913,6 +930,7 @@ export default {
         ...Object.values(this.hosts),
         ...Object.values(this.switches),
         ...Object.values(this.controllers),
+        ...Object.values(this.nats),
       ]);
       this.nodes = nodes;
       this.applyVisibilitySettings();
@@ -1152,7 +1170,8 @@ export default {
         const remote = Boolean(entry?.remote);
         const ip = remote ? entry?.ip : null;
         const port = remote ? entry?.port : null;
-        await this.createController({ x: entry.x, y: entry.y }, remote, ip, port);
+        const controllerType = entry?.controller_type || (remote ? "remote" : "default");
+        await this.createController({ x: entry.x, y: entry.y }, remote, ip, port, controllerType);
         const lastId = Object.keys(this.controllers).sort(this.compareNodeIds).pop();
         if (lastId) created.push(lastId);
       }
@@ -1229,6 +1248,7 @@ export default {
       delete this.hosts[node_id];
       delete this.switches[node_id];
       delete this.controllers[node_id];
+      delete this.nats[node_id];
       return { deleted: node_id };
     },
     intToDpid (number) {
@@ -1267,6 +1287,39 @@ export default {
         throw "Could not create host " + hostId;
       }
       return host;
+    },
+    async createNat(position) {
+      let natId = Object.values(this.nats).length + 1;
+      while (`nat${natId}` in this.nats) {
+        natId++;
+      }
+      const octet = 200 + natId;
+      let nat = {
+        id: `nat${natId}`,
+        type: "nat",
+        name: `nat${natId}`,
+        label: `nat${natId}`,
+        ip: `10.0.0.${octet}/8`,
+        mac: octet.toString(16).toUpperCase().padStart(12, "0"),
+        shape: "circularImage",
+        color: {
+          background: "#252526",
+          border: "#00000000",
+          highlight: { background: "#007acc", border: "#007acc" },
+        },
+      };
+      nat.image = natImg;
+      if (position) {
+        nat.x = position.x;
+        nat.y = position.y;
+      }
+      if (await deployNat(nat)) {
+        this.nodes.add(nat);
+        this.nats[nat.name] = nat;
+      } else {
+        throw "Could not create NAT " + natId;
+      }
+      return nat;
     },
     async createSwitch(switchData) {
       let swId = Object.values(this.switches).length + 1;
@@ -1320,7 +1373,13 @@ export default {
       });
 
       console.log("GOT DATA:", this.formData);
-      await this.createController(position, this.formData.type === "remote", this.formData.ip, this.formData.port);
+      await this.createController(
+        position,
+        this.formData.type === "remote",
+        this.formData.ip,
+        this.formData.port,
+        this.formData.type
+      );
     },
     handleControllerFormSubmit(data) {
       this.formData = data;
@@ -1330,7 +1389,7 @@ export default {
       }
       this.showModal = false;
     },
-    async createController(position, remote, ip, port) {
+    async createController(position, remote, ip, port, controllerType = "default") {
       let ctlId = Object.values(this.controllers).length + 1;
       while (`c${ctlId}` in this.controllers) {
         ctlId++;
@@ -1340,6 +1399,7 @@ export default {
         type: "controller",
         name: `c${ctlId}`,
         label: null,
+        controller_type: controllerType,
         remote: remote,
         ip: ip,
         port: port,
@@ -1383,6 +1443,10 @@ export default {
         );
       } else if (data === "draggable-controller") {
         this.showControllerFormModal(
+          this.network.DOMtoCanvas(domPoint),
+        );
+      } else if (data === "draggable-nat") {
+        this.createNat(
           this.network.DOMtoCanvas(domPoint),
         );
       }
@@ -1821,9 +1885,22 @@ export default {
               id: node.id,
               type: "controller",
               name: node.name,
+              controller_type: node.controller_type ?? (node.remote ? "remote" : "default"),
               remote: node.remote ?? false,
               ip: node.ip ?? null,
               port: node.port ?? null,
+              x: node.x,
+              y: node.y,
+            };
+          }
+          if (node.type === "nat") {
+            return {
+              id: node.id,
+              type: "nat",
+              name: node.name,
+              label: node.label ?? node.name,
+              ip: node.ip ?? null,
+              mac: node.mac ?? null,
               x: node.x,
               y: node.y,
             };
