@@ -1,15 +1,8 @@
 <template>
     <div>
       <form @submit.prevent="submitForm">
-        <label for="type">Controller Type:</label>
-        <select id="type" v-model="controllerType">
-          <option value="default">Default</option>
-          <option value="remote">Remote</option>
-          <option value="ryu">Ryu</option>
-          <option value="nox">NOX</option>
-        </select>
-  
-        <div v-if="controllerType === 'remote'" class="remote-options">
+        <div class="controller-type">Remote Controller</div>
+        <div class="remote-options">
           <label for="ip">IP:</label>
           <input id="ip" type="text" v-model="ip" required />
   
@@ -26,7 +19,6 @@
   export default {
     data() {
       return {
-        controllerType: "default",
         ip: "",
         port: "",
       };
@@ -34,9 +26,9 @@
     methods: {
       submitForm() {
         const formData = {
-          type: this.controllerType,
-          ip: this.controllerType === "remote" ? this.ip : null,
-          port: this.controllerType === "remote" ? this.port : null,
+          type: "remote",
+          ip: this.ip,
+          port: this.port,
         };
         this.$emit("form-submit", formData);
       },
@@ -47,6 +39,12 @@
   <style scoped>
   .remote-options {
     margin-top: 1rem;
+  }
+
+  .controller-type {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: black;
   }
 
   label {

@@ -7,10 +7,12 @@ import {
   getSwitches,
   getControllers,
   getNats,
+  getRouters,
   getEdges,
   getNodeStats,
   deployHost,
   deployNat,
+  deployRouter,
   deployLink,
   deployController,
   deploySwitch,
@@ -18,6 +20,7 @@ import {
   isNetworkStarted,
   requestResetNetwork,
   requestRunPingall,
+  runIperf,
   deleteNode,
   deleteLink,
   updateNodePosition,
@@ -45,9 +48,13 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 import switchImg from "@/assets/light-switch.svg";
+import switchOvsImg from "@/assets/light-switch-ovs.svg";
+import switchOvsBridgeImg from "@/assets/light-switch-ovsbridge.svg";
+import switchUserImg from "@/assets/light-switch-user.svg";
 import hostImg from "@/assets/light-host.svg";
 import controllerImg from "@/assets/light-controller.svg";
 import natImg from "@/assets/light-nat.svg";
+import routerImg from "@/assets/light-router.svg";
 </script>
 
 <template>
@@ -129,6 +136,7 @@ import natImg from "@/assets/light-nat.svg";
         <div class="side-container">
           <Side
             @runPingall="showPingallModal"
+            @runIperf="showIperfModal"
             @closeAllActiveModes="closeAllActiveModes"
             @toggleShowHosts="toggleShowHosts"
             @toggleShowControllers="toggleShowControllers"
@@ -211,6 +219,37 @@ import natImg from "@/assets/light-nat.svg";
       <template #body>
         <node-stats v-if="modalOption === 'nodeStats'" :stats="modalData" @hostUpdated="handleHostUpdated" />
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
+        <div v-if="modalOption === 'iperf'" class="iperf-modal">
+          <div class="iperf-form">
+            <label class="iperf-label" for="iperf-client">Client</label>
+            <select id="iperf-client" v-model="iperfForm.client" class="iperf-select">
+              <option value="" disabled>Select client host</option>
+              <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
+                {{ host.id }}
+              </option>
+            </select>
+            <label class="iperf-label" for="iperf-server">Server</label>
+            <select id="iperf-server" v-model="iperfForm.server" class="iperf-select">
+              <option value="" disabled>Select server host</option>
+              <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
+                {{ host.id }}
+              </option>
+            </select>
+            <button
+              class="iperf-run"
+              type="button"
+              :disabled="iperfBusy || !iperfForm.client || !iperfForm.server || iperfForm.client === iperfForm.server"
+              @click="runIperfTest"
+            >
+              {{ iperfBusy ? "Running..." : "Run Iperf" }}
+            </button>
+            <p v-if="iperfError" class="iperf-error">{{ iperfError }}</p>
+          </div>
+          <div v-if="iperfResult" class="iperf-result">
+            <h4>Result</h4>
+            <pre>{{ formatIperfResult(iperfResult) }}</pre>
+          </div>
+        </div>
         <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
         <div v-if="modalOption === 'usage'" class="help-modal">
@@ -346,12 +385,20 @@ export default {
       switches: {},
       controllers: {},
       nats: {},
+      routers: {},
       links: [],
       nodes: new DataSet(),
       edges: new DataSet(),
       addEdgeMode: false,
       networkStarted: true,
       pingallRunning: false,
+      iperfBusy: false,
+      iperfError: "",
+      iperfResult: null,
+      iperfForm: {
+        client: "",
+        server: "",
+      },
       snifferActive: false,
       hostsHidden: false,
       controllersHidden: false,
@@ -463,6 +510,14 @@ export default {
     this.unbindTopbarEvents();
   },
   methods: {
+    switchImageForType(type) {
+      const key = (type || "ovskernel").toLowerCase();
+      if (key === "user") return switchUserImg;
+      if (key === "ovs") return switchOvsImg;
+      if (key === "ovsbridge") return switchOvsBridgeImg;
+      if (key === "ovskernel") return switchImg;
+      return switchImg;
+    },
     async loadVersions() {
       const backendInfo = await getBackendVersion();
       if (!backendInfo) return;
@@ -854,6 +909,7 @@ export default {
       this.switches = await getSwitches();
       this.controllers = await getControllers();
       this.nats = await getNats();
+      this.routers = await getRouters();
 
       Object.values(this.hosts).map((host) => {
         host.shape = "circularImage";
@@ -876,7 +932,7 @@ export default {
           border: "#00000000",
           highlight: { background: "#007acc", border: "#007acc" },
         };
-        sw.image = switchImg;
+        sw.image = this.switchImageForType(sw.switch_type);
         sw.label = this.switchLabel(sw);
         return sw;
       });
@@ -905,6 +961,18 @@ export default {
         return nat;
       });
 
+      Object.values(this.routers).map((router) => {
+        router.shape = "circularImage";
+        router.color = {
+          background: "#252526",
+          border: "#00000000",
+          highlight: { background: "#007acc", border: "#007acc" },
+        };
+        router.image = routerImg;
+        router.label = router.name || router.id;
+        return router;
+      });
+
       this.links = await getEdges();
       for (const link of this.links) {
         const options = link.options || null;
@@ -931,6 +999,7 @@ export default {
         ...Object.values(this.switches),
         ...Object.values(this.controllers),
         ...Object.values(this.nats),
+        ...Object.values(this.routers),
       ]);
       this.nodes = nodes;
       this.applyVisibilitySettings();
@@ -1249,6 +1318,7 @@ export default {
       delete this.switches[node_id];
       delete this.controllers[node_id];
       delete this.nats[node_id];
+      delete this.routers[node_id];
       return { deleted: node_id };
     },
     intToDpid (number) {
@@ -1288,6 +1358,39 @@ export default {
       }
       return host;
     },
+    async createRouter(position) {
+      let routerId = Object.values(this.routers).length + 1;
+      while (`r${routerId}` in this.routers) {
+        routerId++;
+      }
+      const octet = 100 + routerId;
+      let router = {
+        id: `r${routerId}`,
+        type: "router",
+        name: `r${routerId}`,
+        label: `r${routerId}`,
+        ip: `10.0.0.${octet}/8`,
+        mac: octet.toString(16).toUpperCase().padStart(12, "0"),
+        shape: "circularImage",
+        color: {
+          background: "#252526",
+          border: "#00000000",
+          highlight: { background: "#007acc", border: "#007acc" },
+        },
+      };
+      router.image = routerImg;
+      if (position) {
+        router.x = position.x;
+        router.y = position.y;
+      }
+      if (await deployRouter(router)) {
+        this.nodes.add(router);
+        this.routers[router.name] = router;
+      } else {
+        throw "Could not create router " + routerId;
+      }
+      return router;
+    },
     async createNat(position) {
       let natId = Object.values(this.nats).length + 1;
       while (`nat${natId}` in this.nats) {
@@ -1326,6 +1429,7 @@ export default {
       while (`s${swId}` in this.switches) {
         swId++;
       }
+      const switchType = switchData?.switch_type || "ovskernel";
       let sw = {
         id: `s${swId}`,
         type: "sw",
@@ -1333,6 +1437,7 @@ export default {
         label: switchData.label || null,
         ports: switchData.ports || 4,
         controller: null,
+        switch_type: switchType,
         shape: "circularImage",
         color: {
           background: "#252526",
@@ -1341,7 +1446,7 @@ export default {
         },
       };
       sw.label = this.switchLabel(sw);
-      sw.image = switchImg;
+      sw.image = this.switchImageForType(sw.switch_type);
       if (switchData) {
         sw.x = switchData.x;
         sw.y = switchData.y;
@@ -1363,10 +1468,13 @@ export default {
       }
       return sw;
     },
-    async showControllerFormModal(position) {
+    async showControllerFormModal(position, presetType = null) {
       this.modalHeader = "Controller Form";
       this.modalOption = "controllerForm";
       this.showModal = true;
+      if (presetType) {
+        this.formData = { ...(this.formData || {}), type: presetType };
+      }
 
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
@@ -1437,13 +1545,57 @@ export default {
         this.createHost(
           this.network.DOMtoCanvas(domPoint),
         );
+      } else if (data === "draggable-router") {
+        this.createRouter(
+          this.network.DOMtoCanvas(domPoint),
+        );
       } else if (data === "draggable-switch") {
         this.createSwitch(
           this.network.DOMtoCanvas(domPoint),
         );
-      } else if (data === "draggable-controller") {
+      } else if (data === "draggable-switch-ovs") {
+        this.createSwitch({
+          ...this.network.DOMtoCanvas(domPoint),
+          switch_type: "ovs",
+        });
+      } else if (data === "draggable-switch-ovsbridge") {
+        this.createSwitch({
+          ...this.network.DOMtoCanvas(domPoint),
+          switch_type: "ovsbridge",
+        });
+      } else if (data === "draggable-switch-user") {
+        this.createSwitch({
+          ...this.network.DOMtoCanvas(domPoint),
+          switch_type: "user",
+        });
+      } else if (data === "draggable-controller-default") {
+        this.createController(
+          this.network.DOMtoCanvas(domPoint),
+          false,
+          null,
+          null,
+          "default"
+        );
+      } else if (data === "draggable-controller-remote") {
         this.showControllerFormModal(
           this.network.DOMtoCanvas(domPoint),
+          "remote"
+        );
+      } else if (data === "draggable-controller-ryu") {
+        this.createController(
+          this.network.DOMtoCanvas(domPoint),
+          false,
+          null,
+          null,
+          "ryu"
+        );
+      } else if (data === "draggable-controller-nox") {
+        this.createController(
+          this.network.DOMtoCanvas(domPoint),
+          false,
+          null,
+          null,
+          "nox"
         );
       } else if (data === "draggable-nat") {
         this.createNat(
@@ -1470,6 +1622,9 @@ export default {
       this.showModal = false;
       this.modalOption = null;
       this.modalData = null;
+      this.iperfError = "";
+      this.iperfResult = null;
+      this.iperfBusy = false;
     },
     closeAllActiveModes() {
       this.closeAddEdgeMode();
@@ -1519,6 +1674,43 @@ export default {
         this.showModal = true;
       }
       this.pingallRunning = false;
+    },
+    showIperfModal() {
+      this.closeAllActiveModes();
+      const hostIds = Object.keys(this.hosts || {});
+      this.iperfForm.client = hostIds[0] || "";
+      this.iperfForm.server = hostIds[1] || "";
+      this.iperfError = "";
+      this.iperfResult = null;
+      this.modalHeader = "Run Iperf";
+      this.modalOption = "iperf";
+      this.showModal = true;
+    },
+    async runIperfTest() {
+      if (!this.iperfForm.client || !this.iperfForm.server) return;
+      if (this.iperfForm.client === this.iperfForm.server) {
+        this.iperfError = "Client and server must be different hosts.";
+        return;
+      }
+      this.iperfBusy = true;
+      this.iperfError = "";
+      const result = await runIperf({
+        client: this.iperfForm.client,
+        server: this.iperfForm.server,
+      });
+      if (!result) {
+        this.iperfError = "Failed to run iperf.";
+      } else {
+        this.iperfResult = result;
+      }
+      this.iperfBusy = false;
+    },
+    formatIperfResult(result) {
+      if (!result) return "";
+      if (result.client && result.server) {
+        return `Client: ${result.client}\nServer: ${result.server}`;
+      }
+      return JSON.stringify(result, null, 2);
     },
     async showStatsModal(nodeId) {
       this.closeAllActiveModes();
@@ -1654,6 +1846,8 @@ export default {
         this.hosts = new Object();
         this.switches = new Object();
         this.controllers = new Object();
+        this.nats = new Object();
+        this.routers = new Object();
         this.links = new Array();
         this.nodes = new DataSet();
         this.edges = new DataSet();
@@ -1892,6 +2086,17 @@ export default {
               y: node.y,
             };
           }
+          if (node.type === "router") {
+            return {
+              id: node.id,
+              type: "router",
+              name: node.name,
+              ip: node.ip,
+              mac: node.mac,
+              x: node.x,
+              y: node.y,
+            };
+          }
           if (node.type === "controller") {
             return {
               id: node.id,
@@ -1924,6 +2129,7 @@ export default {
             dpid: node.dpid,
             ports: node.ports,
             controller: node.controller ?? null,
+            switch_type: node.switch_type ?? "ovskernel",
             x: node.x,
             y: node.y,
           };
@@ -2163,6 +2369,61 @@ export default {
 .confirm-reset__text {
   margin: 0 0 16px;
   font-size: 0.95rem;
+}
+
+.iperf-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.iperf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.iperf-label {
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+.iperf-select {
+  border: 1px solid #cbd5f5;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  background: #f8fafc;
+}
+
+.iperf-run {
+  align-self: flex-start;
+  background: #007acc;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.iperf-run:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.iperf-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+.iperf-result pre {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
 }
 
 .confirm-reset__actions {

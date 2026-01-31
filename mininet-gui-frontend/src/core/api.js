@@ -84,6 +84,25 @@ export const deployNat = async (nat) => {
   }
 };
 
+export const deployRouter = async (router) => {
+  try {
+    console.log(router);
+    const response = await axios.post(
+      baseUrl + "/api/mininet/routers",
+      JSON.stringify(router),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return false;
+  }
+};
 export const getBackendVersion = async () => {
   try {
     const root = baseUrl?.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
@@ -419,6 +438,25 @@ export const requestRunPingall = async () => {
   }
 };
 
+export const runIperf = async (payload) => {
+  try {
+    const response = await axios.post(
+      baseUrl + "/api/mininet/iperf",
+      JSON.stringify(payload),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data || null;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return null;
+  }
+};
+
 export const sendGet = async (url) => {
   try {
     const response = await axios.get(url, {
@@ -470,6 +508,10 @@ export const getControllers = async () => {
 
 export const getNats = async () => {
   return await sendGet(baseUrl + "/api/mininet/nats");
+};
+
+export const getRouters = async () => {
+  return await sendGet(baseUrl + "/api/mininet/routers");
 };
 
 export const getEdges = async () => {

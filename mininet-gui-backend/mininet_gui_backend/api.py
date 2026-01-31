@@ -29,7 +29,7 @@ from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
-from mininet.node import RemoteController, Controller as ReferenceController, Ryu, NOX
+from mininet.node import RemoteController, Controller as ReferenceController, Ryu, NOX, UserSwitch, OVSSwitch, OVSKernelSwitch, OVSBridge, Node
 from mininet.link import TCLink
 from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ from fastapi.responses import PlainTextResponse, Response
 
 from mininet_gui_backend.export import export_net_to_script, export_net_to_json
 from mininet_gui_backend.cli import CLISession
-from mininet_gui_backend.schema import Switch, Host, Controller, Nat
+from mininet_gui_backend.schema import Switch, Host, Controller, Nat, Router
 from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "mininet.log")
@@ -61,6 +61,16 @@ class LinkCreate(BaseModel):
     dst: str
     options: Optional[LinkOptions] = None
 
+
+class LinuxRouter(Node):
+    def config(self, **params):
+        super().config(**params)
+        self.cmd("sysctl -w net.ipv4.ip_forward=1")
+
+    def terminate(self):
+        self.cmd("sysctl -w net.ipv4.ip_forward=0")
+        super().terminate()
+
 class HostUpdate(BaseModel):
     ip: Optional[str] = None
     intf: Optional[str] = None
@@ -68,6 +78,15 @@ class HostUpdate(BaseModel):
     default_route_type: Optional[str] = None
     default_route_dev: Optional[str] = None
     default_route_ip: Optional[str] = None
+
+class IperfRequest(BaseModel):
+    client: str
+    server: str
+    l4_type: Optional[str] = "TCP"
+    udp_bw: Optional[str] = None
+    fmt: Optional[str] = None
+    seconds: Optional[int] = 5
+    port: Optional[int] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -78,6 +97,7 @@ async def lifespan(app: FastAPI):
     app.switches = dict()
     app.hosts = dict()
     app.nats = dict()
+    app.routers = dict()
     app.links = dict()
     app.link_attrs = dict()
     app.terminals = dict()
@@ -159,11 +179,13 @@ def list_mininet_interfaces():
     if hasattr(app.net, "hosts"):
         for host in app.net.hosts:
             intfs = [i.name for i in host.intfList() if i.name and i.name not in ("lo", "lo0")]
-            nodes.append({"id": host.name, "type": "host", "intfs": intfs, "pid": host.pid})
+            node_type = getattr(host, "type", "host")
+            nodes.append({"id": host.name, "type": node_type, "intfs": intfs, "pid": host.pid})
     if hasattr(app.net, "switches"):
         for sw in app.net.switches:
             intfs = [i.name for i in sw.intfList() if i.name and i.name not in ("lo", "lo0")]
-            nodes.append({"id": sw.name, "type": "switch", "intfs": intfs, "pid": sw.pid})
+            node_type = getattr(sw, "type", "switch")
+            nodes.append({"id": sw.name, "type": node_type, "intfs": intfs, "pid": sw.pid})
     return nodes
 
 def _parse_ip_addrs(output: str):
@@ -219,6 +241,18 @@ def list_interfaces():
 
 @app.get("/api/mininet/switches")
 def list_switches():
+    for sw_id, sw in app.switches.items():
+        if not getattr(sw, "switch_type", None):
+            node = app.net.nameToNode.get(sw_id)
+            if node:
+                if isinstance(node, UserSwitch):
+                    sw.switch_type = "user"
+                elif isinstance(node, OVSBridge):
+                    sw.switch_type = "ovsbridge"
+                elif isinstance(node, OVSSwitch):
+                    sw.switch_type = "ovs"
+                elif isinstance(node, OVSKernelSwitch):
+                    sw.switch_type = "ovskernel"
     return app.switches
 
 @app.get("/api/mininet/controllers")
@@ -228,6 +262,10 @@ def list_controllers():
 @app.get("/api/mininet/nats")
 def list_nats():
     return app.nats
+
+@app.get("/api/mininet/routers")
+def list_routers():
+    return app.routers
 
 @app.get("/api/mininet/links")
 def list_edges():
@@ -274,6 +312,7 @@ def stop_network():
     app.switches.clear()
     app.hosts.clear()
     app.nats.clear()
+    app.routers.clear()
     app.links.clear()
     app.link_attrs.clear()
 
@@ -330,6 +369,23 @@ def create_host(host: Host):
     app.hosts[host.name] = host
     debug(new_host)
     # Return an OK status code
+    return {"status": "ok"}
+
+@app.post("/api/mininet/routers")
+def create_router(router: Router):
+    if router.id in app.routers:
+        app.routers[router.id] = router
+        return {"status": "updated"}
+    debug(router)
+    params = {"ip": router.ip, "mac": router.mac}
+    new_router = app.net.addHost(router.name, cls=LinuxRouter, **params)
+    new_router.x = router.x
+    new_router.y = router.y
+    new_router.ip = router.ip
+    new_router.mac = router.mac
+    new_router.type = "router"
+    app.routers[router.name] = router
+    debug(new_router)
     return {"status": "ok"}
 
 @app.patch("/api/mininet/hosts/{host_id}")
@@ -417,7 +473,18 @@ def create_switch(switch: Switch):
         raise HTTPException(
             status_code=400, detail=f'controller "{switch.controller}" does not exist'
         )
-    new_switch = app.net.addSwitch(switch.name, ports=switch.ports)
+    switch_type = (switch.switch_type or "").lower()
+    switch.switch_type = switch_type or switch.switch_type
+    if switch_type == "user":
+        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=UserSwitch)
+    elif switch_type == "ovs":
+        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSSwitch)
+    elif switch_type == "ovskernel":
+        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSKernelSwitch)
+    elif switch_type == "ovsbridge":
+        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSBridge)
+    else:
+        new_switch = app.net.addSwitch(switch.name, ports=switch.ports)
     if app.net.is_started and switch.controller:
         new_switch.start([app.net.nameToNode[switch.controller]])
     else:
@@ -426,6 +493,7 @@ def create_switch(switch: Switch):
     new_switch.y = switch.y
     new_switch.type = "sw"
     new_switch.controller = switch.controller
+    new_switch.switch_type = switch.switch_type
     app.switches[switch.name] = switch
     return switch
 
@@ -517,7 +585,7 @@ def create_link(payload: Union[Tuple[str, str], LinkCreate]):
     if app.net.is_started:
         for node in (src, dst):
             node = app.net.nameToNode[node]
-            if node.type in ("host", "nat"):
+            if node.type in ("host", "nat", "router"):
                 node.configDefault()
             elif node.type == "sw" and node.controller:
                 # Important, otherwise switch doesnt init the port
@@ -560,6 +628,9 @@ def node_position(data: dict):
     elif node.type == "nat":
         app.nats[node_id].x = x
         app.nats[node_id].y = y
+    elif node.type == "router":
+        app.routers[node_id].x = x
+        app.routers[node_id].y = y
     return {"message": f"Node {node_id} updated successfully"}
 
 
@@ -583,6 +654,8 @@ def delete_node(node_id: str):
                 app.net.nameToNode[switch_id].start([])
     elif node.type == "nat":
         del app.nats[node_id]
+    elif node.type == "router":
+        del app.routers[node_id]
     return {"message": f"Node {node_id} deleted successfully"}
 
 @app.delete("/api/mininet/delete_link/{src_id}/{dst_id}")
@@ -621,7 +694,7 @@ def get_node_stats(node_id: str):
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     
     node = app.net.nameToNode[node_id]
-    base_data = app.switches.get(node_id) or app.hosts.get(node_id) or app.controllers.get(node_id) or app.nats.get(node_id)
+    base_data = app.switches.get(node_id) or app.hosts.get(node_id) or app.controllers.get(node_id) or app.nats.get(node_id) or app.routers.get(node_id)
     if not base_data:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     result = dict(**base_data.model_dump())
@@ -664,7 +737,7 @@ def get_node_stats(node_id: str):
             flow["match_fields"] = match_fields
             parsed_flows.append(flow)
         result["flow_table"] = parsed_flows
-    elif node.type == "host":
+    elif node.type in ("host", "router"):
         arp_table = node.cmd("arp -a -n")
         print("ARP TABLE", arp_table)
         parsed_arp_table = []
@@ -834,15 +907,48 @@ def delete_flow_by_id(switch_id: str, flow_id: int):
         raise HTTPException(status_code=400, detail=detail)
     return {"status": "ok", "match": match}
 
+@app.post("/api/mininet/iperf")
+def run_iperf(request: IperfRequest):
+    if not app.net.is_started:
+        raise HTTPException(status_code=400, detail="network must be started to run iperf")
+    if request.client == request.server:
+        raise HTTPException(status_code=400, detail="client and server must be different hosts")
+    if request.client not in app.net.nameToNode or request.server not in app.net.nameToNode:
+        raise HTTPException(status_code=404, detail="client or server host not found")
+    client_node = app.net.nameToNode[request.client]
+    server_node = app.net.nameToNode[request.server]
+    if getattr(client_node, "type", None) != "host" or getattr(server_node, "type", None) != "host":
+        raise HTTPException(status_code=400, detail="client and server must be hosts")
+
+    kwargs = {}
+    if request.udp_bw:
+        kwargs["udpBw"] = request.udp_bw
+    if request.fmt:
+        kwargs["fmt"] = request.fmt
+    if request.seconds:
+        kwargs["seconds"] = request.seconds
+    if request.port:
+        kwargs["port"] = request.port
+
+    result = app.net.iperf(
+        hosts=[client_node, server_node],
+        l4Type=request.l4_type or "TCP",
+        **kwargs,
+    )
+
+    if isinstance(result, (list, tuple)) and len(result) >= 2:
+        return {"client": result[0], "server": result[1]}
+    return {"result": result}
+
 @app.get("/api/mininet/export_script", response_class=PlainTextResponse)
 def export_network():
     debug(app.net)
-    return export_net_to_script(app.switches, app.hosts, app.controllers, app.nats, app.links).encode("utf-8")
+    return export_net_to_script(app.switches, app.hosts, app.controllers, app.nats, app.routers, app.links).encode("utf-8")
 
 @app.get("/api/mininet/export_json", response_class=PlainTextResponse)
 def export_network():
     debug(app.net)
-    return export_net_to_json(app.switches, app.hosts, app.controllers, app.nats, app.links).encode("utf-8")
+    return export_net_to_json(app.switches, app.hosts, app.controllers, app.nats, app.routers, app.links).encode("utf-8")
 
 @app.post("/api/mininet/import_json")
 async def import_json(file: UploadFile = File(...)):
@@ -870,6 +976,10 @@ async def import_json(file: UploadFile = File(...)):
         for host_data in data.get("hosts", []):
             host = Host(**host_data)
             create_host(host)
+
+        for router_data in data.get("routers", []):
+            router = Router(**router_data)
+            create_router(router)
 
         for nat_data in data.get("nats", []):
             nat = Nat(**nat_data)

@@ -1,7 +1,7 @@
 from typing import Union
 
 from pydantic import BaseModel
-from mininet.node import RemoteController, Ryu, NOX
+from mininet.node import RemoteController, Ryu, NOX, UserSwitch, OVSSwitch, OVSKernelSwitch, OVSBridge
 
 
 class Node(BaseModel):
@@ -35,6 +35,14 @@ class Host(Node):
     mac: str
 
 
+class Router(Node):
+    ip: str
+    mac: str
+
+    def format_router(self) -> str:
+        return f'{self.name} = net.addHost("{self.name}", cls=LinuxRouter, ip="{self.ip}", mac="{self.mac}")'
+
+
 class Nat(Node):
     ip: Union[str, None]
     mac: Union[str, None]
@@ -54,3 +62,16 @@ class Nat(Node):
 class Switch(Node):
     ports: int
     controller: Union[str, None]
+    switch_type: str = "ovskernel"
+
+    def format_switch(self) -> str:
+        switch_type = (self.switch_type or "").lower()
+        if switch_type == "user":
+            return f'{self.name} = net.addSwitch("{self.name}", cls=UserSwitch)'
+        if switch_type == "ovs":
+            return f'{self.name} = net.addSwitch("{self.name}", cls=OVSSwitch)'
+        if switch_type == "ovskernel":
+            return f'{self.name} = net.addSwitch("{self.name}", cls=OVSKernelSwitch)'
+        if switch_type == "ovsbridge":
+            return f'{self.name} = net.addSwitch("{self.name}", cls=OVSBridge)'
+        return f'{self.name} = net.addSwitch("{self.name}")'
