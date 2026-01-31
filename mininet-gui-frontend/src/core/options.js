@@ -36,6 +36,7 @@ export const options = {
   interaction: {
     keyboard: true,
     multiselect: true,
+    dragView: false,
   },
   physics: {
     enabled: false,

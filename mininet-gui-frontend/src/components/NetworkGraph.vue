@@ -46,42 +46,90 @@ import controllerImg from "@/assets/light-controller.svg";
 </script>
 
 <template>
-  <div class="layout" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
-    <!-- Side panel (left) -->
-
-      <div class="side-container">
-        <Side
-          @toggleAddEdgeMode="handleToggleAddEdgeMode"
-          @deleteSelected="doDeleteSelected"
-          @runPingall="showPingallModal"
-          @closeAllActiveModes="closeAllActiveModes"
-          @toggleShowHosts="toggleShowHosts"
-          @toggleShowControllers="toggleShowControllers"
-          @createTopology="showTopologyFormModal"
-          @resetTopology="showResetConfirmModal"
-          @toggleSniffer="toggleSniffer"
-          @exportSniffer="exportSniffer"
-          @toggleSidebar="handleSidebarToggle"
-          @exportTopology="exportTopology"
-          @importTopology="importTopology"
-          @doSelectAll="doSelectAll"
-          @exportMininetScript="exportMininetScript"
-          @openSettings="showSettingsModal"
-          @exportAddressingPlan="exportAddressingPlan"
-          @keydown.ctrl.a.prevent="doSelectAll"
-          :networkStarted="networkStarted"
-          :addEdgeMode="addEdgeMode"
-          :snifferActive="snifferActive"
-          :pingallRunning="pingallRunning"
-        />
+  <div class="app-shell">
+    <div ref="topbar" class="topbar">
+      <div class="topbar-title">Mininet GUI</div>
+      <div class="menu-bar">
+        <div class="menu-item-wrapper">
+          <button
+            type="button"
+            class="menu-item"
+            :class="{ open: fileMenuOpen }"
+            @click.stop="toggleFileMenu"
+          >
+            File
+          </button>
+          <div v-if="fileMenuOpen" class="menu-dropdown" @click.stop>
+            <button type="button" class="menu-action" @click="handleNewTopology">
+              New Topology
+            </button>
+            <button type="button" class="menu-action" @click="handleOpenTopology">
+              Open Topology...
+            </button>
+            <button type="button" class="menu-action" @click="handleSaveTopology">
+              Save Topology
+            </button>
+            <div class="menu-separator"></div>
+            <button type="button" class="menu-action" @click="handleExportScript">
+              Export Topology as Mininet Script
+            </button>
+            <button type="button" class="menu-action" @click="handleExportSniffer">
+              Export Sniffer (PCAP)
+            </button>
+            <button type="button" class="menu-action" @click="handleExportPng">
+              Export Topology as PNG
+            </button>
+            <button type="button" class="menu-action" @click="handleExportAddressingPlan">
+              Export Addressing Plan (PDF)
+            </button>
+            <div class="menu-separator"></div>
+            <button type="button" class="menu-action" @click="handleOpenSettings">
+              Settings
+            </button>
+          </div>
+        </div>
+        <button type="button" class="menu-item" disabled>Edit</button>
+        <button type="button" class="menu-item" disabled>View</button>
+        <button type="button" class="menu-item" disabled>Run</button>
+        <button type="button" class="menu-item" disabled>Help</button>
       </div>
-    
-    <!-- Main Content (Graph + WebShell) -->
-    <div class="main-content">
-      <div ref="graph" id="network-graph" class="network-graph"
+      <input
+        ref="topologyFileInput"
+        type="file"
+        accept=".json"
+        class="menu-file-input"
+        @change="handleFileUpload"
+      />
+    </div>
+    <div class="layout" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+      <!-- Side panel (left) -->
+
+        <div class="side-container">
+          <Side
+            @runPingall="showPingallModal"
+            @closeAllActiveModes="closeAllActiveModes"
+            @toggleShowHosts="toggleShowHosts"
+            @toggleShowControllers="toggleShowControllers"
+            @createTopology="showTopologyFormModal"
+            @toggleSidebar="handleSidebarToggle"
+            @doSelectAll="doSelectAll"
+            @toggleAddEdgeMode="handleToggleAddEdgeMode"
+            @deleteSelected="doDeleteSelected"
+            @keydown.ctrl.a.prevent="doSelectAll"
+            :networkStarted="networkStarted"
+            :addEdgeMode="addEdgeMode"
+            :pingallRunning="pingallRunning"
+          />
+        </div>
+      
+      <!-- Main Content (Graph + WebShell) -->
+      <div class="main-content">
+      <div ref="graphWrapper" class="graph-wrapper">
+        <div ref="graph" id="network-graph" class="network-graph"
         @drop.prevent="handleDrop"
         @dragenter.prevent
         @dragover.prevent
+        @click="hideContextMenu"
         @keydown.esc="closeAllActiveModes"
         @keydown.h="toggleShowHosts"
         @keydown.c="toggleShowControllers"
@@ -89,7 +137,23 @@ import controllerImg from "@/assets/light-controller.svg";
         @keydown.d="doDeleteSelected"
         @keydown.delete="doDeleteSelected"
         @keydown.ctrl.a.prevent="doSelectAll"
-      ></div>
+        ></div>
+        <div
+          v-show="selectionBox.active"
+          class="selection-rect"
+          :style="selectionRectStyle"
+        ></div>
+      </div>
+      <div
+        v-if="contextMenu.visible"
+        class="node-context-menu"
+        :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+        @click.stop
+      >
+        <button type="button" class="node-context-item" @click="openWebshellFromMenu">
+          Open Webshell
+        </button>
+      </div>
 
       <!-- WebShell at the bottom -->
       <webshell
@@ -97,12 +161,15 @@ import controllerImg from "@/assets/light-controller.svg";
         :nodes="nodes"
         :edges="edges"
         :snifferActive="snifferActive"
+        :terminalNodeIds="terminalNodeIds"
         :preferredView="webshellView"
         :focusNodeId="webshellFocusId"
         :openaiKey="settings.openaiApiKey"
         :llmHandlers="llmHandlers"
         @viewChange="handleWebshellViewChange"
+        @toggleSniffer="toggleSniffer"
       />
+      </div>
     </div>
   </div>
 
@@ -218,6 +285,39 @@ export default {
       webshellView: null,
       webshellFocusId: null,
       webshellActiveView: null,
+      terminalNodeIds: [],
+      contextMenu: {
+        visible: false,
+        x: 0,
+        y: 0,
+        nodeId: null,
+      },
+      fileMenuOpen: false,
+      boundHandleGlobalClick: null,
+      selectionBox: {
+        active: false,
+        startX: 0,
+        startY: 0,
+        endX: 0,
+        endY: 0,
+        append: false,
+      },
+      boundSelectionMouseDown: null,
+      boundSelectionMouseMove: null,
+      boundSelectionMouseUp: null,
+      panState: {
+        active: false,
+        moved: false,
+        startX: 0,
+        startY: 0,
+        startViewX: 0,
+        startViewY: 0,
+        scale: 1,
+      },
+      boundPanMouseDown: null,
+      boundPanMouseMove: null,
+      boundPanMouseUp: null,
+      boundContextMenu: null,
       settings: {
         showHostIp: false,
         showSwitchDpids: false,
@@ -249,18 +349,268 @@ export default {
         runCommand: this.llmRunCommand,
         deleteNode: this.llmDeleteNode,
       };
-    }
+    },
+    selectionRectStyle() {
+      const left = Math.min(this.selectionBox.startX, this.selectionBox.endX);
+      const top = Math.min(this.selectionBox.startY, this.selectionBox.endY);
+      const width = Math.abs(this.selectionBox.endX - this.selectionBox.startX);
+      const height = Math.abs(this.selectionBox.endY - this.selectionBox.startY);
+      return {
+        left: `${left}px`,
+        top: `${top}px`,
+        width: `${width}px`,
+        height: `${height}px`,
+      };
+    },
   },
   async mounted() {
     this.loadSettings();
     await this.syncSnifferState();
     this.snifferStateTimer = setInterval(this.syncSnifferState, 5000);
     this.setupNetwork();
+    this.bindSelectionEvents();
+    this.bindTopbarEvents();
   },
   beforeUnmount() {
     if (this.snifferStateTimer) clearInterval(this.snifferStateTimer);
+    this.unbindSelectionEvents();
+    this.unbindTopbarEvents();
   },
   methods: {
+    bindTopbarEvents() {
+      if (!this.boundHandleGlobalClick) {
+        this.boundHandleGlobalClick = this.handleGlobalClick.bind(this);
+      }
+      document.addEventListener("click", this.boundHandleGlobalClick);
+    },
+    unbindTopbarEvents() {
+      if (this.boundHandleGlobalClick) {
+        document.removeEventListener("click", this.boundHandleGlobalClick);
+      }
+    },
+    handleGlobalClick(event) {
+      const topbar = this.$refs.topbar;
+      if (!topbar || !this.fileMenuOpen) return;
+      if (!topbar.contains(event.target)) {
+        this.fileMenuOpen = false;
+      }
+    },
+    toggleFileMenu() {
+      this.fileMenuOpen = !this.fileMenuOpen;
+    },
+    closeFileMenu() {
+      this.fileMenuOpen = false;
+    },
+    handleNewTopology() {
+      this.closeFileMenu();
+      this.showResetConfirmModal();
+    },
+    handleOpenTopology() {
+      this.closeFileMenu();
+      this.openFileDialog();
+    },
+    handleSaveTopology() {
+      this.closeFileMenu();
+      this.exportTopology();
+    },
+    handleExportScript() {
+      this.closeFileMenu();
+      this.exportMininetScript();
+    },
+    handleExportSniffer() {
+      this.closeFileMenu();
+      this.exportSniffer();
+    },
+    handleExportPng() {
+      this.closeFileMenu();
+      this.exportTopologyAsPng();
+    },
+    handleExportAddressingPlan() {
+      this.closeFileMenu();
+      this.exportAddressingPlan();
+    },
+    handleOpenSettings() {
+      this.closeFileMenu();
+      this.showSettingsModal();
+    },
+    openFileDialog() {
+      this.$refs.topologyFileInput?.click();
+    },
+    handleFileUpload(event) {
+      const file = event.target.files?.[0];
+      if (file) {
+        this.importTopology(file);
+      }
+      if (event.target) event.target.value = "";
+    },
+    bindSelectionEvents() {
+      const graphEl = this.$refs.graphWrapper;
+      if (!graphEl) return;
+      if (!this.boundSelectionMouseDown) {
+        this.boundSelectionMouseDown = this.handleSelectionMouseDown.bind(this);
+        this.boundSelectionMouseMove = this.handleSelectionMouseMove.bind(this);
+        this.boundSelectionMouseUp = this.handleSelectionMouseUp.bind(this);
+      }
+      graphEl.addEventListener("mousedown", this.boundSelectionMouseDown);
+      if (!this.boundPanMouseDown) {
+        this.boundPanMouseDown = this.handlePanMouseDown.bind(this);
+        this.boundPanMouseMove = this.handlePanMouseMove.bind(this);
+        this.boundPanMouseUp = this.handlePanMouseUp.bind(this);
+        this.boundContextMenu = this.handleContextMenu.bind(this);
+      }
+      graphEl.addEventListener("mousedown", this.boundPanMouseDown);
+      graphEl.addEventListener("contextmenu", this.boundContextMenu);
+    },
+    unbindSelectionEvents() {
+      const graphEl = this.$refs.graphWrapper;
+      if (graphEl) {
+        graphEl.removeEventListener("mousedown", this.boundSelectionMouseDown);
+        graphEl.removeEventListener("mousedown", this.boundPanMouseDown);
+        graphEl.removeEventListener("contextmenu", this.boundContextMenu);
+      }
+      window.removeEventListener("mousemove", this.boundSelectionMouseMove);
+      window.removeEventListener("mouseup", this.boundSelectionMouseUp);
+      window.removeEventListener("mousemove", this.boundPanMouseMove);
+      window.removeEventListener("mouseup", this.boundPanMouseUp);
+    },
+    handleSelectionMouseDown(event) {
+      if (event.button !== 0) return;
+      if (this.addEdgeMode) return;
+      if (!this.network || !this.$refs.graphWrapper) return;
+      const rect = this.$refs.graphWrapper.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+      const hitNode = this.network.getNodeAt({ x: localX, y: localY });
+      if (hitNode) return;
+      event.preventDefault();
+      this.hideContextMenu();
+      this.selectionBox = {
+        active: true,
+        startX: localX,
+        startY: localY,
+        endX: localX,
+        endY: localY,
+        append: event.ctrlKey || event.metaKey,
+      };
+      window.addEventListener("mousemove", this.boundSelectionMouseMove);
+      window.addEventListener("mouseup", this.boundSelectionMouseUp);
+    },
+    handlePanMouseDown(event) {
+      if (event.button !== 1 && event.button !== 2) return;
+      if (!this.network || !this.$refs.graphWrapper) return;
+      const rect = this.$refs.graphWrapper.getBoundingClientRect();
+      this.panState = {
+        active: true,
+        moved: false,
+        startX: event.clientX - rect.left,
+        startY: event.clientY - rect.top,
+        startViewX: this.network.getViewPosition().x,
+        startViewY: this.network.getViewPosition().y,
+        scale: this.network.getScale(),
+      };
+      window.addEventListener("mousemove", this.boundPanMouseMove);
+      window.addEventListener("mouseup", this.boundPanMouseUp);
+    },
+    handlePanMouseMove(event) {
+      if (!this.panState.active || !this.$refs.graphWrapper || !this.network) return;
+      const rect = this.$refs.graphWrapper.getBoundingClientRect();
+      const currentX = event.clientX - rect.left;
+      const currentY = event.clientY - rect.top;
+      const dx = currentX - this.panState.startX;
+      const dy = currentY - this.panState.startY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        this.panState.moved = true;
+      }
+      if (this.panState.moved) {
+        event.preventDefault();
+        const scale = this.panState.scale || this.network.getScale();
+        this.network.moveTo({
+          position: {
+            x: this.panState.startViewX - dx / scale,
+            y: this.panState.startViewY - dy / scale,
+          },
+          scale,
+          animation: false,
+        });
+      }
+    },
+    handlePanMouseUp() {
+      if (!this.panState.active) return;
+      window.removeEventListener("mousemove", this.boundPanMouseMove);
+      window.removeEventListener("mouseup", this.boundPanMouseUp);
+      this.panState.active = false;
+    },
+    handleContextMenu(event) {
+      if (this.panState.moved) {
+        event.preventDefault();
+        this.hideContextMenu();
+      }
+    },
+    handleSelectionMouseMove(event) {
+      if (!this.selectionBox.active || !this.$refs.graphWrapper) return;
+      const rect = this.$refs.graphWrapper.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+      this.selectionBox.endX = localX;
+      this.selectionBox.endY = localY;
+    },
+    handleSelectionMouseUp(event) {
+      if (!this.selectionBox.active) return;
+      window.removeEventListener("mousemove", this.boundSelectionMouseMove);
+      window.removeEventListener("mouseup", this.boundSelectionMouseUp);
+      if (!this.$refs.graphWrapper || !this.network) {
+        this.selectionBox.active = false;
+        return;
+      }
+      const rect = this.$refs.graphWrapper.getBoundingClientRect();
+      const localX = event.clientX - rect.left;
+      const localY = event.clientY - rect.top;
+      this.selectionBox.endX = localX;
+      this.selectionBox.endY = localY;
+      this.finalizeSelection();
+    },
+    finalizeSelection() {
+      const left = Math.min(this.selectionBox.startX, this.selectionBox.endX);
+      const top = Math.min(this.selectionBox.startY, this.selectionBox.endY);
+      const width = Math.abs(this.selectionBox.endX - this.selectionBox.startX);
+      const height = Math.abs(this.selectionBox.endY - this.selectionBox.startY);
+      const minDrag = 4;
+      if (width < minDrag && height < minDrag) {
+        this.selectionBox.active = false;
+        return;
+      }
+      const topLeft = this.network.DOMtoCanvas({ x: left, y: top });
+      const bottomRight = this.network.DOMtoCanvas({ x: left + width, y: top + height });
+      const rectCanvas = {
+        left: Math.min(topLeft.x, bottomRight.x),
+        right: Math.max(topLeft.x, bottomRight.x),
+        top: Math.min(topLeft.y, bottomRight.y),
+        bottom: Math.max(topLeft.y, bottomRight.y),
+      };
+      const selected = [];
+      const nodes = this.nodes?.get ? this.nodes.get() : [];
+      nodes.forEach((node) => {
+        const box = this.network.getBoundingBox(node.id);
+        if (
+          box.right >= rectCanvas.left &&
+          box.left <= rectCanvas.right &&
+          box.bottom >= rectCanvas.top &&
+          box.top <= rectCanvas.bottom
+        ) {
+          selected.push(node.id);
+        }
+      });
+      if (this.selectionBox.append) {
+        const current = this.network.getSelectedNodes();
+        const merged = new Set([...current, ...selected]);
+        this.network.selectNodes([...merged], true);
+      } else if (selected.length) {
+        this.network.selectNodes(selected, true);
+      } else {
+        this.network.unselectAll();
+      }
+      this.selectionBox.active = false;
+    },
     loadSettings() {
       try {
         const raw = localStorage.getItem("mininetGuiSettings");
@@ -502,27 +852,37 @@ export default {
           this.showStatsModal(event.nodes[0]);
         }
       });
+      this.network.on("oncontext", (event) => {
+        if (event?.event?.preventDefault) {
+          event.event.preventDefault();
+        }
+        const pointer = event?.pointer?.DOM;
+        const nodeId = pointer ? this.network.getNodeAt(pointer) : event?.nodes?.[0];
+        if (!nodeId) {
+          this.hideContextMenu();
+          return;
+        }
+        this.network.unselectAll();
+        this.network.selectNodes([nodeId], false);
+        const clientX = event?.event?.clientX ?? 0;
+        const clientY = event?.event?.clientY ?? 0;
+        this.contextMenu = {
+          visible: true,
+          x: clientX,
+          y: clientY,
+          nodeId,
+        };
+      });
+      this.network.on("click", () => {
+        this.hideContextMenu();
+      });
       this.network.on("dragEnd", async (event) => {
         this.handleNodeDragEnd(event);
       });
     },
     selectInitialWebshell() {
-      const allNodes = [
-        ...Object.values(this.hosts || {}),
-        ...Object.values(this.switches || {}),
-        ...Object.values(this.controllers || {}),
-      ];
-      if (allNodes.length === 0) {
-        this.webshellView = "logs";
-        this.webshellFocusId = null;
-        return;
-      }
-      const lowest = this.getLowestNodeId(allNodes.map((node) => node.id));
-      this.webshellView = "terminal";
       this.webshellFocusId = null;
-      this.$nextTick(() => {
-        this.webshellFocusId = lowest;
-      });
+      this.webshellView = "logs";
     },
     getLowestNodeId(ids) {
       return [...ids].sort(this.compareNodeIds)[0];
@@ -538,13 +898,30 @@ export default {
       if (pa.prefix === pb.prefix) return pa.num - pb.num;
       return pa.prefix.localeCompare(pb.prefix);
     },
-    focusWebshell(nodeId) {
-      if (this.webshellActiveView === "chat") return;
+    openWebshellForNode(nodeId) {
+      if (!nodeId) return;
+      if (!this.terminalNodeIds.includes(nodeId)) {
+        this.terminalNodeIds = [...this.terminalNodeIds, nodeId];
+      }
       this.webshellView = "terminal";
       this.webshellFocusId = null;
       this.$nextTick(() => {
         this.webshellFocusId = nodeId;
       });
+    },
+    hideContextMenu() {
+      if (!this.contextMenu.visible) return;
+      this.contextMenu = {
+        visible: false,
+        x: 0,
+        y: 0,
+        nodeId: null,
+      };
+    },
+    openWebshellFromMenu() {
+      const nodeId = this.contextMenu.nodeId;
+      this.hideContextMenu();
+      this.openWebshellForNode(nodeId);
     },
     handleWebshellViewChange(view) {
       this.webshellActiveView = view;
@@ -719,7 +1096,6 @@ export default {
       if (await deployHost(host)) {
         this.nodes.add(host);
         this.hosts[host.name] = host;
-        this.focusWebshell(host.id);
       } else {
         throw "Could not create host " + hostId;
       }
@@ -753,7 +1129,6 @@ export default {
       if (await deploySwitch(sw)) {
         this.nodes.add(sw);
         this.switches[sw.name] = sw;
-        this.focusWebshell(sw.id);
       } else {
         throw "Could not create sw " + swId;
       }
@@ -816,7 +1191,6 @@ export default {
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
         this.controllers[ctl.name] = ctl;
-        this.focusWebshell(ctl.id);
       } else {
         throw "Could not create controller " + ctlId;
       }
@@ -868,6 +1242,7 @@ export default {
     closeAllActiveModes() {
       this.closeAddEdgeMode();
       this.closeModal();
+      this.hideContextMenu();
     },
     handleToggleAddEdgeMode() {
       console.log("addedgemode toggle");
@@ -1089,6 +1464,22 @@ export default {
         console.error("Failed to export sniffer", error);
       }
     },
+    exportTopologyAsPng() {
+      try {
+        const canvas = this.$refs.graph?.querySelector?.("canvas");
+        if (!canvas) return;
+        const dataUrl = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = "topology.png";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (error) {
+        console.error("Failed to export topology PNG", error);
+        alert("Failed to export topology PNG.");
+      }
+    },
     showResetConfirmModal() {
       this.modalHeader = "Reset Topology";
       this.modalOption = "confirmReset";
@@ -1219,9 +1610,106 @@ export default {
 </script>
 
 <style scoped>
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+.topbar {
+  height: 32px;
+  background: #2b2b2b;
+  color: #d4d4d4;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  border-bottom: 1px solid #1f1f1f;
+  position: relative;
+  z-index: 6;
+  font-size: 0.85rem;
+}
+
+.topbar-title {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  margin-right: 8px;
+}
+
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-item-wrapper {
+  position: relative;
+}
+
+.menu-item {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.menu-item:hover,
+.menu-item.open {
+  background: #3c3c3c;
+}
+
+.menu-item:disabled {
+  color: #7a7a7a;
+  cursor: default;
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  background: #2d2d2d;
+  border: 1px solid #1f1f1f;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 240px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+}
+
+.menu-action {
+  background: transparent;
+  border: none;
+  color: #d4d4d4;
+  padding: 6px 10px;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.menu-action:hover {
+  background: #3c3c3c;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: #444;
+}
+
+.menu-file-input {
+  display: none;
+}
+
 .layout {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 32px);
   overflow: hidden;
   width: 100%;
   --sidebar-width: 220px;
@@ -1252,6 +1740,12 @@ export default {
   width: calc(100% - var(--sidebar-width));
 }
 
+.graph-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .side-container {
   position: relative;
   /* min-width: 10vw; */
@@ -1270,6 +1764,15 @@ export default {
   min-height: 0;
   background: #252526;
   overflow: hidden;
+  position: absolute;
+  inset: 0;
+}
+
+.selection-rect {
+  position: absolute;
+  border: 1px solid rgba(0, 122, 204, 0.9);
+  pointer-events: none;
+  z-index: 5;
 }
 
 .webshell {
@@ -1281,6 +1784,35 @@ export default {
   overflow: auto;
   position: relative;
   z-index: 1;
+}
+
+.node-context-menu {
+  position: fixed;
+  z-index: 10;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.node-context-item {
+  background: transparent;
+  border: none;
+  color: #e5e5e5;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.node-context-item:hover {
+  background: #2f2f2f;
 }
 
 .confirm-reset {

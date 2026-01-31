@@ -4,7 +4,6 @@
     :class="['side', { collapsed: !sideIsActive }]"
     class="flex h-full w-[80vw] min-w-[220px] max-w-[320px] flex-col bg-[#1e1e1e] text-[#cccccc] outline-none sm:w-[60vw] lg:w-[280px]"
     tabindex="0"
-    @dragstart="handleDragStart"
     @keydown.esc="$emit('closeAllActiveModes')"
     @keydown.h="$emit('toggleShowHosts')"
     @keydown.c="$emit('toggleShowControllers')"
@@ -17,12 +16,6 @@
       class="flex w-full flex-col items-center gap-2"
       :class="sideIsActive ? 'p-3' : 'py-3 px-0'"
     >
-      <img
-        :src="sideIsActive ? logoFull : logoSmall"
-        alt="Mininet GUI"
-        class="h-10 w-auto object-contain"
-        :class="!sideIsActive ? 'w-full px-0' : ''"
-      />
       <button
         id="button-hide-side"
         class="icon-button"
@@ -36,10 +29,10 @@
     </div>
     <div class="w-full border-t border-[#333]" aria-hidden="true"></div>
     <div class="side-scroll flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-3">
-    <!-- Topology Controls Group -->
+    <!-- Core Actions Group -->
     <div class="sidebar-group flex flex-col gap-2">
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Topology Controls
+        Actions
       </h2>
       <button
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
@@ -50,20 +43,15 @@
         <span class="label">Generate Topology</span>
       </button>
       <button
+        id="button-pingall"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        id="button-reset-topology"
-        @click="$emit('resetTopology')"
+        :class="pingallRunning ? 'opacity-60 cursor-not-allowed' : ''"
+        :disabled="pingallRunning"
+        @click="$emit('runPingall')"
       >
-        <span class="material-symbols-outlined">restart_alt</span>
-        <span class="label">Reset Topology</span>
+        <span class="material-symbols-outlined">network_check</span>
+        <span class="label">{{ pingallRunning ? "Pingall running..." : "Run Pingall Test" }}</span>
       </button>
-    </div>
-
-    <!-- Link & Delete Actions Group -->
-    <div class="sidebar-group flex flex-col gap-2">
-      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Actions
-      </h2>
       <button
         id="button-create-link"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
@@ -81,80 +69,46 @@
         <span class="material-symbols-outlined">delete</span>
         <span class="label">Delete Selected</span>
       </button>
-      <button
-        id="button-pingall"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        :class="pingallRunning ? 'opacity-60 cursor-not-allowed' : ''"
-        :disabled="pingallRunning"
-        @click="$emit('runPingall')"
-      >
-        <span class="material-symbols-outlined">network_check</span>
-        <span class="label">{{ pingallRunning ? "Pingall running..." : "Run Pingall Test" }}</span>
-      </button>
-      <button
-        id="button-sniffer"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        :class="snifferActive ? 'border-[#007acc] bg-[#0b2b3b] text-[#e6f2ff] ring-1 ring-[#007acc]' : ''"
-        @click="$emit('toggleSniffer')"
-      >
-        <span class="material-symbols-outlined">radar</span>
-        <span class="label">{{ snifferActive ? "Stop Sniffer" : "Start Sniffer" }}</span>
-      </button>
-      <button
-        id="button-export-sniffer"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        @click="$emit('exportSniffer')"
-      >
-        <span class="material-symbols-outlined">download</span>
-        <span class="label">Export Sniffer (PCAP)</span>
-      </button>
     </div>
 
-    <!-- Export/Import Controls Group -->
     <div class="sidebar-group flex flex-col gap-2">
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Export/Import
+        Nodes Palette
       </h2>
-      <button
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        id="button-export-topology"
-        @click="$emit('exportTopology')"
-      >
-        <span class="material-symbols-outlined">upload_file</span>
-        <span class="label">Export Topology (JSON)</span>
-      </button>
-      <button
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        id="button-import-topology"
-        @click="openFileDialog"
-      >
-        <span class="material-symbols-outlined">download</span>
-        <span class="label">Import Topology (JSON)</span>
-      </button>
-      <button
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        id="button-export-script"
-        @click="$emit('exportMininetScript')"
-      >
-        <span class="material-symbols-outlined">code</span>
-        <span class="label">Export Mininet Script</span>
-      </button>
-      <button
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        id="button-export-addressing-plan"
-        @click="$emit('exportAddressingPlan')"
-      >
-        <span class="material-symbols-outlined">description</span>
-        <span class="label">Export Addressing Plan (PDF)</span>
-      </button>
-      <!-- Hidden file input -->
-      <input 
-        type="file" 
-        id="fileInput" 
-        accept=".json" 
-        style="display: none" 
-        @change="handleFileUpload"
-      />
+      <div class="draggable-container flex flex-col items-center gap-3 py-2">
+        <figure
+          id="draggable-host"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+          @dragstart="handleDragStart"
+        >
+          <img alt="host" class="h-10 w-10" src="@/assets/host.svg" draggable="false" />
+          <figcaption class="text-[11px] text-[#cccccc]">Host</figcaption>
+        </figure>
+        <figure
+          id="draggable-switch"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+          @dragstart="handleDragStart"
+        >
+          <img alt="switch" class="h-10 w-10" src="@/assets/switch.svg" draggable="false" />
+          <figcaption class="text-[11px] text-[#cccccc]">Switch</figcaption>
+        </figure>
+        <figure
+          id="draggable-controller"
+          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+          draggable="true"
+          @dragstart="handleDragStart"
+        >
+          <img
+            alt="controller"
+            class="h-10 w-10"
+            src="@/assets/controller.svg"
+            draggable="false"
+          />
+          <figcaption class="text-[11px] text-[#cccccc]">Controller</figcaption>
+        </figure>
+      </div>
     </div>
 
 
@@ -168,103 +122,32 @@
     </div> -->
     </div>
 
-    <div class="side-bottom flex flex-col gap-3 p-3 pt-2" :class="{ 'collapsed-hint': !sideIsActive }">
-      <!-- Draggable Nodes Group -->
-      <div class="w-full border-t border-[#333]" aria-hidden="true"></div>
-      <div class="sidebar-group flex flex-col gap-2">
-        <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-          Nodes Palette
-        </h2>
-        <div class="draggable-container flex flex-col items-center gap-3 py-2">
-          <figure
-            id="draggable-host"
-            class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-            draggable="true"
-          >
-            <img alt="host" class="h-10 w-10" src="@/assets/host.svg" draggable="false" />
-            <figcaption class="text-[11px] text-[#cccccc]">Host</figcaption>
-          </figure>
-          <figure
-            id="draggable-switch"
-            class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-            draggable="true"
-          >
-            <img alt="switch" class="h-10 w-10" src="@/assets/switch.svg" draggable="false" />
-            <figcaption class="text-[11px] text-[#cccccc]">Switch</figcaption>
-          </figure>
-          <figure
-            id="draggable-controller"
-            class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-            draggable="true"
-          >
-            <img
-              alt="controller"
-              class="h-10 w-10"
-              src="@/assets/controller.svg"
-              draggable="false"
-            />
-            <figcaption class="text-[11px] text-[#cccccc]">Controller</figcaption>
-          </figure>
-        </div>
-      </div>
-
-      <!-- Settings Group -->
-      <div class="sidebar-group flex flex-col gap-2">
-        <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-          Settings
-        </h2>
-        <button
-          id="button-settings"
-          class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-          @click="$emit('openSettings')"
-        >
-          <span class="material-symbols-outlined">settings</span>
-          <span class="label">Open Settings</span>
-        </button>
-      </div>
-    </div>
   </div>
 
 </template>
 
 <script>
-import logoFull from "@/assets/logo-mininet-gui.png";
-import logoSmall from "@/assets/logo-mininet-gui-small.png";
-
 export default {
   props: {
-    createLinkMode: { type: Boolean, default: false },
     networkStarted: { type: Boolean, default: true },
     addEdgeMode: { type: Boolean, default: false },
-    snifferActive: { type: Boolean, default: false },
     pingallRunning: { type: Boolean, default: false },
   },
   data() {
     return {
-      logoFull,
-      logoSmall,
       sideIsActive: true,
     };
   },
   emits: [
     "toggleAddEdgeMode",
-    "networkStart",
     "runPingall",
     "deleteSelected",
     "closeAllActiveModes",
     "toggleShowHosts",
     "toggleShowControllers",
     "createTopology",
-    "resetTopology",
-    "exportMininetScript",
-    "exportTopology",
-    "importTopology",
     "doSelectAll",
-    "toggleSniffer",
-    "exportSniffer",
     "toggleSidebar",
-    "openSettings",
-    "exportAddressingPlan",
   ],
   methods: {
     toggleSide() {
@@ -272,23 +155,16 @@ export default {
       this.$emit("toggleSidebar", this.sideIsActive);
     },
     handleDragStart(event) {
-      console.log("dragstart", event);
-      event.dataTransfer.setData("text", event.target.id);
+      const id = event.currentTarget?.id || event.target?.id;
+      if (!id) return;
+      event.dataTransfer.setData("text/plain", id);
+      event.dataTransfer.setData("text", id);
     },
     createTopology() {
       this.$emit("createTopology", {
         selectedTopology: this.selectedTopology,
         nDevices: this.nDevices,
       });
-    },
-    openFileDialog() {
-      document.getElementById("fileInput").click();
-    },
-    handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        this.$emit("importTopology", file);
-      }
     },
   },
 };
@@ -419,4 +295,5 @@ export default {
   cursor: grab;
   opacity: 0.9;
 }
+
 </style>

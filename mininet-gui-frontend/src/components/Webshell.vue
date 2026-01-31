@@ -74,7 +74,7 @@
       </div>
     </div>
     <div v-show="!isMinimized && activeView === 'traffic'" class="traffic-window">
-      <TrafficView :enabled="snifferActive" />
+      <TrafficView :enabled="snifferActive" @toggleSniffer="$emit('toggleSniffer')" />
     </div>
     <div v-show="!isMinimized && activeView === 'logs'" class="terminal-window" @click="focusLogTerminal">
       <div
@@ -119,11 +119,12 @@ import { buildSystemPrompt } from "@/llm/systemPrompt";
 
 export default {
   components: { TrafficView },
-  emits: ["viewChange"],
+  emits: ["viewChange", "toggleSniffer"],
   props: {
     nodes: { type: Object, required: true },
     edges: { type: Object, default: null },
     snifferActive: { type: Boolean, default: false },
+    terminalNodeIds: { type: Array, default: () => [] },
     preferredView: { type: String, default: null },
     focusNodeId: { type: String, default: null },
     openaiKey: { type: String, default: "" },
@@ -164,6 +165,9 @@ export default {
         this.syncNodes();
       },
       deep: true,
+    },
+    terminalNodeIds() {
+      this.syncNodes();
     },
     snifferActive(value) {
       if (value) this.activeView = "traffic";
@@ -220,9 +224,12 @@ export default {
   },
   methods: {
     getNodeList() {
-      return this.nodes?.get ? this.nodes.get() : [];
+      if (!this.nodes?.get) return [];
+      const list = this.nodes.get();
+      if (!this.terminalNodeIds?.length) return [];
+      const allowed = new Set(this.terminalNodeIds);
+      return list.filter(node => allowed.has(node.id));
     },
-
     syncNodes() {
       const nodeList = this.getNodeList();
       if (nodeList.length === 0) {
