@@ -441,6 +441,25 @@ export const getHosts = async () => {
   return await sendGet(baseUrl + "/api/mininet/hosts");
 };
 
+export const updateHost = async (hostId, payload) => {
+  try {
+    const response = await axios.patch(
+      baseUrl + `/api/mininet/hosts/${hostId}`,
+      JSON.stringify(payload),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data || null;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return null;
+  }
+};
+
 export const getSwitches = async () => {
   return await sendGet(baseUrl + "/api/mininet/switches");
 };

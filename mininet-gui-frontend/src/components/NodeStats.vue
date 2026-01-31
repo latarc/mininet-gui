@@ -1,8 +1,9 @@
 <script>
-import { addFlow, deleteFlowById, getNodeStats, listFlows } from "@/core/api";
+import { addFlow, deleteFlowById, getNodeStats, listFlows, updateHost } from "@/core/api";
 
 export default {
   props: ["stats"],
+  emits: ["hostUpdated"],
   data() {
     return {
       activeTab: "details",
@@ -10,6 +11,16 @@ export default {
         { key: "details", label: "Details" }
       ],
       localStats: this.stats,
+      isEditingHost: false,
+      hostEdit: {
+        ip: "",
+        defaultRoute: "",
+        routeType: "dev",
+        routeDev: "",
+        routeIp: "",
+      },
+      hostEditBusy: false,
+      hostEditError: "",
       flowDump: "",
       flowBusy: false,
       flowError: "",
@@ -38,10 +49,17 @@ export default {
     },
     filteredDetails() {
       const { flow_table, arp_table, ...details } = this.localStats || {};
+      if (this.isHost) {
+        const { default_route, interfaces, ...rest } = details;
+        return rest;
+      }
       return details;
     },
     isSwitch() {
       return this.localStats?.type === "sw" || this.localStats?.type === "switch";
+    },
+    isHost() {
+      return this.localStats?.type === "host";
     },
   },
   watch: {
@@ -49,6 +67,13 @@ export default {
       immediate: true,
       handler(value) {
         this.localStats = value;
+        if (value?.type === "host") {
+          this.hostEdit.ip = value?.ip || "";
+          this.hostEdit.defaultRoute = value?.default_route || "";
+          this.applyDefaultRouteToForm();
+          this.isEditingHost = false;
+          this.hostEditError = "";
+        }
         if (value?.type === "sw" || value?.type === "switch") {
           this.refreshFlows();
         }
@@ -61,6 +86,70 @@ export default {
     },
     formatMatchFields(matchFields) {
       return Object.entries(matchFields).map(([key, value]) => `${key}: ${value}`).join(', ');
+    },
+    startHostEdit() {
+      if (!this.isHost) return;
+      this.isEditingHost = true;
+      this.hostEditError = "";
+      this.hostEdit.ip = this.localStats?.ip || "";
+      this.hostEdit.defaultRoute = this.localStats?.default_route || "";
+      this.applyDefaultRouteToForm();
+    },
+    cancelHostEdit() {
+      this.isEditingHost = false;
+      this.hostEditError = "";
+      this.hostEdit.ip = this.localStats?.ip || "";
+      this.hostEdit.defaultRoute = this.localStats?.default_route || "";
+      this.applyDefaultRouteToForm();
+    },
+    async saveHostEdit() {
+      if (!this.isHost || !this.localStats?.id) return;
+      this.hostEditBusy = true;
+      this.hostEditError = "";
+      try {
+        const payload = {
+          ip: this.hostEdit.ip,
+          default_route_type: this.hostEdit.routeType,
+          default_route_dev: this.hostEdit.routeType === "dev" ? this.hostEdit.routeDev : null,
+          default_route_ip: this.hostEdit.routeType === "ip" ? this.hostEdit.routeIp : null,
+        };
+        const response = await updateHost(this.localStats.id, payload);
+        if (!response?.host) {
+          this.hostEditError = "Failed to update host.";
+          return;
+        }
+        const refreshed = await getNodeStats(this.localStats.id);
+        if (refreshed) {
+          this.localStats = refreshed;
+          this.$emit("hostUpdated", refreshed);
+        }
+        this.isEditingHost = false;
+      } catch (error) {
+        this.hostEditError = "Failed to update host.";
+      } finally {
+        this.hostEditBusy = false;
+      }
+    },
+    applyDefaultRouteToForm() {
+      const route = (this.localStats?.default_route || "").trim();
+      this.hostEdit.routeType = "dev";
+      this.hostEdit.routeDev = "";
+      this.hostEdit.routeIp = "";
+      if (!route) return;
+      const viaMatch = route.match(/\bvia\s+([0-9.]+)/);
+      const devMatch = route.match(/\bdev\s+(\S+)/);
+      if (viaMatch && !devMatch) {
+        this.hostEdit.routeType = "ip";
+        this.hostEdit.routeIp = viaMatch[1];
+        return;
+      }
+      if (devMatch) {
+        this.hostEdit.routeType = "dev";
+        this.hostEdit.routeDev = devMatch[1];
+        if (viaMatch) {
+          this.hostEdit.routeIp = viaMatch[1];
+        }
+      }
     },
     async refreshFlows() {
       if (!this.localStats?.id || !this.isSwitch) return;
@@ -142,9 +231,47 @@ export default {
 
   <div class="tab-content">
     <div v-if="isDetailsTab">
+      <div v-if="isHost" class="host-edit">
+        <button v-if="!isEditingHost" @click="startHostEdit">Edit</button>
+        <div v-else class="host-edit-actions">
+          <button :disabled="hostEditBusy" @click="saveHostEdit">Save</button>
+          <button :disabled="hostEditBusy" @click="cancelHostEdit">Cancel</button>
+        </div>
+        <p v-if="hostEditError" class="flow-error">{{ hostEditError }}</p>
+      </div>
+      <div v-if="isHost && isEditingHost" class="host-edit-fields">
+        <label>
+          Host IP
+          <input v-model="hostEdit.ip" type="text" class="host-edit-input" />
+        </label>
+        <label>
+          Default Route Type
+          <select v-model="hostEdit.routeType" class="host-edit-select">
+            <option value="dev">Device</option>
+            <option value="ip">Gateway IP</option>
+          </select>
+        </label>
+        <label v-if="hostEdit.routeType === 'dev'">
+          Interface
+          <select v-model="hostEdit.routeDev" class="host-edit-select">
+            <option value="">Select interface</option>
+            <option v-for="intf in (localStats?.interfaces || [])" :key="intf" :value="intf">
+              {{ intf }}
+            </option>
+          </select>
+        </label>
+        <label v-if="hostEdit.routeType === 'ip'">
+          Gateway IP
+          <input v-model="hostEdit.routeIp" type="text" class="host-edit-input" placeholder="10.0.0.254" />
+        </label>
+      </div>
       <ul class="stats-list">
         <li v-for="(value, key) in filteredDetails" :key="key">
-          <strong>{{ key }}:</strong> {{ value }}
+          <strong>{{ key }}:</strong>
+          <span>{{ value }}</span>
+        </li>
+        <li v-if="isHost && !isEditingHost">
+          <strong>default_route:</strong> {{ localStats?.default_route || "" }}
         </li>
       </ul>
     </div>
@@ -294,6 +421,56 @@ export default {
   background: #42b983;
   color: white;
   font-weight: bold;
+}
+
+.host-edit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.host-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.host-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.host-edit-fields label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: #b8b8b8;
+  gap: 4px;
+}
+
+.host-edit-input {
+  padding: 6px 8px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #e6e6e6;
+  min-width: 160px;
+}
+
+.host-edit-input::placeholder {
+  color: #777;
+}
+
+.host-edit-select {
+  padding: 6px 8px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #e6e6e6;
 }
 
 .tab-content {

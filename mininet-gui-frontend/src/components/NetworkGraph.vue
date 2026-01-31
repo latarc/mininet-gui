@@ -209,7 +209,7 @@ import natImg from "@/assets/light-nat.svg";
         <h3>{{ modalHeader }}</h3>
       </template>
       <template #body>
-        <node-stats v-if="modalOption === 'nodeStats'" :stats="modalData" />
+        <node-stats v-if="modalOption === 'nodeStats'" :stats="modalData" @hostUpdated="handleHostUpdated" />
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
@@ -1529,6 +1529,18 @@ export default {
       this.modalData = nodeStats || null;
       this.showModal = true;
     },
+    handleHostUpdated(updatedHost) {
+      if (!updatedHost?.id) return;
+      const existing = this.hosts[updatedHost.id];
+      if (existing) {
+        existing.ip = updatedHost.ip;
+        this.hosts[updatedHost.id] = existing;
+        this.nodes.update({ id: updatedHost.id, ip: updatedHost.ip, label: this.hostLabel(existing) });
+      }
+      if (this.modalOption === "nodeStats") {
+        this.modalData = updatedHost;
+      }
+    },
     async createSingleTopo(nDevices, controller) {
       let newSw = await this.createSwitch({x: 250, y: 150, controller: controller});
       for (var i=0; i<nDevices; i++) {
@@ -2104,9 +2116,14 @@ export default {
   background: black;
   color: white;
   border-top: 2px solid #444;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   z-index: 1;
+  margin-top: -12px;
+}
+
+.webshell :deep(.webshell-container.minimized) {
+  transform: translateY(-6px);
 }
 
 .node-context-menu {

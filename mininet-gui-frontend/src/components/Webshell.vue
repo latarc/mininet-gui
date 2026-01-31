@@ -1,7 +1,8 @@
 <template>
   <div
     class="webshell-container"
-    :style="{ height: isMinimized ? '48px' : panelHeight + 'px' }"
+    :class="{ minimized: isMinimized }"
+    :style="{ height: isMinimized ? minimizedHeight + 'px' : panelHeight + 'px' }"
   >
     <div v-show="!isMinimized" class="resize-handle-top" @mousedown.prevent="startResize"></div>
     <div class="webshell-header">
@@ -75,14 +76,16 @@
     </div>
 
     <div v-show="!isMinimized && activeView === 'terminal'" class="terminal-window" @click="focusActiveTerminal">
-      <div
-        v-for="session in getSessionList()"
-        :key="session.id"
-        :ref="el => setTerminalRef(session.id, session.nodeId, el)"
-        :class="['terminal-instance', { active: activeTab === session.id }]"
-      ></div>
-      <div v-if="getSessionList().length === 0" class="terminal-empty">
-        No webshells yet. Right-click a node and choose "Open Webshell".
+      <div class="terminal-stack">
+        <div
+          v-for="session in getSessionList()"
+          :key="session.id"
+          :ref="el => setTerminalRef(session.id, session.nodeId, el)"
+          :class="['terminal-instance', { active: activeTab === session.id }]"
+        ></div>
+        <div v-if="getSessionList().length === 0" class="terminal-empty">
+          No webshells yet. Right-click a node and choose "Open Webshell".
+        </div>
       </div>
     </div>
     <div v-show="!isMinimized && activeView === 'traffic'" class="traffic-window">
@@ -156,6 +159,7 @@ export default {
       backendWsUrl: import.meta.env.VITE_BACKEND_WS_URL,
       resizeObserver: null,
       isMinimized: false,
+      minimizedHeight: 56,
       panelHeight: 320,
       isResizing: false,
       activeView: "terminal",
@@ -368,6 +372,10 @@ export default {
 
     fitLogTerminal() {
       if (this.logFitAddon) this.logFitAddon.fit();
+      const term = this.logTerminal;
+      if (term && term.rows > 2) {
+        term.resize(term.cols, term.rows - 2);
+      }
     },
 
     focusLogTerminal() {
@@ -392,6 +400,10 @@ export default {
     fitTerminal(sessionId) {
       const fitAddon = this.fitAddons[sessionId];
       if (fitAddon) fitAddon.fit();
+      const term = this.terminals[sessionId];
+      if (term && term.rows > 2) {
+        term.resize(term.cols, term.rows - 2);
+      }
     },
 
     disposeTerminal(sessionId) {
@@ -448,6 +460,10 @@ export default {
       this.isResizing = false;
       window.removeEventListener("mousemove", this.handleResize);
       window.removeEventListener("mouseup", this.stopResize);
+      this.$nextTick(() => {
+        if (this.activeView === "terminal" && this.activeTab) this.fitTerminal(this.activeTab);
+        if (this.activeView === "logs") this.fitLogTerminal();
+      });
     },
 
     clearTerminals() {
@@ -572,6 +588,8 @@ export default {
   border-radius: 4px;
   border-top: 3px solid #007acc;
   position: relative;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .webshell-header {
@@ -582,6 +600,11 @@ export default {
   background-color: #2d2d2d;
   padding: 0.5rem 1rem;
   border-bottom: 1px solid #333;
+  min-height: 44px;
+}
+
+.webshell-container.minimized .webshell-header {
+  padding: 0.35rem 0.75rem;
 }
 
 .webshell-title {
@@ -711,16 +734,39 @@ export default {
   position: relative;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
+}
+
+.terminal-stack {
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
 
 .terminal-instance {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   display: none;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .terminal-instance.active {
   display: block;
   height: 100%;
+  min-height: 0;
+}
+
+.terminal-instance :deep(.xterm),
+.terminal-instance :deep(.xterm-screen),
+.terminal-instance :deep(.xterm-viewport) {
+  height: 100%;
+}
+
+.terminal-instance :deep(.xterm-viewport) {
+  padding-bottom: 8px;
+  box-sizing: border-box;
 }
 
 .terminal-empty {

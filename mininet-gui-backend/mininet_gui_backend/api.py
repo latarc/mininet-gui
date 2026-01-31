@@ -61,6 +61,14 @@ class LinkCreate(BaseModel):
     dst: str
     options: Optional[LinkOptions] = None
 
+class HostUpdate(BaseModel):
+    ip: Optional[str] = None
+    intf: Optional[str] = None
+    default_route: Optional[str] = None
+    default_route_type: Optional[str] = None
+    default_route_dev: Optional[str] = None
+    default_route_ip: Optional[str] = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # start
@@ -323,6 +331,59 @@ def create_host(host: Host):
     debug(new_host)
     # Return an OK status code
     return {"status": "ok"}
+
+@app.patch("/api/mininet/hosts/{host_id}")
+def update_host(host_id: str, payload: HostUpdate):
+    if host_id not in app.net.nameToNode:
+        raise HTTPException(status_code=404, detail=f"Node {host_id} not found")
+    node = app.net.nameToNode[host_id]
+    if getattr(node, "type", None) != "host":
+        raise HTTPException(status_code=400, detail="node is not a host")
+    host = app.hosts.get(host_id)
+    if not host:
+        raise HTTPException(status_code=404, detail=f"Host {host_id} not found")
+    if payload.ip:
+        ip_value = payload.ip.strip()
+        if "/" in ip_value:
+            addr, prefix_raw = ip_value.split("/", 1)
+            try:
+                prefix_len = int(prefix_raw)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="invalid prefix length")
+        else:
+            addr = ip_value
+            prefix_len = None
+        if prefix_len is None:
+            fallback = host.ip
+            if fallback and "/" in fallback:
+                prefix_len = int(fallback.split("/", 1)[1])
+            else:
+                prefix_len = 8
+        intf = payload.intf or None
+        node.setIP(addr, prefixLen=prefix_len, intf=intf)
+        host.ip = f"{addr}/{prefix_len}"
+    if payload.default_route_type:
+        route_type = payload.default_route_type.strip().lower()
+        if route_type == "dev":
+            dev = (payload.default_route_dev or "").strip()
+            if dev:
+                node.setDefaultRoute(dev)
+            else:
+                node.cmd("ip route del default")
+        elif route_type == "ip":
+            ip_value = (payload.default_route_ip or "").strip()
+            if ip_value:
+                node.setDefaultRoute(f"via {ip_value}")
+            else:
+                node.cmd("ip route del default")
+    elif payload.default_route is not None:
+        route_value = payload.default_route.strip()
+        if route_value:
+            node.setDefaultRoute(route_value)
+        else:
+            node.cmd("ip route del default")
+    app.hosts[host_id] = host
+    return {"status": "ok", "host": host.model_dump()}
 
 @app.post("/api/mininet/nats")
 def create_nat(nat: Nat):
@@ -616,6 +677,14 @@ def get_node_stats(node_id: str):
             interface = parts[-1]
             parsed_arp_table.append({"ip": ip, "mac": mac, "interface": interface})
         result["arp_table"] = parsed_arp_table
+        default_route = node.cmd("ip route show default").strip()
+        result["default_route"] = default_route
+        interfaces = []
+        try:
+            interfaces = [intf.name for intf in node.intfList() if intf.name != "lo"]
+        except Exception:
+            interfaces = []
+        result["interfaces"] = interfaces
 
     result.pop("x", None)
     result.pop("y", None)

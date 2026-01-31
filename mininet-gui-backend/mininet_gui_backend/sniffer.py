@@ -179,7 +179,10 @@ class SnifferManager:
         if task:
             task.cancel()
         if process:
-            process.terminate()
+            try:
+                process.terminate()
+            except ProcessLookupError:
+                process = None
             try:
                 await process.wait()
             except Exception:
