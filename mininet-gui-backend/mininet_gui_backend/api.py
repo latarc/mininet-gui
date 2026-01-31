@@ -24,12 +24,16 @@ import pyshark.ek_field_mapping as ek_field_mapping
 from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
 from typing import Tuple, Union, Optional
 from contextlib import asynccontextmanager
+import pkgutil
+
+from mininet.moduledeps import pathCheck
 
 from mininet.net import Mininet
 from mininet.log import setLogLevel, info, debug as _debug
 from mininet.topo import Topo, MinimalTopo
 from mininet.clean import cleanup as mn_cleanup
-from mininet.node import RemoteController, Controller as ReferenceController, Ryu, NOX, UserSwitch, OVSSwitch, OVSKernelSwitch, OVSBridge, Node
+from mininet.node import RemoteController, Controller as ReferenceController, NOX, UserSwitch, OVSSwitch, OVSKernelSwitch, OVSBridge, Node
+from mininet_gui_backend.nodes import Ryu
 from mininet.link import TCLink
 from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -42,6 +46,7 @@ from mininet_gui_backend.schema import Switch, Host, Controller, Nat, Router
 from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "mininet.log")
+RYU_APP_DIRS = []
 
 FLOW_FIELDS = [
     "cookie", "duration", "table", "n_packets", "n_bytes", 
@@ -150,8 +155,42 @@ app.add_middleware(
 def get_version():
     return {"version": app.version, "mininet_version": MININET_VERSION}
 
+@app.get("/api/ryu/apps")
+def get_ryu_apps():
+    return {"apps": list_ryu_apps()}
+
 def debug(msg, *args):
     _debug(str(msg)+" "+" ".join(map(str, args))+"\n")
+
+def list_ryu_apps():
+    apps = set()
+    app_dirs = []
+    for app_dir in RYU_APP_DIRS:
+        if os.path.isdir(app_dir):
+            app_dirs.append(app_dir)
+    try:
+        import ryu
+        app_pkg = getattr(ryu, "app", None)
+        if app_pkg and hasattr(app_pkg, "__path__"):
+            for _finder, name, _ispkg in pkgutil.iter_modules(app_pkg.__path__):
+                if name and not name.startswith("__"):
+                    apps.add(name)
+            pkg_dir = os.path.dirname(app_pkg.__file__)
+            if os.path.isdir(pkg_dir):
+                app_dirs.append(pkg_dir)
+    except Exception:
+        pass
+
+    for app_dir in app_dirs:
+        try:
+            entries = os.listdir(app_dir)
+        except OSError:
+            continue
+        for entry in entries:
+            if entry.endswith(".py") and entry != "__init__.py":
+                apps.add(entry[:-3])
+
+    return sorted(apps)
 
 def setup_log_file():
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
@@ -512,8 +551,20 @@ def create_controller(controller: Controller):
             port=controller.port,
         )
     elif controller_type == "ryu":
+        if not controller.port:
+            raise HTTPException(status_code=400, detail="Ryu controller requires a port")
+        if not controller.ryu_app:
+            raise HTTPException(status_code=400, detail="Ryu controller requires an app")
+        available_apps = list_ryu_apps()
+        if controller.ryu_app not in available_apps:
+            raise HTTPException(status_code=400, detail="Invalid ryu app")
+        controller.ip = controller.ip or "127.0.0.1"
         new_controller = app.net.addController(
-            controller.name, controller=Ryu
+            controller.name,
+            controller=Ryu,
+            ip=controller.ip,
+            port=controller.port,
+            ryu_app=controller.ryu_app,
         )
     elif controller_type == "nox":
         new_controller = app.net.addController(

@@ -1,7 +1,8 @@
 from typing import Union
 
 from pydantic import BaseModel
-from mininet.node import RemoteController, Ryu, NOX, UserSwitch, OVSSwitch, OVSKernelSwitch, OVSBridge
+from mininet.node import RemoteController, NOX, UserSwitch, OVSSwitch, OVSKernelSwitch, OVSBridge
+from mininet_gui_backend.nodes import Ryu
 
 
 class Node(BaseModel):
@@ -18,13 +19,14 @@ class Controller(Node):
     remote: bool
     ip: Union[str, None]
     port: Union[int, None]
+    ryu_app: Union[str, None] = None
 
     def format_controller(self) -> str:
         controller_type = (self.controller_type or "").lower()
         if self.remote or controller_type == "remote":
             return f'{self.name} = net.addController("{self.name}", controller=RemoteController, ip="{self.ip}", port={self.port})'
         if controller_type == "ryu":
-            return f'{self.name} = net.addController("{self.name}", controller=Ryu)'
+            return f'{self.name} = net.addController("{self.name}", controller=Ryu, ip="{self.ip or "127.0.0.1"}", port={self.port}, ryu_app="{self.ryu_app}")'
         if controller_type == "nox":
             return f'{self.name} = net.addController("{self.name}", controller=NOX)'
         return f'{self.name} = net.addController("{self.name}")'

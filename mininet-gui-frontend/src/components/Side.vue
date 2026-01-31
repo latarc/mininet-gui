@@ -83,140 +83,155 @@
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
         Nodes Palette
       </h2>
-      <div class="draggable-container flex flex-col items-center gap-3 py-2">
-        <figure
-          id="draggable-host"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img alt="host" class="h-10 w-10" src="@/assets/light-host.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Host</figcaption>
-        </figure>
-        <figure
-          id="draggable-router"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img alt="router" class="h-10 w-10" src="@/assets/light-router.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Router</figcaption>
-        </figure>
-        <figure
-          id="draggable-switch"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img alt="switch" class="h-10 w-10" src="@/assets/light-switch.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Switch</figcaption>
-        </figure>
-        <figure
-          id="draggable-switch-ovs"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img alt="switch ovs" class="h-10 w-10" src="@/assets/light-switch-ovs.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">OVS Switch</figcaption>
-        </figure>
-        <figure
-          id="draggable-switch-user"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img alt="switch user" class="h-10 w-10" src="@/assets/light-switch-user.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">User Switch</figcaption>
-        </figure>
-        <figure
-          id="draggable-switch-ovsbridge"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img alt="switch ovsbridge" class="h-10 w-10" src="@/assets/light-switch-ovsbridge.svg" draggable="false" />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">OVS Bridge</figcaption>
-        </figure>
-        <figure
-          id="draggable-controller-default"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img
-            alt="controller"
-            class="h-10 w-10"
-            src="@/assets/light-controller.svg"
-            draggable="false"
-          />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Controller</figcaption>
-        </figure>
-        <figure
-          id="draggable-controller-remote"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <div class="controller-icon">
-            <img
-              alt="controller remote"
-              class="h-10 w-10"
-              src="@/assets/light-controller.svg"
-              draggable="false"
-            />
-            <span class="controller-badge controller-badge--remote">Rem</span>
+      <div class="draggable-container flex flex-col items-center gap-4 py-2">
+        <div class="palette-group w-full">
+          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">Main Nodes</div>
+          <div class="palette-items flex flex-col items-center gap-3 pt-2">
+            <figure
+              id="draggable-host"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img alt="host" class="h-10 w-10" src="@/assets/light-host.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Host</figcaption>
+            </figure>
+            <figure
+              id="draggable-router"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img alt="router" class="h-10 w-10" src="@/assets/light-router.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Router</figcaption>
+            </figure>
+            <figure
+              id="draggable-switch"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img alt="switch" class="h-10 w-10" src="@/assets/light-switch.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Switch</figcaption>
+            </figure>
+            <figure
+              id="draggable-controller-default"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img
+                alt="controller"
+                class="h-10 w-10"
+                src="@/assets/light-controller.svg"
+                draggable="false"
+              />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Controller</figcaption>
+            </figure>
+            <figure
+              id="draggable-nat"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img
+                alt="nat"
+                class="h-10 w-10"
+                src="@/assets/light-nat.svg"
+                draggable="false"
+              />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NAT</figcaption>
+            </figure>
           </div>
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Remote</figcaption>
-        </figure>
-        <figure
-          id="draggable-controller-ryu"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <div class="controller-icon">
-            <img
-              alt="controller ryu"
-              class="h-10 w-10"
-              src="@/assets/light-controller.svg"
-              draggable="false"
-            />
-            <span class="controller-badge">Ryu</span>
+        </div>
+        <div class="palette-group w-full">
+          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">Special Switches</div>
+          <div class="palette-items flex flex-col items-center gap-3 pt-2">
+            <figure
+              id="draggable-switch-ovs"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img alt="switch ovs" class="h-10 w-10" src="@/assets/light-switch-ovs.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">OVS Switch</figcaption>
+            </figure>
+            <figure
+              id="draggable-switch-user"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img alt="switch user" class="h-10 w-10" src="@/assets/light-switch-user.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">User Switch</figcaption>
+            </figure>
+            <figure
+              id="draggable-switch-ovsbridge"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <img alt="switch ovsbridge" class="h-10 w-10" src="@/assets/light-switch-ovsbridge.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">OVS Bridge</figcaption>
+            </figure>
           </div>
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Ryu</figcaption>
-        </figure>
-        <figure
-          id="draggable-controller-nox"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <div class="controller-icon">
-            <img
-              alt="controller nox"
-              class="h-10 w-10"
-              src="@/assets/light-controller.svg"
-              draggable="false"
-            />
-            <span class="controller-badge">NOX</span>
+        </div>
+        <div class="palette-group w-full">
+          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">Special Controllers</div>
+          <div class="palette-items flex flex-col items-center gap-3 pt-2">
+            <figure
+              id="draggable-controller-remote"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <div class="controller-icon">
+                <img
+                  alt="controller remote"
+                  class="h-10 w-10"
+                  src="@/assets/light-controller.svg"
+                  draggable="false"
+                />
+                <span class="controller-badge controller-badge--remote">Rem</span>
+              </div>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Remote</figcaption>
+            </figure>
+            <figure
+              id="draggable-controller-ryu"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <div class="controller-icon">
+                <img
+                  alt="controller ryu"
+                  class="h-10 w-10"
+                  src="@/assets/light-controller.svg"
+                  draggable="false"
+                />
+                <span class="controller-badge">Ryu</span>
+              </div>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Ryu</figcaption>
+            </figure>
+            <figure
+              id="draggable-controller-nox"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+            >
+              <div class="controller-icon">
+                <img
+                  alt="controller nox"
+                  class="h-10 w-10"
+                  src="@/assets/light-controller.svg"
+                  draggable="false"
+                />
+                <span class="controller-badge">NOX</span>
+              </div>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NOX</figcaption>
+            </figure>
           </div>
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NOX</figcaption>
-        </figure>
-        <figure
-          id="draggable-nat"
-          class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-          draggable="true"
-          @dragstart="handleDragStart"
-        >
-          <img
-            alt="nat"
-            class="h-10 w-10"
-            src="@/assets/light-nat.svg"
-            draggable="false"
-          />
-          <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NAT</figcaption>
-        </figure>
+        </div>
       </div>
     </div>
 
@@ -318,6 +333,7 @@ export default {
   background: #007acc;
   color: #ffffff;
   padding: 1px 3px;
+  border-radius: 0;
 }
 
 

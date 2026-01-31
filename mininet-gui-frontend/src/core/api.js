@@ -114,6 +114,17 @@ export const getBackendVersion = async () => {
   }
 };
 
+export const getRyuApps = async () => {
+  try {
+    const root = baseUrl?.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+    const response = await axios.get(`${root}/ryu/apps`);
+    return response.data?.apps || [];
+  } catch (error) {
+    console.warn("Failed to fetch ryu apps", error);
+    return [];
+  }
+};
+
 export const deployLink = async (src, dst, options = null) => {
   try {
     console.log(src, dst, options);

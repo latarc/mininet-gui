@@ -34,6 +34,7 @@ import {
   stopSniffer,
   exportSnifferPcap,
   getBackendVersion,
+  getRyuApps,
 } from "../core/api";
 import { options } from "../core/options";
 import Side from "./Side.vue";
@@ -250,7 +251,12 @@ import routerImg from "@/assets/light-router.svg";
             <pre>{{ formatIperfResult(iperfResult) }}</pre>
           </div>
         </div>
-        <controller-form v-if="modalOption === 'controllerForm'" @form-submit="handleControllerFormSubmit" />
+        <controller-form
+          v-if="modalOption === 'controllerForm'"
+          :preset-type="controllerFormPreset"
+          :ryu-apps="ryuApps"
+          @form-submit="handleControllerFormSubmit"
+        />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
         <div v-if="modalOption === 'usage'" class="help-modal">
           <h4>Creating nodes</h4>
@@ -407,6 +413,8 @@ export default {
       modalHeader: "",
       modalOption: null,
       modalData: {},
+      controllerFormPreset: null,
+      ryuApps: [],
       webshellView: null,
       webshellFocusId: null,
       webshellActiveView: null,
@@ -499,6 +507,7 @@ export default {
     this.loadSettings();
     await this.syncSnifferState();
     this.snifferStateTimer = setInterval(this.syncSnifferState, 5000);
+    await this.loadRyuApps();
     this.setupNetwork();
     this.bindSelectionEvents();
     this.bindTopbarEvents();
@@ -523,6 +532,9 @@ export default {
       if (!backendInfo) return;
       if (backendInfo.version) this.backendVersion = backendInfo.version;
       if (backendInfo.mininet_version) this.mininetVersion = backendInfo.mininet_version;
+    },
+    async loadRyuApps() {
+      this.ryuApps = await getRyuApps();
     },
     bindTopbarEvents() {
       if (!this.boundHandleGlobalClick) {
@@ -1240,7 +1252,8 @@ export default {
         const ip = remote ? entry?.ip : null;
         const port = remote ? entry?.port : null;
         const controllerType = entry?.controller_type || (remote ? "remote" : "default");
-        await this.createController({ x: entry.x, y: entry.y }, remote, ip, port, controllerType);
+        const ryuApp = controllerType === "ryu" ? entry?.ryu_app : null;
+        await this.createController({ x: entry.x, y: entry.y }, remote, ip, port, controllerType, ryuApp);
         const lastId = Object.keys(this.controllers).sort(this.compareNodeIds).pop();
         if (lastId) created.push(lastId);
       }
@@ -1472,9 +1485,8 @@ export default {
       this.modalHeader = "Controller Form";
       this.modalOption = "controllerForm";
       this.showModal = true;
-      if (presetType) {
-        this.formData = { ...(this.formData || {}), type: presetType };
-      }
+      this.controllerFormPreset = presetType;
+      this.formData = null;
 
       const result = await new Promise((resolve) => {
         this.modalPromiseResolve = resolve;
@@ -1486,7 +1498,8 @@ export default {
         this.formData.type === "remote",
         this.formData.ip,
         this.formData.port,
-        this.formData.type
+        this.formData.type,
+        this.formData.ryu_app
       );
     },
     handleControllerFormSubmit(data) {
@@ -1497,11 +1510,13 @@ export default {
       }
       this.showModal = false;
     },
-    async createController(position, remote, ip, port, controllerType = "default") {
+    async createController(position, remote, ip, port, controllerType = "default", ryuApp = null) {
       let ctlId = Object.values(this.controllers).length + 1;
       while (`c${ctlId}` in this.controllers) {
         ctlId++;
       }
+      const isRyu = controllerType === "ryu";
+      const effectiveIp = ip || (isRyu ? "127.0.0.1" : ip);
       let ctl = {
         id: `c${ctlId}`,
         type: "controller",
@@ -1509,7 +1524,7 @@ export default {
         label: null,
         controller_type: controllerType,
         remote: remote,
-        ip: ip,
+        ip: effectiveIp,
         port: port,
         x: position.x,
         y: position.y,
@@ -1520,8 +1535,14 @@ export default {
           highlight: { background: "#007acc", border: "#007acc" },
         },
       };
-      if (remote) ctl.label = `${ctl.name} <${ctl.ip}:${ctl.port}>`;
-      else ctl.label = `${ctl.name}`;
+      if (isRyu) ctl.ryu_app = ryuApp;
+      if (remote || isRyu) {
+        const info = [`${ctl.name} <${ctl.ip}:${ctl.port}>`];
+        if (isRyu && ryuApp) info.push(`[ryu:${ryuApp}]`);
+        ctl.label = info.join(" ");
+      } else {
+        ctl.label = `${ctl.name}`;
+      }
       ctl.image = controllerImg;
       ctl.hidden = !this.settings.showControllers;
       if (await deployController(ctl)) {
@@ -1582,11 +1603,8 @@ export default {
           "remote"
         );
       } else if (data === "draggable-controller-ryu") {
-        this.createController(
+        this.showControllerFormModal(
           this.network.DOMtoCanvas(domPoint),
-          false,
-          null,
-          null,
           "ryu"
         );
       } else if (data === "draggable-controller-nox") {
@@ -1622,6 +1640,8 @@ export default {
       this.showModal = false;
       this.modalOption = null;
       this.modalData = null;
+      this.controllerFormPreset = null;
+      this.formData = null;
       this.iperfError = "";
       this.iperfResult = null;
       this.iperfBusy = false;
@@ -2325,11 +2345,11 @@ export default {
   overflow: hidden;
   position: relative;
   z-index: 1;
-  margin-top: -12px;
+  margin-top: 0;
 }
 
 .webshell :deep(.webshell-container.minimized) {
-  transform: translateY(-6px);
+  transform: translateY(-24px);
 }
 
 .node-context-menu {
