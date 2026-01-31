@@ -125,6 +125,17 @@ export const getRyuApps = async () => {
   }
 };
 
+export const getHealthStatus = async () => {
+  try {
+    const root = baseUrl?.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+    const response = await axios.get(`${root}/health`);
+    return response.data || null;
+  } catch (error) {
+    console.warn("Failed to fetch health status", error);
+    return null;
+  }
+};
+
 export const deployLink = async (src, dst, options = null) => {
   try {
     console.log(src, dst, options);
@@ -329,6 +340,25 @@ export const requestStartNetwork = async () => {
   try {
     const response = await axios.post(
       baseUrl + "/api/mininet/start",
+      null,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return false;
+  }
+};
+
+export const requestStopNetwork = async () => {
+  try {
+    const response = await axios.post(
+      baseUrl + "/api/mininet/stop",
       null,
       {
         headers: {

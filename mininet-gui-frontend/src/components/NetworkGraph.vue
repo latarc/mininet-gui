@@ -17,7 +17,8 @@ import {
   deployController,
   deploySwitch,
   assocSwitch,
-  isNetworkStarted,
+  requestStartNetwork,
+  requestStopNetwork,
   requestResetNetwork,
   requestRunPingall,
   runIperf,
@@ -30,6 +31,7 @@ import {
   removeAssociation,
   getAddressingPlan,
   getSnifferState,
+  getHealthStatus,
   startSniffer,
   stopSniffer,
   exportSnifferPcap,
@@ -60,6 +62,14 @@ import routerImg from "@/assets/light-router.svg";
 
 <template>
   <div class="app-shell">
+    <div v-if="!mininetConnected" class="health-overlay">
+      <div class="health-overlay__card">
+        <p>Mininet backend is disconnected. Actions are disabled until the service recovers.</p>
+        <button type="button" class="menu-action health-overlay__retry" @click="refreshBackendHealth">
+          Retry
+        </button>
+      </div>
+    </div>
     <div ref="topbar" class="topbar">
       <div class="topbar-title">Mininet GUI</div>
       <div class="menu-bar">
@@ -103,7 +113,42 @@ import routerImg from "@/assets/light-router.svg";
         </div>
         <button type="button" class="menu-item" disabled>Edit</button>
         <button type="button" class="menu-item" disabled>View</button>
-        <button type="button" class="menu-item" disabled>Run</button>
+        <div class="menu-item-wrapper">
+          <button
+            type="button"
+            class="menu-item"
+            :class="{ open: runMenuOpen }"
+            @click.stop="toggleRunMenu"
+          >
+            Run
+          </button>
+          <div v-if="runMenuOpen" class="menu-dropdown" @click.stop>
+            <button
+              type="button"
+              class="menu-action"
+              @click="handleStartNetwork"
+              :disabled="networkStarted || networkCommandInFlight || !mininetConnected"
+            >
+              Start Network
+            </button>
+            <button
+              type="button"
+              class="menu-action"
+              @click="handleStopNetwork"
+              :disabled="!networkStarted || networkCommandInFlight || !mininetConnected"
+            >
+              Stop Network
+            </button>
+            <button
+              type="button"
+              class="menu-action"
+              @click="handleRestartNetwork"
+              :disabled="networkCommandInFlight || !mininetConnected"
+            >
+              Restart Network
+            </button>
+          </div>
+        </div>
         <div class="menu-item-wrapper">
           <button
             type="button"
@@ -135,19 +180,22 @@ import routerImg from "@/assets/light-router.svg";
       <!-- Side panel (left) -->
 
         <div class="side-container">
-          <Side
-            @runPingall="showPingallModal"
-            @runIperf="showIperfModal"
-            @closeAllActiveModes="closeAllActiveModes"
-            @toggleShowHosts="toggleShowHosts"
-            @toggleShowControllers="toggleShowControllers"
-            @createTopology="showTopologyFormModal"
-            @toggleSidebar="handleSidebarToggle"
-            @doSelectAll="doSelectAll"
-            @toggleAddEdgeMode="handleToggleAddEdgeMode"
-            @deleteSelected="doDeleteSelected"
-            @keydown.ctrl.a.prevent="doSelectAll"
+        <Side
+          @runPingall="showPingallModal"
+          @runIperf="showIperfModal"
+          @closeAllActiveModes="closeAllActiveModes"
+          @toggleShowHosts="toggleShowHosts"
+          @toggleShowControllers="toggleShowControllers"
+          @createTopology="showTopologyFormModal"
+          @toggleSidebar="handleSidebarToggle"
+          @doSelectAll="doSelectAll"
+          @toggleAddEdgeMode="handleToggleAddEdgeMode"
+          @deleteSelected="doDeleteSelected"
+          @keydown.ctrl.a.prevent="doSelectAll"
             :networkStarted="networkStarted"
+            :networkConnected="mininetConnected"
+            :showSpecialSwitches="settings.showSpecialSwitches"
+            :showSpecialControllers="settings.showSpecialControllers"
             :addEdgeMode="addEdgeMode"
             :pingallRunning="pingallRunning"
           />
@@ -206,6 +254,29 @@ import routerImg from "@/assets/light-router.svg";
       />
       </div>
     </div>
+    <div class="status-bar">
+      <div class="status-bar__right">
+        <span
+          class="status-dot"
+          :class="mininetConnected ? 'status-dot--started' : 'status-dot--stopped'"
+        ></span>
+        <div class="status-bar__text">
+          <span class="status-bar__primary">
+            {{ mininetConnected ? "Connected to Mininet" : "Disconnected" }}
+          </span>
+          <span class="status-bar__version">
+            Mininet {{ mininetVersion || "unknown" }}
+          </span>
+          <span class="status-bar__network">
+            <span class="network-state-dot" :class="networkStateIndicator"></span>
+            Network {{ networkStarted ? "Started" : "Stopped" }}
+          </span>
+          <span class="status-bar__counts">
+            Hosts {{ networkCounts.hosts }} · Controllers {{ networkCounts.controllers }} · Switches {{ networkCounts.switches }}
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <Teleport to="body">
@@ -259,26 +330,32 @@ import routerImg from "@/assets/light-router.svg";
         />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
         <div v-if="modalOption === 'usage'" class="help-modal">
-          <h4>Creating nodes</h4>
-          <p>Drag a node (Host, Switch, Controller) from the sidebar onto the canvas.</p>
-          <h4>Moving the topology</h4>
-          <p>Pan with right click or middle mouse button. Zoom with the mouse wheel.</p>
-          <h4>Opening a webshell</h4>
-          <p>Right-click a node and choose "Open Webshell". Each click opens a new session.</p>
-          <h4>Keyboard shortcuts</h4>
-          <ul>
-            <li>H: toggle hosts visibility</li>
-            <li>C: toggle controllers visibility</li>
-            <li>E: connect nodes mode</li>
-            <li>D or Delete: delete selected</li>
-            <li>Ctrl + A: select all nodes</li>
-            <li>Esc: exit modes / close dialogs</li>
-          </ul>
-          <h4>Tabs and features</h4>
-          <p>Webshell: terminal sessions per node.</p>
-          <p>Sniffer: live traffic view with filters.</p>
-          <p>Logs: backend logs stream.</p>
-          <p>Chat: assistant to modify the topology.</p>
+          <div class="help-modal__tabs">
+            <button type="button" :class="{ active: helpTab === 'welcome' }" @click="helpTab = 'welcome'">Welcome</button>
+            <button type="button" :class="{ active: helpTab === 'shortcuts' }" @click="helpTab = 'shortcuts'">Shortcuts</button>
+            <button type="button" :class="{ active: helpTab === 'devices' }" @click="helpTab = 'devices'">Devices</button>
+          </div>
+          <div v-if="helpTab === 'welcome'" class="help-tab">
+            <p>Drag hosts, switches, or controllers from the sidebar onto the canvas to add devices.</p>
+            <p>Use right/middle click to pan and the mouse wheel to zoom.</p>
+            <p>Right-click a node to open its web shell or view stats.</p>
+            <p>The Run menu starts, stops, or restarts Mininet without erasing the topology.</p>
+          </div>
+          <div v-if="helpTab === 'shortcuts'" class="help-tab">
+            <p>H – toggle host visibility.</p>
+            <p>C – toggle controllers.</p>
+            <p>E – enter edge mode (click two nodes to connect).</p>
+            <p>D/Delete – remove selection.</p>
+            <p>Ctrl+A – select all nodes.</p>
+            <p>Esc – cancel a mode or close the modal.</p>
+          </div>
+          <div v-if="helpTab === 'devices'" class="help-tab">
+            <p>Host – emulates a Linux host.</p>
+            <p>Switch – standard or special switch types (Ovskernel, OVS, user, bridge).</p>
+            <p>Controller – default controller or remote/Ryu-based ones.</p>
+            <p>Router – Linux router with IP forwarding.</p>
+            <p>NAT – network address translation box.</p>
+          </div>
         </div>
         <div v-if="modalOption === 'about'" class="help-modal">
           <h4>Mininet GUI</h4>
@@ -308,6 +385,14 @@ import routerImg from "@/assets/light-router.svg";
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
               <span>Show controllers</span>
+            </label>
+            <label class="settings-toggle">
+              <input type="checkbox" v-model="settings.showSpecialSwitches" @change="persistSettings" />
+              <span>Show special switches</span>
+            </label>
+            <label class="settings-toggle">
+              <input type="checkbox" v-model="settings.showSpecialControllers" @change="persistSettings" />
+              <span>Show special controllers</span>
             </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
@@ -396,7 +481,11 @@ export default {
       nodes: new DataSet(),
       edges: new DataSet(),
       addEdgeMode: false,
-      networkStarted: true,
+      networkStarted: false,
+      networkCommandInFlight: false,
+      runMenuOpen: false,
+      mininetConnected: true,
+      healthTimer: null,
       pingallRunning: false,
       iperfBusy: false,
       iperfError: "",
@@ -413,6 +502,7 @@ export default {
       modalHeader: "",
       modalOption: null,
       modalData: {},
+      helpTab: "welcome",
       controllerFormPreset: null,
       ryuApps: [],
       webshellView: null,
@@ -456,11 +546,13 @@ export default {
       boundPanMouseMove: null,
       boundPanMouseUp: null,
       boundContextMenu: null,
-      settings: {
-        showHosts: true,
-        showControllers: true,
-        showHostIp: false,
-        showSwitchDpids: false,
+    settings: {
+      showHosts: true,
+      showControllers: true,
+      showSpecialSwitches: true,
+      showSpecialControllers: true,
+      showHostIp: false,
+      showSwitchDpids: false,
         openaiApiKey: "",
         linkOptions: {
           bw: "",
@@ -477,6 +569,17 @@ export default {
     network() {
       console.log("computed ran again");
       return this.computeNetwork();
+    },
+    networkCounts() {
+      return {
+        hosts: Object.keys(this.hosts || {}).length,
+        controllers: Object.keys(this.controllers || {}).length,
+        switches: Object.keys(this.switches || {}).length,
+      };
+    },
+    networkStateIndicator() {
+      if (this.networkCommandInFlight) return "network-state--pending";
+      return this.networkStarted ? "network-state--started" : "network-state--stopped";
     },
     llmHandlers() {
       return {
@@ -506,17 +609,20 @@ export default {
   async mounted() {
     this.loadSettings();
     await this.syncSnifferState();
-    this.snifferStateTimer = setInterval(this.syncSnifferState, 5000);
+    this.snifferStateTimer = setInterval(() => this.syncSnifferState(), 5000);
     await this.loadRyuApps();
     this.setupNetwork();
     this.bindSelectionEvents();
     this.bindTopbarEvents();
     this.loadVersions();
+    await this.refreshBackendHealth();
+    this.healthTimer = setInterval(() => this.refreshBackendHealth(), 2000);
   },
   beforeUnmount() {
     if (this.snifferStateTimer) clearInterval(this.snifferStateTimer);
     this.unbindSelectionEvents();
     this.unbindTopbarEvents();
+    if (this.healthTimer) clearInterval(this.healthTimer);
   },
   methods: {
     switchImageForType(type) {
@@ -556,6 +662,9 @@ export default {
       if (this.helpMenuOpen && !topbar.contains(event.target)) {
         this.helpMenuOpen = false;
       }
+      if (this.runMenuOpen && !topbar.contains(event.target)) {
+        this.runMenuOpen = false;
+      }
     },
     toggleFileMenu() {
       this.fileMenuOpen = !this.fileMenuOpen;
@@ -570,6 +679,66 @@ export default {
     },
     closeHelpMenu() {
       this.helpMenuOpen = false;
+    },
+    toggleRunMenu() {
+      this.runMenuOpen = !this.runMenuOpen;
+      if (this.runMenuOpen) {
+        this.fileMenuOpen = false;
+        this.helpMenuOpen = false;
+      }
+    },
+    closeRunMenu() {
+      this.runMenuOpen = false;
+    },
+    async handleStartNetwork() {
+      this.closeRunMenu();
+      if (this.networkCommandInFlight || this.networkStarted) return;
+      this.networkCommandInFlight = true;
+      try {
+        const started = await requestStartNetwork();
+        if (started) {
+          this.networkStarted = true;
+        }
+      } finally {
+        this.networkCommandInFlight = false;
+        await this.refreshBackendHealth();
+      }
+    },
+    async handleStopNetwork() {
+      this.closeRunMenu();
+      if (this.networkCommandInFlight || !this.networkStarted) return;
+      this.networkCommandInFlight = true;
+      try {
+        const stopped = await requestStopNetwork();
+        if (stopped) {
+          this.snifferActive = false;
+          this.networkStarted = false;
+          await this.setupNetwork();
+        }
+      } finally {
+        this.networkCommandInFlight = false;
+        await this.refreshBackendHealth();
+      }
+    },
+    async handleRestartNetwork() {
+      this.closeRunMenu();
+      if (this.networkCommandInFlight) return;
+      this.networkCommandInFlight = true;
+      try {
+        const stopped = await requestStopNetwork();
+        if (stopped) {
+          this.snifferActive = false;
+          this.networkStarted = false;
+        }
+        const restarted = await requestStartNetwork();
+        if (restarted) {
+          this.networkStarted = true;
+          await this.setupNetwork();
+        }
+      } finally {
+        this.networkCommandInFlight = false;
+        await this.refreshBackendHealth();
+      }
     },
     handleNewTopology() {
       this.closeFileMenu();
@@ -608,6 +777,7 @@ export default {
       this.modalHeader = "Usage";
       this.modalOption = "usage";
       this.modalData = null;
+      this.helpTab = "welcome";
       this.showModal = true;
     },
     handleOpenAbout() {
@@ -916,7 +1086,7 @@ export default {
       return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
     },
     async setupNetwork() {
-      this.networkStarted = await isNetworkStarted();
+      await this.refreshBackendHealth();
       this.hosts = await getHosts();
       this.switches = await getSwitches();
       this.controllers = await getControllers();
@@ -1128,6 +1298,43 @@ export default {
       this.network.on("dragEnd", async (event) => {
         this.handleNodeDragEnd(event);
       });
+    },
+    async refreshBackendHealth() {
+      try {
+        const health = await getHealthStatus();
+        if (health) {
+          this.mininetConnected = !!health.connected;
+          this.networkStarted = !!health.network_started;
+        } else {
+          this.mininetConnected = false;
+          this.networkStarted = false;
+        }
+      } catch (error) {
+        console.warn("Could not refresh backend health", error);
+        this.mininetConnected = false;
+        this.networkStarted = false;
+      }
+      this.updateLinkColors();
+    },
+    updateLinkColors() {
+      if (!this.edges?.forEach) return;
+      const colorValue = this.networkStarted ? "#00aa00ff" : "#999999ff";
+      const updates = [];
+      this.edges.forEach((edge) => {
+        if (edge?.dashes?.length) return;
+        const currentColor = edge.color;
+        const normalizedColor =
+          typeof currentColor === "object" && currentColor !== null && "color" in currentColor
+            ? { ...currentColor, color: colorValue }
+            : colorValue;
+        updates.push({ id: edge.id, color: normalizedColor });
+      });
+      if (updates.length) {
+        this.edges.update(updates);
+        if (this.network) {
+          this.network.redraw();
+        }
+      }
     },
     selectInitialWebshell() {
       this.webshellFocusId = null;
@@ -1863,14 +2070,20 @@ export default {
       if (await requestResetNetwork()) {
         this.snifferActive = false;
         console.log("Resetting topology");
-        this.hosts = new Object();
-        this.switches = new Object();
-        this.controllers = new Object();
-        this.nats = new Object();
-        this.routers = new Object();
-        this.links = new Array();
-        this.nodes = new DataSet();
-        this.edges = new DataSet();
+        this.clearGraphState();
+        await this.refreshBackendHealth();
+      }
+    },
+    clearGraphState() {
+      this.hosts = {};
+      this.switches = {};
+      this.controllers = {};
+      this.nats = {};
+      this.routers = {};
+      this.links = [];
+      this.nodes = new DataSet();
+      this.edges = new DataSet();
+      if (this.network) {
         this.network.setData({ nodes: this.nodes, edges: this.edges });
         this.network.redraw();
       }
@@ -2176,6 +2389,7 @@ export default {
   flex-direction: column;
   height: 100vh;
   width: 100%;
+  position: relative;
 }
 
 .topbar {
@@ -2258,14 +2472,155 @@ export default {
   background: #3c3c3c;
 }
 
+.health-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 28px;
+  background: rgba(5, 5, 5, 0.92);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.health-overlay__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #1e1e1e;
+  border: 1px solid #3a3a3a;
+  border-radius: 12px;
+  padding: 20px 28px;
+  max-width: 360px;
+  text-align: center;
+  color: #dcdcdc;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.health-overlay__retry {
+  margin-top: 4px;
+  width: auto;
+}
+
 .menu-separator {
   height: 1px;
   margin: 4px 0;
   background: #444;
 }
 
+.help-modal__tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.help-modal__tabs button {
+  background: #2d2d2d;
+  border: 1px solid #444;
+  color: #d4d4d4;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.help-modal__tabs button.active {
+  background: #007acc;
+  border-color: #007acc;
+}
+
 .menu-file-input {
   display: none;
+}
+
+.status-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  background: #1d1d1d;
+  border-top: 1px solid #2f2f2f;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  z-index: 7;
+  font-size: 0.8rem;
+  color: #d4d4d4;
+}
+
+.status-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: #9b9b9b;
+}
+
+.status-dot--started {
+  background-color: #61efb5;
+}
+
+.status-dot--stopped {
+  background-color: #9b9b9b;
+}
+
+.status-bar__text {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  line-height: 1;
+  font-size: 0.7rem;
+}
+
+.status-bar__primary {
+  font-weight: 600;
+}
+
+.status-bar__version {
+  color: #a2a2a2;
+}
+
+.status-bar__counts {
+  color: #d4d4d4;
+  font-weight: 500;
+}
+
+.status-bar__network {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d4d4d4;
+}
+
+.network-state-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: #9b9b9b;
+}
+
+.network-state--started {
+  background-color: #61efb5;
+}
+
+.network-state--stopped {
+  background-color: #f06666;
+}
+
+.network-state--pending {
+  background-color: #f5d76a;
 }
 
 .layout {
@@ -2299,6 +2654,8 @@ export default {
   position: relative;
   z-index: 0;
   width: calc(100% - var(--sidebar-width));
+  padding-bottom: 28px;
+  box-sizing: border-box;
 }
 
 .graph-wrapper {
@@ -2457,6 +2814,12 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 460px;
+  height: 320px;
+  min-width: 420px;
+  min-height: 280px;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .help-modal h4 {

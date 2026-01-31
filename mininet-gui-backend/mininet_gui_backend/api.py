@@ -112,8 +112,6 @@ async def lifespan(app: FastAPI):
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
     app.net.is_started = False
-    start_network()
-    app.net.is_started = True
     yield
     # stop
     mn_cleanup()
@@ -155,9 +153,23 @@ app.add_middleware(
 def get_version():
     return {"version": app.version, "mininet_version": MININET_VERSION}
 
+@app.get("/api/health")
+def get_health():
+    net = getattr(app, "net", None)
+    connected = net is not None
+    network_started = bool(getattr(net, "is_started", False))
+    status = "ok" if connected else "unavailable"
+    return {
+        "status": status,
+        "connected": connected,
+        "network_started": network_started,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
 @app.get("/api/ryu/apps")
 def get_ryu_apps():
     return {"apps": list_ryu_apps()}
+
 
 def debug(msg, *args):
     _debug(str(msg)+" "+" ".join(map(str, args))+"\n")
@@ -212,6 +224,191 @@ def clear_log_file():
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "w", encoding="utf-8"):
         pass
+
+
+def _add_host_to_net(host: Host):
+    host_node = app.net.addHost(host.name, ip=host.ip)
+    host_node.x = host.x
+    host_node.y = host.y
+    host_node.ip = host.ip
+    host_node.type = "host"
+    return host_node
+
+
+def _add_router_to_net(router: Router):
+    params = {"ip": router.ip, "mac": router.mac}
+    router_node = app.net.addHost(router.name, cls=LinuxRouter, **params)
+    router_node.x = router.x
+    router_node.y = router.y
+    router_node.ip = router.ip
+    router_node.mac = router.mac
+    router_node.type = "router"
+    return router_node
+
+
+def _add_nat_to_net(nat: Nat):
+    params = {}
+    if nat.ip:
+        params["ip"] = nat.ip
+    if nat.mac:
+        params["mac"] = nat.mac
+    nat_node = app.net.addNAT(nat.name, connect=False, **params)
+    nat_node.x = nat.x
+    nat_node.y = nat.y
+    nat_node.type = "nat"
+    if nat.ip:
+        nat_node.ip = nat.ip
+    if nat.mac:
+        nat_node.mac = nat.mac
+    return nat_node
+
+
+def _add_controller_to_net(controller: Controller, start=True):
+    controller_type = (controller.controller_type or "").lower()
+    if controller.remote or controller_type == "remote":
+        controller_node = app.net.addController(
+            controller.name,
+            controller=RemoteController,
+            ip=controller.ip,
+            port=controller.port,
+        )
+    elif controller_type == "ryu":
+        if not controller.port:
+            raise HTTPException(status_code=400, detail="Ryu controller requires a port")
+        if not controller.ryu_app:
+            raise HTTPException(status_code=400, detail="Ryu controller requires an app")
+        available_apps = list_ryu_apps()
+        if controller.ryu_app not in available_apps:
+            raise HTTPException(status_code=400, detail="Invalid ryu app")
+        controller.ip = controller.ip or "127.0.0.1"
+        controller_node = app.net.addController(
+            controller.name,
+            controller=Ryu,
+            ip=controller.ip,
+            port=controller.port,
+            ryu_app=controller.ryu_app,
+        )
+    elif controller_type == "nox":
+        controller_node = app.net.addController(
+            controller.name, controller=NOX
+        )
+    else:
+        controller_node = app.net.addController(
+            controller.name, controller=ReferenceController
+        )
+
+    if start:
+        controller_node.start()
+    controller_node.x = controller.x
+    controller_node.y = controller.y
+    controller_node.type = "controller"
+    return controller_node
+
+
+def _add_switch_to_net(switch: Switch, start=True):
+    switch_type = (switch.switch_type or "").lower()
+    switch.switch_type = switch_type or switch.switch_type
+    if switch_type == "user":
+        switch_node = app.net.addSwitch(switch.name, ports=switch.ports, cls=UserSwitch)
+    elif switch_type == "ovs":
+        switch_node = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSSwitch)
+    elif switch_type == "ovskernel":
+        switch_node = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSKernelSwitch)
+    elif switch_type == "ovsbridge":
+        switch_node = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSBridge)
+    else:
+        switch_node = app.net.addSwitch(switch.name, ports=switch.ports)
+
+    if start and switch.controller:
+        switch_node.start([app.net.nameToNode.get(switch.controller)])
+    else:
+        switch_node.start([])
+    switch_node.x = switch.x
+    switch_node.y = switch.y
+    switch_node.type = "sw"
+    switch_node.controller = switch.controller
+    switch_node.switch_type = switch.switch_type
+    return switch_node
+
+
+def _rebuild_links():
+    app.links = dict()
+    for key, attrs in list(app.link_attrs.items()):
+        nodes = list(key)
+        if len(nodes) != 2:
+            continue
+        src, dst = nodes
+        kwargs = {}
+        if attrs:
+            kwargs.update(attrs)
+            kwargs["cls"] = TCLink
+        new_link = app.net.addLink(src, dst, **kwargs)
+        if app.net.is_started:
+            for node_id in (src, dst):
+                node = app.net.nameToNode[node_id]
+                if node.type in ("host", "nat", "router"):
+                    node.configDefault()
+                elif node.type == "sw" and node.controller:
+                    node.start([node.controller])
+        app.links[key] = new_link
+
+
+def _rebuild_saved_topology():
+    for host in list(app.hosts.values()):
+        _add_host_to_net(host)
+    for router in list(app.routers.values()):
+        _add_router_to_net(router)
+    for nat in list(app.nats.values()):
+        _add_nat_to_net(nat)
+    for controller in list(app.controllers.values()):
+        _add_controller_to_net(controller, start=False)
+    for switch in list(app.switches.values()):
+        _add_switch_to_net(switch, start=False)
+    _rebuild_links()
+
+
+def _terminate_all_terminals():
+    for node_id, sessions in list(app.terminals.items()):
+        for session_id, (master_fd, process) in list(sessions.items()):
+            try:
+                process.terminate()
+            except Exception:
+                pass
+            try:
+                process.wait(timeout=0.1)
+            except Exception:
+                pass
+            try:
+                os.close(master_fd)
+            except Exception:
+                pass
+        sessions.clear()
+        app.terminals.pop(node_id, None)
+
+
+async def _stop_all_sniffers_quietly():
+    try:
+        await app.sniffer_manager.stop()
+    except Exception:
+        pass
+
+
+async def _stop_mininet_with_timeout(timeout: float = 5.0):
+    controllers = list(getattr(app.net, "controllers", []) or [])
+    if controllers:
+        for controller in controllers:
+            try:
+                controller.terminate()
+            except Exception:
+                pass
+    app.net.controllers = []
+    loop = asyncio.get_running_loop()
+    try:
+        await asyncio.wait_for(loop.run_in_executor(None, app.net.stop), timeout=timeout)
+    except asyncio.TimeoutError:
+        debug(f"mininet.stop() did not complete within {timeout} seconds, continuing cleanup")
+    except Exception as exc:
+        debug("error while stopping mininet", exc)
 
 def list_mininet_interfaces():
     nodes = []
@@ -330,36 +527,36 @@ def start_network():
         app.net.nameToNode[controller].start()
     for switch_id in app.switches:
         switch = app.net.nameToNode[switch_id]
-        if switch.controller:
-            switch.start([switch.controller])
+        controller_id = getattr(app.switches[switch_id], "controller", None)
+        controller_node = None
+        if controller_id:
+            controller_node = app.net.nameToNode.get(controller_id)
+        if controller_node:
+            switch.controller = controller_node
+            switch.start([controller_node])
         else:
+            switch.controller = None
             switch.start([])
     app.net.is_started = True
     return {"status": "ok"}
 
 @app.post("/api/mininet/stop")
-def stop_network():
+async def stop_network():
     """Stop network and nodes"""
-    # delete mininet
-    try: del app.net
-    except AttributeError: pass
+    await _stop_all_sniffers_quietly()
+    _terminate_all_terminals()
+
+    await _stop_mininet_with_timeout()
 
     # Cleanup (mn -c)
     mn_cleanup()
 
-    app.controllers.clear()
-    app.switches.clear()
-    app.hosts.clear()
-    app.nats.clear()
-    app.routers.clear()
-    app.links.clear()
-    app.link_attrs.clear()
-
     # Create the Mininet network
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
-    #app.net.addController()
     app.net.is_started = False
+    app.links = dict()
+    _rebuild_saved_topology()
     return {"status": "ok"}
 
 @app.post("/api/mininet/reset")
@@ -370,7 +567,7 @@ async def reset_network():
     except Exception:
         pass
     clear_log_file()
-    stop_network()
+    await stop_network()
     return start_network()
 
 @app.post("/api/mininet/pingall")
@@ -400,11 +597,7 @@ def create_host(host: Host):
         return {"status": "updated"}
     # Create host in the Mininet network using the request data
     debug(host)
-    new_host = app.net.addHost(host.name, ip=host.ip)
-    new_host.x = host.x
-    new_host.y = host.y
-    new_host.ip = host.ip
-    new_host.type = "host"
+    new_host = _add_host_to_net(host)
     app.hosts[host.name] = host
     debug(new_host)
     # Return an OK status code
@@ -416,13 +609,7 @@ def create_router(router: Router):
         app.routers[router.id] = router
         return {"status": "updated"}
     debug(router)
-    params = {"ip": router.ip, "mac": router.mac}
-    new_router = app.net.addHost(router.name, cls=LinuxRouter, **params)
-    new_router.x = router.x
-    new_router.y = router.y
-    new_router.ip = router.ip
-    new_router.mac = router.mac
-    new_router.type = "router"
+    new_router = _add_router_to_net(router)
     app.routers[router.name] = router
     debug(new_router)
     return {"status": "ok"}
@@ -486,19 +673,7 @@ def create_nat(nat: Nat):
         app.nats[nat.id] = nat
         return {"status": "updated"}
     debug(nat)
-    params = {}
-    if nat.ip:
-        params["ip"] = nat.ip
-    if nat.mac:
-        params["mac"] = nat.mac
-    new_nat = app.net.addNAT(nat.name, connect=False, **params)
-    new_nat.x = nat.x
-    new_nat.y = nat.y
-    new_nat.type = "nat"
-    if nat.ip:
-        new_nat.ip = nat.ip
-    if nat.mac:
-        new_nat.mac = nat.mac
+    new_nat = _add_nat_to_net(nat)
     app.nats[nat.name] = nat
     debug(new_nat)
     return {"status": "ok"}
@@ -512,27 +687,7 @@ def create_switch(switch: Switch):
         raise HTTPException(
             status_code=400, detail=f'controller "{switch.controller}" does not exist'
         )
-    switch_type = (switch.switch_type or "").lower()
-    switch.switch_type = switch_type or switch.switch_type
-    if switch_type == "user":
-        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=UserSwitch)
-    elif switch_type == "ovs":
-        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSSwitch)
-    elif switch_type == "ovskernel":
-        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSKernelSwitch)
-    elif switch_type == "ovsbridge":
-        new_switch = app.net.addSwitch(switch.name, ports=switch.ports, cls=OVSBridge)
-    else:
-        new_switch = app.net.addSwitch(switch.name, ports=switch.ports)
-    if app.net.is_started and switch.controller:
-        new_switch.start([app.net.nameToNode[switch.controller]])
-    else:
-        new_switch.start([])
-    new_switch.x = switch.x
-    new_switch.y = switch.y
-    new_switch.type = "sw"
-    new_switch.controller = switch.controller
-    new_switch.switch_type = switch.switch_type
+    new_switch = _add_switch_to_net(switch)
     app.switches[switch.name] = switch
     return switch
 
@@ -541,47 +696,9 @@ def create_switch(switch: Switch):
 def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
-    controller_type = (controller.controller_type or "").lower()
-    if controller.remote or controller_type == "remote":
-        # TODO aqui o mininet verifica se a porta está open com timeout de 60s e blocka a request
-        new_controller = app.net.addController(
-            controller.name,
-            controller=RemoteController,
-            ip=controller.ip,
-            port=controller.port,
-        )
-    elif controller_type == "ryu":
-        if not controller.port:
-            raise HTTPException(status_code=400, detail="Ryu controller requires a port")
-        if not controller.ryu_app:
-            raise HTTPException(status_code=400, detail="Ryu controller requires an app")
-        available_apps = list_ryu_apps()
-        if controller.ryu_app not in available_apps:
-            raise HTTPException(status_code=400, detail="Invalid ryu app")
-        controller.ip = controller.ip or "127.0.0.1"
-        new_controller = app.net.addController(
-            controller.name,
-            controller=Ryu,
-            ip=controller.ip,
-            port=controller.port,
-            ryu_app=controller.ryu_app,
-        )
-    elif controller_type == "nox":
-        new_controller = app.net.addController(
-            controller.name, controller=NOX
-        )
-    else:
-        new_controller = app.net.addController(
-            controller.name, controller=ReferenceController
-        )
-
-    new_controller.start()
-    new_controller.x = controller.x
-    new_controller.y = controller.y
-    new_controller.type = "controller"
+    new_controller = _add_controller_to_net(controller, start=True)
     app.controllers[controller.name] = controller
     debug(new_controller)
-    # Return an OK status code
     return {"status": "ok"}
 
 @app.post("/api/mininet/associate_switch")
@@ -640,7 +757,16 @@ def create_link(payload: Union[Tuple[str, str], LinkCreate]):
                 node.configDefault()
             elif node.type == "sw" and node.controller:
                 # Important, otherwise switch doesnt init the port
-                node.start([node.controller])
+                controller_node = (
+                    node.controller
+                    if not isinstance(node.controller, str)
+                    else app.net.nameToNode.get(node.controller)
+                )
+                if controller_node:
+                    node.controller = controller_node
+                    node.start([controller_node])
+                else:
+                    node.start([])
     # It is important to store this Link object because
     # mininet (apparently) doesn't have an easy way to access this
     app.links[key] = new_link
@@ -1119,7 +1245,11 @@ async def start_sniffer_process(node_pid: int, intf: str, pcap_path: str):
 async def websocket_terminal(websocket: WebSocket, node_id: str):
     """WebSocket endpoint for accessing a Mininet node terminal"""
     await websocket.accept()
-    
+    if not getattr(app.net, "is_started", False):
+        await websocket.send_text("Error: network must be started to open a webshell.")
+        await websocket.close()
+        return
+
     node = app.net.get(node_id)
 
     if not node:
@@ -1226,6 +1356,8 @@ async def sniffer_history():
 
 @app.post("/api/mininet/sniffer/start")
 async def sniffer_start():
+    if not getattr(app.net, "is_started", False):
+        raise HTTPException(status_code=400, detail="network must be started to begin sniffing")
     await app.sniffer_manager.start()
     return {"active": app.sniffer_manager.active}
 
