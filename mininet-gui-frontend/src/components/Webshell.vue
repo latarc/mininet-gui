@@ -97,10 +97,15 @@
       </div>
     </div>
     <div v-show="!isMinimized && activeView === 'traffic'" class="traffic-window">
-      <TrafficView :enabled="snifferActive" @toggleSniffer="$emit('toggleSniffer')" />
+      <TrafficView
+        :enabled="snifferActive"
+        :graphNodes="graphNodeList"
+        :graphVersion="graphVersion"
+        @toggleSniffer="$emit('toggleSniffer')"
+      />
     </div>
     <div v-show="!isMinimized && activeView === 'monitor'" class="monitoring-window">
-      <MonitoringView />
+      <MonitoringView :graphNodes="graphNodeList" :graphVersion="graphVersion" />
     </div>
     <div v-show="!isMinimized && activeView === 'logs'" class="terminal-window" @click="focusLogTerminal">
       <div
@@ -181,6 +186,10 @@ export default {
       chatInput: "",
       chatBusy: false,
       chatError: "",
+      graphNodeList: [],
+      graphVersion: 0,
+      nodeDatasetRef: null,
+      nodeDatasetHandler: null,
     };
   },
   computed: {
@@ -192,8 +201,9 @@ export default {
     nodes: {
       handler() {
         this.syncNodes();
+        this.setupGraphWatcher();
       },
-      deep: true,
+      immediate: true,
     },
     terminalSessions() {
       this.syncNodes();
@@ -242,10 +252,11 @@ export default {
       if (this.activeTab) this.fitTerminal(this.activeTab);
     });
   },
-  beforeUnmount() {
-    Object.values(this.sockets).forEach(ws => ws?.close());
-    if (this.logSocket) this.logSocket.close();
-    Object.values(this.terminals).forEach(term => term?.dispose());
+    beforeUnmount() {
+      Object.values(this.sockets).forEach(ws => ws?.close());
+      if (this.logSocket) this.logSocket.close();
+      this.teardownGraphWatcher();
+      Object.values(this.terminals).forEach(term => term?.dispose());
     if (this.logTerminal) this.logTerminal.dispose();
     if (this.resizeObserver) this.resizeObserver.disconnect();
     window.removeEventListener("mousemove", this.handleResize);
@@ -487,6 +498,55 @@ export default {
       this.sockets = {};
       this.sessionNodeIds = {};
       this.activeTab = null;
+    },
+    setupGraphWatcher() {
+      this.teardownGraphWatcher();
+      const dataset = this.nodes;
+      if (!dataset || typeof dataset.on !== "function" || typeof dataset.get !== "function") {
+        this.graphNodeList = [];
+        this.nodeDatasetRef = null;
+        this.nodeDatasetHandler = null;
+        return;
+      }
+      const handler = () => {
+        this.updateGraphNodeList();
+        this.graphVersion += 1;
+      };
+      this.nodeDatasetHandler = handler;
+      this.nodeDatasetRef = dataset;
+      ["add", "update", "remove"].forEach(event => {
+        dataset.on(event, handler);
+      });
+      this.updateGraphNodeList();
+    },
+    teardownGraphWatcher() {
+      const dataset = this.nodeDatasetRef;
+      const handler = this.nodeDatasetHandler;
+      if (!dataset || !handler) return;
+      ["add", "update", "remove"].forEach(event => {
+        if (typeof dataset.off !== "function") return;
+        try {
+          dataset.off(event, handler);
+        } catch (error) {
+          console.warn("Failed to detach watcher", event, error);
+        }
+      });
+      this.nodeDatasetRef = null;
+      this.nodeDatasetHandler = null;
+    },
+    updateGraphNodeList() {
+      const dataset = this.nodeDatasetRef || this.nodes;
+      if (!dataset?.get) {
+        this.graphNodeList = [];
+        return;
+      }
+      const entries = dataset.get();
+      this.graphNodeList = entries.map(node => ({
+        id: node.id,
+        label: node.label || node.name || node.id,
+        type: node.type,
+        intfs: Array.isArray(node.intfs) ? [...node.intfs] : [],
+      }));
     },
     async sendChat() {
       if (!this.chatInput.trim()) return;
@@ -779,6 +839,11 @@ export default {
 .terminal-instance :deep(.xterm-viewport) {
   padding-bottom: 8px;
   box-sizing: border-box;
+}
+
+.terminal-window :deep(.xterm-scrollable-element) {
+  min-height: 100%;
+  height: 100%;
 }
 
 .terminal-empty {

@@ -551,6 +551,32 @@ async def reset_network():
     await stop_network()
     return start_network()
 
+@app.post("/api/mininet/full_reset")
+async def full_reset_network():
+    """Full reset: stop everything, cleanup, and clear saved topology."""
+    await _stop_all_sniffers_quietly()
+    _terminate_all_terminals()
+    clear_log_file()
+
+    await _stop_mininet_with_timeout()
+    mn_cleanup()
+
+    app.controllers = dict()
+    app.switches = dict()
+    app.hosts = dict()
+    app.nats = dict()
+    app.routers = dict()
+    app.links = dict()
+    app.link_attrs = dict()
+    app.terminals = dict()
+    app.sniffers = dict()
+    app.pingall_running = False
+
+    setLogLevel("debug")
+    app.net = Mininet(autoSetMacs=True, topo=Topo())
+    app.net.is_started = False
+    return {"status": "ok"}
+
 @app.post("/api/mininet/pingall")
 def run_pingall():
     """Build network and start nodes"""

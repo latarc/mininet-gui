@@ -13,8 +13,8 @@
       <div class="traffic-filters">
         <select v-model="selectedDevice" class="traffic-select">
           <option value="all">All devices</option>
-          <option v-for="node in nodes" :key="node.id" :value="node.id">
-            {{ node.id }}
+          <option v-for="node in nodeOptions" :key="node.id" :value="node.id">
+            {{ node.label || node.id }}
           </option>
         </select>
         <select v-model="selectedInterface" class="traffic-select">
@@ -85,6 +85,8 @@ import { getInterfaces, getSnifferHistory } from "@/core/api";
 export default {
   props: {
     enabled: { type: Boolean, default: false },
+    graphNodes: { type: Array, default: () => [] },
+    graphVersion: { type: Number, default: 0 },
   },
   emits: ["toggleSniffer"],
   data() {
@@ -102,13 +104,38 @@ export default {
     };
   },
   computed: {
+    nodeOptions() {
+      const merged = [];
+      const seen = new Set();
+      this.graphNodes.forEach(graphNode => {
+        const backendNode = this.nodes.find(n => n.id === graphNode.id);
+        merged.push({
+          id: graphNode.id,
+          label: graphNode.label || graphNode.name || graphNode.id,
+          type: graphNode.type,
+          intfs: backendNode?.intfs || graphNode.intfs || [],
+        });
+        seen.add(graphNode.id);
+      });
+      this.nodes.forEach(backendNode => {
+        if (seen.has(backendNode.id)) return;
+        merged.push({
+          id: backendNode.id,
+          label: backendNode.id,
+          type: backendNode.type,
+          intfs: backendNode.intfs || [],
+        });
+        seen.add(backendNode.id);
+      });
+      return merged;
+    },
     availableInterfaces() {
       if (this.selectedDevice === "all") {
         const all = new Set();
-        this.nodes.forEach(node => node.intfs.forEach(intf => all.add(intf)));
+        this.nodeOptions.forEach(node => node.intfs.forEach(intf => all.add(intf)));
         return Array.from(all).sort();
       }
-      const node = this.nodes.find(n => n.id === this.selectedDevice);
+      const node = this.nodeOptions.find(n => n.id === this.selectedDevice);
       return node ? node.intfs : [];
     },
     filteredEvents() {
@@ -144,6 +171,25 @@ export default {
         }
       },
     },
+    graphNodes: {
+      handler() {
+        this.ensureSelectedDevice();
+      },
+      deep: true,
+      immediate: true,
+    },
+    graphVersion() {
+      this.loadInterfaces();
+    },
+    selectedDevice() {
+      this.validateSelectedInterface();
+    },
+    nodes: {
+      handler() {
+        this.validateSelectedInterface();
+      },
+      deep: true,
+    },
   },
   mounted() {
     this.loadInterfaces();
@@ -159,6 +205,20 @@ export default {
         this.nodes = response.nodes || [];
       } catch (error) {
         this.nodes = [];
+      }
+    },
+    ensureSelectedDevice() {
+      if (this.selectedDevice === "all") return;
+      const exists = this.nodeOptions.some(node => node.id === this.selectedDevice);
+      if (!exists) {
+        this.selectedDevice = "all";
+      }
+    },
+    validateSelectedInterface() {
+      if (this.selectedInterface === "all") return;
+      const interfaces = this.availableInterfaces;
+      if (!interfaces.includes(this.selectedInterface)) {
+        this.selectedInterface = "all";
       }
     },
     async loadHistory() {

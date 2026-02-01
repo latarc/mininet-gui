@@ -19,7 +19,7 @@ import {
   assocSwitch,
   requestStartNetwork,
   requestStopNetwork,
-  requestResetNetwork,
+  requestFullResetNetwork,
   requestRunPingall,
   runIperf,
   deleteNode,
@@ -2069,7 +2069,7 @@ export default {
       }
     },
     async resetTopology() {
-      if (await requestResetNetwork()) {
+      if (await requestFullResetNetwork()) {
         this.snifferActive = false;
         console.log("Resetting topology");
         this.clearGraphState();

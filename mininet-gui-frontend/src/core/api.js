@@ -393,6 +393,25 @@ export const requestResetNetwork = async () => {
   }
 };
 
+export const requestFullResetNetwork = async () => {
+  try {
+    const response = await axios.post(
+      baseUrl + "/api/mininet/full_reset",
+      null,
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.status === 200;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return false;
+  }
+};
+
 export const requestExportNetwork = async () => {
   try {
     const response = await axios.get(baseUrl + "/api/mininet/export_json", {

@@ -6,8 +6,8 @@
           Node
           <select v-model="selectedNode">
             <option disabled value="">Select node</option>
-            <option v-for="node in nodes" :key="node.id" :value="node.id">
-              {{ node.id }}
+            <option v-for="node in nodeOptions" :key="node.id" :value="node.id">
+              {{ node.label || node.id }}
             </option>
           </select>
         </label>
@@ -31,6 +31,15 @@
         >
           <span class="material-symbols-outlined">monitoring</span>
           <span>{{ isMonitoring ? "Stop Monitoring" : "Start Monitoring" }}</span>
+        </button>
+        <button
+          class="monitoring-clear"
+          type="button"
+          :disabled="!chartsReady"
+          @click="clearCharts"
+        >
+          <span class="material-symbols-outlined">delete_sweep</span>
+          <span>Clear graphs</span>
         </button>
         <button
           class="monitoring-export"
@@ -65,6 +74,10 @@ import Plotly from "plotly.js-dist-min";
 import { getInterfaces } from "@/core/api";
 
 export default {
+  props: {
+    graphNodes: { type: Array, default: () => [] },
+    graphVersion: { type: Number, default: 0 },
+  },
   data() {
     return {
       nodes: [],
@@ -79,12 +92,40 @@ export default {
       maxSamples: 120,
       chartObserver: null,
       isExporting: false,
+      interfaceTimer: null,
     };
   },
   computed: {
+    nodeOptions() {
+      const merged = [];
+      const seen = new Set();
+      this.graphNodes.forEach(graphNode => {
+        const backendNode = this.nodes.find(n => n.id === graphNode.id);
+        merged.push({
+          id: graphNode.id,
+          label: graphNode.label || graphNode.name || graphNode.id,
+          type: graphNode.type,
+          intfs: backendNode?.intfs || graphNode.intfs || [],
+        });
+        seen.add(graphNode.id);
+      });
+      this.nodes.forEach(backendNode => {
+        if (seen.has(backendNode.id)) return;
+        merged.push({
+          id: backendNode.id,
+          label: backendNode.id,
+          type: backendNode.type,
+          intfs: backendNode.intfs || [],
+        });
+        seen.add(backendNode.id);
+      });
+      return merged;
+    },
+    currentNodeInfo() {
+      return this.nodeOptions.find(item => item.id === this.selectedNode) || null;
+    },
     availableInterfaces() {
-      const node = this.nodes.find(item => item.id === this.selectedNode);
-      return node ? node.intfs : [];
+      return this.currentNodeInfo?.intfs || [];
     },
     canMonitor() {
       return !!this.selectedNode && !!this.selectedInterface;
@@ -97,23 +138,24 @@ export default {
     },
   },
   watch: {
+    graphNodes: {
+      handler() {
+        this.ensureSelectedNode();
+      },
+      deep: true,
+      immediate: true,
+    },
+    graphVersion() {
+      this.loadInterfaces();
+    },
     nodes: {
-      handler(value) {
-        if (!this.selectedNode && value.length) {
-          this.selectedNode = value[0].id;
-        }
+      handler() {
+        this.refreshSelectedInterface();
       },
       deep: true,
     },
-    selectedNode(nodeId) {
-      const node = this.nodes.find(item => item.id === nodeId);
-      if (node && node.intfs.length) {
-        if (!node.intfs.includes(this.selectedInterface)) {
-          this.selectedInterface = node.intfs[0];
-        }
-      } else {
-        this.selectedInterface = "";
-      }
+    selectedNode() {
+      this.refreshSelectedInterface();
     },
   },
   mounted() {
@@ -121,12 +163,19 @@ export default {
       this.initializeCharts();
     });
     this.loadInterfaces();
+    this.interfaceTimer = setInterval(() => this.loadInterfaces(), 3000);
     this.setupChartObserver();
+    window.addEventListener("resize", this.handleWindowResize);
   },
   beforeUnmount() {
     this.stopMonitoring();
     this.destroyCharts();
     this.disconnectChartObserver();
+    if (this.interfaceTimer) {
+      clearInterval(this.interfaceTimer);
+      this.interfaceTimer = null;
+    }
+    window.removeEventListener("resize", this.handleWindowResize);
   },
   methods: {
     async loadInterfaces() {
@@ -138,6 +187,26 @@ export default {
         }
       } catch (error) {
         this.nodes = [];
+      }
+    },
+    ensureSelectedNode() {
+      if (!this.nodeOptions.length) {
+        this.selectedNode = "";
+        return;
+      }
+      const exists = this.nodeOptions.some(node => node.id === this.selectedNode);
+      if (!exists) {
+        this.selectedNode = this.nodeOptions[0].id;
+      }
+    },
+    refreshSelectedInterface() {
+      const interfaces = this.availableInterfaces;
+      if (interfaces.length) {
+        if (!interfaces.includes(this.selectedInterface)) {
+          this.selectedInterface = interfaces[0];
+        }
+      } else {
+        this.selectedInterface = "";
       }
     },
     initializeCharts() {
@@ -307,11 +376,26 @@ export default {
       }
     },
     resizeCharts() {
-      if (this.txChart) {
-        Plotly.Plots.resize(this.txChart);
-      }
-      if (this.rxChart) {
-        Plotly.Plots.resize(this.rxChart);
+      this.updateChartSize(this.txChart, this.$refs.txChart);
+      this.updateChartSize(this.rxChart, this.$refs.rxChart);
+    },
+    updateChartSize(chart, container) {
+      if (!chart || !container) return;
+      const width = container.clientWidth || 800;
+      const height = container.clientHeight || 360;
+      Plotly.relayout(chart, { width, height });
+      Plotly.Plots.resize(chart);
+    },
+    handleWindowResize() {
+      this.resizeCharts();
+    },
+    clearCharts() {
+      if (!this.chartsReady) return;
+      try {
+        Plotly.restyle(this.txChart, { x: [[]], y: [[]] });
+        Plotly.restyle(this.rxChart, { x: [[]], y: [[]] });
+      } catch (error) {
+        console.error("Falha ao limpar gráficos:", error);
       }
     },
     appendSample(payload) {
@@ -382,6 +466,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   gap: 10px;
 }
 
@@ -472,6 +557,29 @@ export default {
   background: #272727;
 }
 
+.monitoring-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #2a2a2a;
+  padding: 6px 12px;
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.monitoring-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.monitoring-clear:not(:disabled):hover {
+  background: #272727;
+}
+
 .monitoring-status {
   font-size: 0.8rem;
   color: #9da9b7;
@@ -490,7 +598,8 @@ export default {
   flex-direction: row;
   flex-wrap: wrap;
   gap: 12px;
-  flex: 1;
+  flex: 1 1 0;
+  height: 100%;
   min-height: 0;
   align-items: stretch;
 }
@@ -498,11 +607,12 @@ export default {
 .chart-card {
   flex: 1 1 320px;
   min-width: 240px;
+  min-height: 0;
+  height: 100%;
   background: #111;
   border: 1px solid #222;
   border-radius: 8px;
   padding: 10px;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -518,6 +628,7 @@ export default {
 .chart-container {
   flex: 1;
   min-height: 0;
+  height: 100%;
 }
 
 .chart-container > div {
