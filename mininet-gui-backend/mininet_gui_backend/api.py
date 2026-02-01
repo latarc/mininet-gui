@@ -43,7 +43,12 @@ from mininet_gui_backend.export import build_addressing_plan, export_net_to_scri
 from mininet_gui_backend.cli import CLISession
 from mininet_gui_backend.schema import Switch, Host, Controller, Nat, Router
 from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
-from mininet_gui_backend.utils import parse_ip_addrs, parse_flow_match_from_dump
+from mininet_gui_backend.utils import (
+    get_interface_stats_path,
+    parse_ip_addrs,
+    parse_flow_match_from_dump,
+    read_interface_counter,
+)
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "mininet.log")
 RYU_APP_DIRS = []
@@ -333,42 +338,6 @@ def add_switch_to_net(switch: Switch, start=True):
     return switch_node
 
 
-def _rebuild_links():
-    app.links = dict()
-    for key, attrs in list(app.link_attrs.items()):
-        nodes = list(key)
-        if len(nodes) != 2:
-            continue
-        src, dst = nodes
-        kwargs = {}
-        if attrs:
-            kwargs.update(attrs)
-            kwargs["cls"] = TCLink
-        new_link = app.net.addLink(src, dst, **kwargs)
-        if app.net.is_started:
-            for node_id in (src, dst):
-                node = app.net.nameToNode[node_id]
-                if node.type in ("host", "nat", "router"):
-                    node.configDefault()
-                elif node.type == "sw" and node.controller:
-                    node.start([node.controller])
-        app.links[key] = new_link
-
-
-def _rebuild_saved_topology():
-    entries = [
-        (add_host_to_net, app.hosts.values(), {}),
-        (add_router_to_net, app.routers.values(), {}),
-        (add_nat_to_net, app.nats.values(), {}),
-        (add_controller_to_net, app.controllers.values(), {"start": False}),
-        (add_switch_to_net, app.switches.values(), {"start": False}),
-    ]
-    for builder, collection, kwargs in entries:
-        for item in collection:
-            builder(item, **kwargs)
-    _rebuild_links()
-
-
 def _terminate_all_terminals():
     for node_id, sessions in list(app.terminals.items()):
         for session_id, (master_fd, process) in list(sessions.items()):
@@ -411,22 +380,6 @@ async def _stop_mininet_with_timeout(timeout: float = 5.0):
         debug(f"mininet.stop() did not complete within {timeout} seconds, continuing cleanup")
     except Exception as exc:
         debug("error while stopping mininet", exc)
-
-def _get_interface_stats_path(interface_name: str):
-    base_path = os.path.join("/sys/class/net", interface_name, "statistics")
-    return {
-        "tx": os.path.join(base_path, "tx_bytes"),
-        "rx": os.path.join(base_path, "rx_bytes"),
-    }
-
-def _read_interface_counter(path: str) -> Optional[int]:
-    if not path or not os.path.isfile(path):
-        return None
-    try:
-        with open(path, "r") as stream:
-            return int(stream.read().strip())
-    except Exception:
-        return None
 
 def list_mininet_interfaces():
     nodes = []
@@ -537,7 +490,36 @@ async def stop_network():
     app.net = Mininet(autoSetMacs=True, topo=Topo())
     app.net.is_started = False
     app.links = dict()
-    _rebuild_saved_topology()
+    # Recreate topology without start
+    entries = [
+        (add_host_to_net, app.hosts.values(), {}),
+        (add_router_to_net, app.routers.values(), {}),
+        (add_nat_to_net, app.nats.values(), {}),
+        (add_controller_to_net, app.controllers.values(), {"start": False}),
+        (add_switch_to_net, app.switches.values(), {"start": False}),
+    ]
+    for builder, collection, kwargs in entries:
+        for item in collection:
+            builder(item, **kwargs)
+    app.links = dict()
+    for key, attrs in list(app.link_attrs.items()):
+        nodes = list(key)
+        if len(nodes) != 2:
+            continue
+        src, dst = nodes
+        kwargs = {}
+        if attrs:
+            kwargs.update(attrs)
+            kwargs["cls"] = TCLink
+        new_link = app.net.addLink(src, dst, **kwargs)
+        if app.net.is_started:
+            for node_id in (src, dst):
+                node = app.net.nameToNode[node_id]
+                if node.type in ("host", "nat", "router"):
+                    node.configDefault()
+                elif node.type == "sw" and node.controller:
+                    node.start([node.controller])
+        app.links[key] = new_link
     return {"status": "ok"}
 
 @app.post("/api/mininet/reset")
@@ -1342,7 +1324,7 @@ async def websocket_interface_monitor(websocket: WebSocket):
         await websocket.close()
         return
 
-    stats = _get_interface_stats_path(intf_name)
+    stats = get_interface_stats_path(intf_name)
     tx_path = stats.get("tx")
     rx_path = stats.get("rx")
     if not tx_path or not rx_path or not os.path.isdir(os.path.dirname(tx_path)):
@@ -1356,8 +1338,8 @@ async def websocket_interface_monitor(websocket: WebSocket):
     try:
         while True:
             current_time = datetime.now(timezone.utc)
-            tx_bytes = _read_interface_counter(tx_path)
-            rx_bytes = _read_interface_counter(rx_path)
+            tx_bytes = read_interface_counter(tx_path)
+            rx_bytes = read_interface_counter(rx_path)
             if tx_bytes is None or rx_bytes is None:
                 await websocket.send_text(f"Error: failed to read counters for {intf_name}.")
                 break

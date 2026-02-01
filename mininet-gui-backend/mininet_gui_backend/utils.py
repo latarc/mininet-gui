@@ -1,5 +1,6 @@
+import os
 import re
-from typing import List
+from typing import Dict, List, Optional
 
 
 def parse_ip_addrs(output: str) -> List[str]:
@@ -53,3 +54,21 @@ def parse_flow_match_from_dump(line: str) -> str:
     if not match_parts:
         raise ValueError("could not build match")
     return ",".join(match_parts)
+
+
+def get_interface_stats_path(interface_name: str) -> Dict[str, str]:
+    base_path = os.path.join("/sys/class/net", interface_name, "statistics")
+    return {
+        "tx": os.path.join(base_path, "tx_bytes"),
+        "rx": os.path.join(base_path, "rx_bytes"),
+    }
+
+
+def read_interface_counter(path: str) -> Optional[int]:
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as stream:
+            return int(stream.read().strip())
+    except Exception:
+        return None
