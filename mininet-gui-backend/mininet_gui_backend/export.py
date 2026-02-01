@@ -1,7 +1,11 @@
 import json
+from datetime import datetime, timezone
 from typing import List, Tuple, Union
 
+from mininet.node import Node
+
 from mininet_gui_backend.schema import Host, Switch, Controller, Nat, Router
+from mininet_gui_backend.utils import parse_ip_addrs
 
 
 SCRIPT_TEMPLATE = """
@@ -195,3 +199,41 @@ def export_net_to_json(
     }
 
     return json.dumps(net_data, indent=4)
+
+
+def build_addressing_plan(net: "Mininet") -> dict:
+    nodes = []
+    for node_id, node in net.nameToNode.items():
+        node_type = getattr(node, "type", None)
+        if not node_type:
+            continue
+        intfs = []
+        for intf in node.intfList():
+            if not intf.name or intf.name in ("lo", "lo0"):
+                continue
+            ipv4 = parse_ip_addrs(node.cmd(f"ip -o -4 addr show {intf.name}"))
+            ipv6 = parse_ip_addrs(node.cmd(f"ip -o -6 addr show {intf.name}"))
+            mac = None
+            try:
+                mac = intf.MAC()
+            except Exception:
+                pass
+            intfs.append(
+                {
+                    "name": intf.name,
+                    "mac": mac,
+                    "ipv4": ipv4,
+                    "ipv6": ipv6,
+                }
+            )
+        nodes.append(
+            {
+                "id": node_id,
+                "type": node_type,
+                "intfs": intfs,
+            }
+        )
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "nodes": nodes,
+    }

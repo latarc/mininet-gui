@@ -58,6 +58,7 @@ import hostImg from "@/assets/light-host.svg";
 import controllerImg from "@/assets/light-controller.svg";
 import natImg from "@/assets/light-nat.svg";
 import routerImg from "@/assets/light-router.svg";
+import logoImage from "@/assets/logo-mininet-gui.png";
 </script>
 
 <template>
@@ -358,6 +359,7 @@ import routerImg from "@/assets/light-router.svg";
           </div>
         </div>
         <div v-if="modalOption === 'about'" class="help-modal">
+          <img :src="logoImage" alt="Mininet GUI logo" class="help-modal__logo" />
           <h4>Mininet GUI</h4>
           <p>Frontend version: {{ frontendVersion }}</p>
           <p>Backend version: {{ backendVersion }}</p>
@@ -2820,6 +2822,13 @@ export default {
   min-height: 280px;
   padding: 20px;
   box-sizing: border-box;
+}
+
+.help-modal__logo {
+  width: 210px;
+  height: auto;
+  align-self: center;
+  margin-bottom: 8px;
 }
 
 .help-modal h4 {

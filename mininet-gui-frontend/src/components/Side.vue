@@ -130,19 +130,6 @@
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Host</figcaption>
             </figure>
             <figure
-              id="draggable-router"
-              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
-              draggable="true"
-              @dragstart="handleDragStart"
-              data-tooltip="Router"
-              @mouseenter="handleTooltipMouseEnter($event)"
-              @mousemove="handleTooltipMouseMove"
-              @mouseleave="hideTooltip"
-            >
-              <img alt="router" class="h-10 w-10" src="@/assets/light-router.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Router</figcaption>
-            </figure>
-            <figure
               id="draggable-switch"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
@@ -190,6 +177,19 @@
                 draggable="false"
               />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NAT</figcaption>
+            </figure>
+            <figure
+              id="draggable-router"
+              class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
+              draggable="true"
+              @dragstart="handleDragStart"
+              data-tooltip="Router"
+              @mouseenter="handleTooltipMouseEnter($event)"
+              @mousemove="handleTooltipMouseMove"
+              @mouseleave="hideTooltip"
+            >
+              <img alt="router" class="h-10 w-10" src="@/assets/light-router.svg" draggable="false" />
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Router</figcaption>
             </figure>
           </div>
         </div>

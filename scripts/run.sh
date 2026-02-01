@@ -17,6 +17,8 @@ FRONTEND_DIR="$MININET_GUI_DIR/mininet-gui-frontend"
 
 export MININET_GUI_ADDRESS="192.168.56.103"
 
+BACKEND_LOG_FILE="$BACKEND_DIR/mininet_gui_backend/mininet.log"
+
 trim_log() {
   local file="$1"
   if [ -f "$file" ]; then
@@ -25,8 +27,18 @@ trim_log() {
   fi
 }
 
+clear_backend_log() {
+  if [ -f "$BACKEND_LOG_FILE" ]; then
+    : > "$BACKEND_LOG_FILE"
+    echo "✔ Cleared backend log file"
+  else
+    echo "⚠️ Backend log file not found: $BACKEND_LOG_FILE"
+  fi
+}
+
 trim_log "$BACKEND_DIR/nohup.out"
 trim_log "$FRONTEND_DIR/nohup.out"
+clear_backend_log
 
 echo "Running mininet-gui-backend in background"
 (cd $BACKEND_DIR ; sudo nohup uvicorn mininet_gui_backend.api:app --host=0.0.0.0 --port=8000 --log-level debug &)

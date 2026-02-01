@@ -16,9 +16,8 @@ import select
 import asyncio
 import subprocess
 import logging
-import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from mininet_gui_backend.sniffer import SnifferManager
 import pyshark.ek_field_mapping as ek_field_mapping
 from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
@@ -40,10 +39,11 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, Response
 
-from mininet_gui_backend.export import export_net_to_script, export_net_to_json
+from mininet_gui_backend.export import build_addressing_plan, export_net_to_script, export_net_to_json
 from mininet_gui_backend.cli import CLISession
 from mininet_gui_backend.schema import Switch, Host, Controller, Nat, Router
 from mininet_gui_backend.flow_rules import FlowRuleCreate, FlowRuleDelete, build_flow, build_flow_match
+from mininet_gui_backend.utils import parse_ip_addrs, parse_flow_match_from_dump
 
 LOG_FILE = os.path.join(os.path.dirname(__file__), "mininet.log")
 RYU_APP_DIRS = []
@@ -163,7 +163,7 @@ def get_health():
         "status": status,
         "connected": connected,
         "network_started": network_started,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
 
 @app.get("/api/ryu/apps")
@@ -226,7 +226,7 @@ def clear_log_file():
         pass
 
 
-def _add_host_to_net(host: Host):
+def add_host_to_net(host: Host):
     host_node = app.net.addHost(host.name, ip=host.ip)
     host_node.x = host.x
     host_node.y = host.y
@@ -235,7 +235,7 @@ def _add_host_to_net(host: Host):
     return host_node
 
 
-def _add_router_to_net(router: Router):
+def add_router_to_net(router: Router):
     params = {"ip": router.ip, "mac": router.mac}
     router_node = app.net.addHost(router.name, cls=LinuxRouter, **params)
     router_node.x = router.x
@@ -246,7 +246,7 @@ def _add_router_to_net(router: Router):
     return router_node
 
 
-def _add_nat_to_net(nat: Nat):
+def add_nat_to_net(nat: Nat):
     params = {}
     if nat.ip:
         params["ip"] = nat.ip
@@ -263,7 +263,7 @@ def _add_nat_to_net(nat: Nat):
     return nat_node
 
 
-def _add_controller_to_net(controller: Controller, start=True):
+def add_controller_to_net(controller: Controller, start=True):
     controller_type = (controller.controller_type or "").lower()
     if controller.remote or controller_type == "remote":
         controller_node = app.net.addController(
@@ -305,7 +305,7 @@ def _add_controller_to_net(controller: Controller, start=True):
     return controller_node
 
 
-def _add_switch_to_net(switch: Switch, start=True):
+def add_switch_to_net(switch: Switch, start=True):
     switch_type = (switch.switch_type or "").lower()
     switch.switch_type = switch_type or switch.switch_type
     if switch_type == "user":
@@ -354,16 +354,16 @@ def _rebuild_links():
 
 
 def _rebuild_saved_topology():
-    for host in list(app.hosts.values()):
-        _add_host_to_net(host)
-    for router in list(app.routers.values()):
-        _add_router_to_net(router)
-    for nat in list(app.nats.values()):
-        _add_nat_to_net(nat)
-    for controller in list(app.controllers.values()):
-        _add_controller_to_net(controller, start=False)
-    for switch in list(app.switches.values()):
-        _add_switch_to_net(switch, start=False)
+    entries = [
+        (add_host_to_net, app.hosts.values(), {}),
+        (add_router_to_net, app.routers.values(), {}),
+        (add_nat_to_net, app.nats.values(), {}),
+        (add_controller_to_net, app.controllers.values(), {"start": False}),
+        (add_switch_to_net, app.switches.values(), {"start": False}),
+    ]
+    for builder, collection, kwargs in entries:
+        for item in collection:
+            builder(item, **kwargs)
     _rebuild_links()
 
 
@@ -424,48 +424,11 @@ def list_mininet_interfaces():
             nodes.append({"id": sw.name, "type": node_type, "intfs": intfs, "pid": sw.pid})
     return nodes
 
-def _parse_ip_addrs(output: str):
-    addrs = []
-    for line in output.splitlines():
-        match = re.search(r"\sinet6?\s+([0-9a-fA-F:.]+/\d+)", line)
-        if match:
-            addrs.append(match.group(1))
-    return addrs
-
 @app.get("/api/mininet/addressing_plan")
 def addressing_plan():
     if not app.net.is_started:
         raise HTTPException(status_code=400, detail="network must be started")
-    nodes = []
-    for node_id, node in app.net.nameToNode.items():
-        if not getattr(node, "type", None):
-            continue
-        intfs = []
-        for intf in node.intfList():
-            if not intf.name or intf.name in ("lo", "lo0"):
-                continue
-            ipv4 = _parse_ip_addrs(node.cmd(f"ip -o -4 addr show {intf.name}"))
-            ipv6 = _parse_ip_addrs(node.cmd(f"ip -o -6 addr show {intf.name}"))
-            mac = None
-            try:
-                mac = intf.MAC()
-            except Exception:
-                pass
-            intfs.append({
-                "name": intf.name,
-                "mac": mac,
-                "ipv4": ipv4,
-                "ipv6": ipv6,
-            })
-        nodes.append({
-            "id": node_id,
-            "type": node.type,
-            "intfs": intfs,
-        })
-    return {
-        "generated_at": datetime.utcnow().isoformat() + "Z",
-        "nodes": nodes,
-    }
+    return build_addressing_plan(app.net)
 
 @app.get("/api/mininet/hosts")
 def list_hosts():
@@ -597,7 +560,7 @@ def create_host(host: Host):
         return {"status": "updated"}
     # Create host in the Mininet network using the request data
     debug(host)
-    new_host = _add_host_to_net(host)
+    new_host = add_host_to_net(host)
     app.hosts[host.name] = host
     debug(new_host)
     # Return an OK status code
@@ -609,7 +572,7 @@ def create_router(router: Router):
         app.routers[router.id] = router
         return {"status": "updated"}
     debug(router)
-    new_router = _add_router_to_net(router)
+    new_router = add_router_to_net(router)
     app.routers[router.name] = router
     debug(new_router)
     return {"status": "ok"}
@@ -673,7 +636,7 @@ def create_nat(nat: Nat):
         app.nats[nat.id] = nat
         return {"status": "updated"}
     debug(nat)
-    new_nat = _add_nat_to_net(nat)
+    new_nat = add_nat_to_net(nat)
     app.nats[nat.name] = nat
     debug(new_nat)
     return {"status": "ok"}
@@ -687,7 +650,7 @@ def create_switch(switch: Switch):
         raise HTTPException(
             status_code=400, detail=f'controller "{switch.controller}" does not exist'
         )
-    new_switch = _add_switch_to_net(switch)
+    new_switch = add_switch_to_net(switch)
     app.switches[switch.name] = switch
     return switch
 
@@ -696,7 +659,7 @@ def create_switch(switch: Switch):
 def create_controller(controller: Controller):
     # Create controller in the Mininet network using the request data
     debug(controller)
-    new_controller = _add_controller_to_net(controller, start=True)
+    new_controller = add_controller_to_net(controller, start=True)
     app.controllers[controller.name] = controller
     debug(new_controller)
     return {"status": "ok"}
@@ -1006,49 +969,6 @@ def delete_flows(rule: FlowRuleDelete):
 
     return {"status": "ok", "match": match or "all"}
 
-def _parse_flow_match_from_dump(line: str) -> str:
-    line = line.strip()
-    if "actions=" not in line:
-        raise ValueError("flow line missing actions")
-    head = line.split(" actions=", 1)[0].strip()
-    parts = [p.strip() for p in head.split(",") if p.strip()]
-    match_parts = []
-    cookie_value = None
-    table_value = None
-    priority_value = None
-    skip_keys = {
-        "duration",
-        "n_packets",
-        "n_bytes",
-        "idle_timeout",
-        "hard_timeout",
-    }
-    for part in parts:
-        if part.startswith("cookie="):
-            cookie_value = part.split("=", 1)[1]
-            continue
-        if part.startswith("table="):
-            table_value = part.split("=", 1)[1]
-            continue
-        if part.startswith("priority="):
-            priority_value = part.split("=", 1)[1]
-            continue
-        key = part.split("=", 1)[0]
-        if key in skip_keys:
-            continue
-        match_parts.append(part)
-    if cookie_value:
-        if "/" not in cookie_value:
-            cookie_value = f"{cookie_value}/-1"
-        match_parts.insert(0, f"cookie={cookie_value}")
-    if table_value is not None:
-        match_parts.insert(0, f"table={table_value}")
-    if priority_value is not None:
-        match_parts.insert(0, f"priority={priority_value}")
-    if not match_parts:
-        raise ValueError("could not build match")
-    return ",".join(match_parts)
-
 @app.delete("/api/mininet/flows/{switch_id}/{flow_id}")
 def delete_flow_by_id(switch_id: str, flow_id: int):
     if not app.net.is_started:
@@ -1070,7 +990,7 @@ def delete_flow_by_id(switch_id: str, flow_id: int):
         raise HTTPException(status_code=404, detail="flow_id not found")
     line = lines[flow_id - 1]
     try:
-        match = _parse_flow_match_from_dump(line)
+        match = parse_flow_match_from_dump(line)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
