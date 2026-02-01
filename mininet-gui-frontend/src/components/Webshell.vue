@@ -151,7 +151,7 @@ import { buildGraphStateMessage, buildSystemPrompt } from "@/llm/systemPrompt";
 
 export default {
   components: { TrafficView, MonitoringView },
-  emits: ["viewChange", "toggleSniffer", "closeSession"],
+  emits: ["viewChange", "toggleSniffer", "closeSession", "minimizeChange"],
   props: {
     nodes: { type: Object, required: true },
     edges: { type: Object, default: null },
@@ -159,6 +159,7 @@ export default {
     terminalSessions: { type: Array, default: () => [] },
     preferredView: { type: String, default: null },
     focusNodeId: { type: String, default: null },
+    minimized: { type: Boolean, default: false },
     openaiKey: { type: String, default: "" },
     llmHandlers: { type: Object, default: () => ({}) },
   },
@@ -223,6 +224,9 @@ export default {
     openaiKey() {
       this.chatError = "";
     },
+    minimized(value) {
+      this.isMinimized = !!value;
+    },
     activeView(value) {
       this.$emit("viewChange", value);
       if (value === "terminal") {
@@ -240,6 +244,7 @@ export default {
     },
   },
   mounted() {
+    this.isMinimized = !!this.minimized;
     this.syncNodes();
     if (this.preferredView) {
       this.activeView = this.preferredView;
@@ -453,6 +458,7 @@ export default {
 
     toggleMinimize() {
       this.isMinimized = !this.isMinimized;
+      this.$emit("minimizeChange", this.isMinimized);
       if (!this.isMinimized) {
         this.$nextTick(() => {
           if (this.activeTab) this.fitTerminal(this.activeTab);

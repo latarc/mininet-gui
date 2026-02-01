@@ -45,9 +45,17 @@ export const deploySwitch = async (sw) => {
 export const deployController = async (ctl) => {
   try {
     console.log(ctl);
+    const payload = { ...ctl };
+    if (payload.colorCode) {
+      payload.color = payload.colorCode;
+      delete payload.colorCode;
+    }
+    if (payload.color && typeof payload.color === "object") {
+      delete payload.color;
+    }
     const response = await axios.post(
       baseUrl + "/api/mininet/controllers",
-      JSON.stringify(ctl),
+      JSON.stringify(payload),
       {
         headers: {
           "Access-Control-Allow-Origin": "*",
@@ -599,6 +607,30 @@ export const getSwitches = async () => {
 
 export const getControllers = async () => {
   return await sendGet(baseUrl + "/api/mininet/controllers");
+};
+
+export const updateController = async (controllerId, payload) => {
+  try {
+    const body = { ...payload };
+    if (body.colorCode) {
+      body.color = body.colorCode;
+      delete body.colorCode;
+    }
+    const response = await axios.put(
+      baseUrl + `/api/mininet/controllers/${controllerId}`,
+      JSON.stringify(body),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data?.controller || null;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return null;
+  }
 };
 
 export const getNats = async () => {

@@ -3,7 +3,7 @@ import { addFlow, deleteFlowById, getNodeStats, listFlows, updateHost } from "@/
 
 export default {
   props: ["stats"],
-  emits: ["hostUpdated"],
+  emits: ["hostUpdated", "editController"],
   data() {
     return {
       activeTab: "details",
@@ -40,6 +40,9 @@ export default {
   computed: {
     isDetailsTab() {
       return this.activeTab === "details";
+    },
+    isController() {
+      return this.localStats?.type === "controller";
     },
     isFlowTableTab() {
       return this.activeTab === "flows";
@@ -81,6 +84,10 @@ export default {
     },
   },
   methods: {
+    triggerControllerEdit() {
+      if (!this.localStats?.id) return;
+      this.$emit("editController", this.localStats.id);
+    },
     setTab(tabKey) {
       this.activeTab = tabKey;
     },
@@ -231,6 +238,9 @@ export default {
 
   <div class="tab-content">
     <div v-if="isDetailsTab">
+      <div v-if="isController" class="host-edit">
+        <button @click="triggerControllerEdit">Edit Controller</button>
+      </div>
       <div v-if="isHost" class="host-edit">
         <button v-if="!isEditingHost" @click="startHostEdit">Edit</button>
         <div v-else class="host-edit-actions">
@@ -473,6 +483,16 @@ export default {
   color: #e6e6e6;
 }
 
+.host-edit-select:focus {
+  outline: 2px solid #777;
+  box-shadow: 0 0 0 2px #777;
+}
+
+.host-edit-select option:checked {
+  background-color: #b3b3b3;
+  color: #000;
+}
+
 .tab-content {
   width: 80vw;
   max-height: 400px;
@@ -511,6 +531,16 @@ export default {
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 12px;
+}
+
+.flow-fields select:focus {
+  outline: 2px solid #777;
+  box-shadow: 0 0 0 2px #777;
+}
+
+.flow-fields select option:checked {
+  background-color: #b3b3b3;
+  color: #000;
 }
 
 .flow-actions {

@@ -100,6 +100,8 @@ export default {
       const merged = [];
       const seen = new Set();
       this.graphNodes.forEach(graphNode => {
+        const nodeType = graphNode.type;
+        if (nodeType !== "sw" && nodeType !== "switch") return;
         const backendNode = this.nodes.find(n => n.id === graphNode.id);
         merged.push({
           id: graphNode.id,
@@ -110,6 +112,8 @@ export default {
         seen.add(graphNode.id);
       });
       this.nodes.forEach(backendNode => {
+        const nodeType = backendNode.type;
+        if (nodeType !== "sw" && nodeType !== "switch") return;
         if (seen.has(backendNode.id)) return;
         merged.push({
           id: backendNode.id,
@@ -502,6 +506,16 @@ export default {
   padding: 6px 8px;
   border-radius: 4px;
   min-width: 140px;
+}
+
+.monitoring-select select:focus {
+  outline: 2px solid #777;
+  box-shadow: 0 0 0 2px #777;
+}
+
+.monitoring-select select option:checked {
+  background-color: #b3b3b3;
+  color: #000;
 }
 
 .monitoring-actions {

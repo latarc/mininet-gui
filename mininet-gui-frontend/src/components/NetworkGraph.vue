@@ -17,6 +17,7 @@ import {
   deployController,
   deploySwitch,
   assocSwitch,
+  updateController,
   requestStartNetwork,
   requestStopNetwork,
   requestFullResetNetwork,
@@ -56,7 +57,6 @@ import switchOvsImg from "@/assets/light-switch-ovs.svg";
 import switchOvsBridgeImg from "@/assets/light-switch-ovsbridge.svg";
 import switchUserImg from "@/assets/light-switch-user.svg";
 import hostImg from "@/assets/light-host.svg";
-import controllerImg from "@/assets/light-controller.svg";
 import natImg from "@/assets/light-nat.svg";
 import routerImg from "@/assets/light-router.svg";
 import logoImage from "@/assets/logo-mininet-gui.png";
@@ -113,8 +113,53 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             </button>
           </div>
         </div>
-        <button type="button" class="menu-item" disabled>Edit</button>
-        <button type="button" class="menu-item" disabled>View</button>
+        <div class="menu-item-wrapper">
+          <button
+            type="button"
+            class="menu-item"
+            :class="{ open: viewMenuOpen }"
+            @click.stop="toggleViewMenu"
+          >
+            View
+          </button>
+          <div v-if="viewMenuOpen" class="menu-dropdown" @click.stop>
+            <button type="button" class="menu-action" @click="handleCollapseAllViews">
+              Collapse all views
+            </button>
+            <button type="button" class="menu-action" @click="handleExpandAllViews">
+              Expand all views
+            </button>
+            <div class="menu-separator"></div>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showHosts" @change="handleShowHostsSetting" />
+              Show hosts
+            </label>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
+              Show controllers
+            </label>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showSpecialSwitches" @change="persistSettings" />
+              Show special switches
+            </label>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showSpecialControllers" @change="persistSettings" />
+              Show special controllers
+            </label>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
+              Show host IP addresses
+            </label>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showSwitchDpids" @change="persistSettings" />
+              Show switch DPIDs
+            </label>
+            <label class="menu-checkbox">
+              <input type="checkbox" v-model="settings.showPortLabels" @change="persistSettings" />
+              Show port labels
+            </label>
+          </div>
+        </div>
         <div class="menu-item-wrapper">
           <button
             type="button"
@@ -155,6 +200,34 @@ import logoImage from "@/assets/logo-mininet-gui.png";
           <button
             type="button"
             class="menu-item"
+            :class="{ open: toolsMenuOpen }"
+            @click.stop="toggleToolsMenu"
+          >
+            Tools
+          </button>
+          <div v-if="toolsMenuOpen" class="menu-dropdown" @click.stop>
+            <button type="button" class="menu-action" @click="handleRunIperf">
+              Run Iperf
+            </button>
+            <button type="button" class="menu-action" @click="handleRunPingall">
+              Run Pingall
+            </button>
+            <button type="button" class="menu-action" @click="handleGenerateTopology">
+              Generate Topology
+            </button>
+            <div class="menu-separator"></div>
+            <button type="button" class="menu-action" @click="handleStartSniffer">
+              Start Sniffer
+            </button>
+            <button type="button" class="menu-action" @click="handleStopSniffer">
+              Stop Sniffer
+            </button>
+          </div>
+        </div>
+        <div class="menu-item-wrapper">
+          <button
+            type="button"
+            class="menu-item"
             :class="{ open: helpMenuOpen }"
             @click.stop="toggleHelpMenu"
           >
@@ -163,6 +236,9 @@ import logoImage from "@/assets/logo-mininet-gui.png";
           <div v-if="helpMenuOpen" class="menu-dropdown" @click.stop>
             <button type="button" class="menu-action" @click="handleOpenUsage">
               Usage
+            </button>
+            <button type="button" class="menu-action" @click="handleOpenDocumentation">
+              Open documentation
             </button>
             <button type="button" class="menu-action" @click="handleOpenAbout">
               About
@@ -249,10 +325,12 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         :terminalSessions="terminalSessions"
         :preferredView="webshellView"
         :focusNodeId="webshellFocusId"
+        :minimized="webshellMinimized"
         :openaiKey="settings.openaiApiKey"
         :llmHandlers="llmHandlers"
         @viewChange="handleWebshellViewChange"
         @toggleSniffer="toggleSniffer"
+        @minimizeChange="handleWebshellMinimizeChange"
         @closeSession="handleCloseSession"
       />
       </div>
@@ -292,7 +370,12 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         <h3>{{ modalHeader }}</h3>
       </template>
       <template #body>
-        <node-stats v-if="modalOption === 'nodeStats'" :stats="modalData" @hostUpdated="handleHostUpdated" />
+        <node-stats
+          v-if="modalOption === 'nodeStats'"
+          :stats="modalData"
+          @hostUpdated="handleHostUpdated"
+          @editController="showControllerEditModal"
+        />
         <link-stats v-if="modalOption === 'linkStats'" :link="modalData" @linkUpdated="handleLinkUpdated" />
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <div v-if="modalOption === 'iperf'" class="iperf-modal">
@@ -369,7 +452,9 @@ import logoImage from "@/assets/logo-mininet-gui.png";
           v-if="modalOption === 'controllerForm'"
           :preset-type="controllerFormPreset"
           :ryu-apps="ryuApps"
+          :controller="controllerFormData"
           @form-submit="handleControllerFormSubmit"
+          @form-update="handleControllerFormUpdate"
         />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
         <div v-if="modalOption === 'usage'" class="help-modal">
@@ -525,10 +610,14 @@ export default {
       links: [],
       nodes: new DataSet(),
       edges: new DataSet(),
+      portLabelNodes: {},
+      portLabelListeners: null,
       addEdgeMode: false,
       networkStarted: false,
       networkCommandInFlight: false,
       runMenuOpen: false,
+      toolsMenuOpen: false,
+      viewMenuOpen: false,
       mininetConnected: true,
       healthTimer: null,
       pingallRunning: false,
@@ -548,6 +637,7 @@ export default {
       hostsHidden: false,
       controllersHidden: false,
       sidebarCollapsed: false,
+      webshellMinimized: false,
       showModal: false,
       modalHeader: "",
       modalOption: null,
@@ -555,6 +645,7 @@ export default {
       linkModalEdgeId: null,
       helpTab: "welcome",
       controllerFormPreset: null,
+      controllerFormData: null,
       ryuApps: [],
       webshellView: null,
       webshellFocusId: null,
@@ -597,13 +688,14 @@ export default {
       boundPanMouseMove: null,
       boundPanMouseUp: null,
       boundContextMenu: null,
-    settings: {
+      settings: {
       showHosts: true,
       showControllers: true,
       showSpecialSwitches: true,
       showSpecialControllers: true,
       showHostIp: false,
       showSwitchDpids: false,
+      showPortLabels: false,
         openaiApiKey: "",
         linkOptions: {
           bw: "",
@@ -716,14 +808,40 @@ export default {
       if (this.runMenuOpen && !topbar.contains(event.target)) {
         this.runMenuOpen = false;
       }
+      if (this.toolsMenuOpen && !topbar.contains(event.target)) {
+        this.toolsMenuOpen = false;
+      }
+      if (this.viewMenuOpen && !topbar.contains(event.target)) {
+        this.viewMenuOpen = false;
+      }
     },
     toggleFileMenu() {
+      this.helpMenuOpen = false;
+      this.runMenuOpen = false;
+      this.toolsMenuOpen = false;
+      this.viewMenuOpen = false;
       this.fileMenuOpen = !this.fileMenuOpen;
-      if (this.fileMenuOpen) this.helpMenuOpen = false;
     },
     toggleHelpMenu() {
+      this.fileMenuOpen = false;
+      this.runMenuOpen = false;
+      this.toolsMenuOpen = false;
+      this.viewMenuOpen = false;
       this.helpMenuOpen = !this.helpMenuOpen;
-      if (this.helpMenuOpen) this.fileMenuOpen = false;
+    },
+    toggleToolsMenu() {
+      this.fileMenuOpen = false;
+      this.helpMenuOpen = false;
+      this.runMenuOpen = false;
+      this.viewMenuOpen = false;
+      this.toolsMenuOpen = !this.toolsMenuOpen;
+    },
+    toggleViewMenu() {
+      this.fileMenuOpen = false;
+      this.helpMenuOpen = false;
+      this.runMenuOpen = false;
+      this.toolsMenuOpen = false;
+      this.viewMenuOpen = !this.viewMenuOpen;
     },
     closeFileMenu() {
       this.fileMenuOpen = false;
@@ -731,12 +849,18 @@ export default {
     closeHelpMenu() {
       this.helpMenuOpen = false;
     },
+    closeToolsMenu() {
+      this.toolsMenuOpen = false;
+    },
+    closeViewMenu() {
+      this.viewMenuOpen = false;
+    },
     toggleRunMenu() {
+      this.fileMenuOpen = false;
+      this.helpMenuOpen = false;
+      this.toolsMenuOpen = false;
+      this.viewMenuOpen = false;
       this.runMenuOpen = !this.runMenuOpen;
-      if (this.runMenuOpen) {
-        this.fileMenuOpen = false;
-        this.helpMenuOpen = false;
-      }
     },
     closeRunMenu() {
       this.runMenuOpen = false;
@@ -823,6 +947,38 @@ export default {
       this.closeFileMenu();
       this.showSettingsModal();
     },
+    handleRunIperf() {
+      this.closeToolsMenu();
+      this.showIperfModal();
+    },
+    handleRunPingall() {
+      this.closeToolsMenu();
+      this.showPingallModal();
+    },
+    handleGenerateTopology() {
+      this.closeToolsMenu();
+      this.showTopologyFormModal();
+    },
+    async handleStartSniffer() {
+      this.closeToolsMenu();
+      if (this.snifferActive) return;
+      await this.toggleSniffer();
+    },
+    async handleStopSniffer() {
+      this.closeToolsMenu();
+      if (!this.snifferActive) return;
+      await this.toggleSniffer();
+    },
+    handleCollapseAllViews() {
+      this.closeViewMenu();
+      this.sidebarCollapsed = true;
+      this.webshellMinimized = true;
+    },
+    handleExpandAllViews() {
+      this.closeViewMenu();
+      this.sidebarCollapsed = false;
+      this.webshellMinimized = false;
+    },
     handleOpenUsage() {
       this.closeHelpMenu();
       this.modalHeader = "Usage";
@@ -830,6 +986,10 @@ export default {
       this.modalData = null;
       this.helpTab = "welcome";
       this.showModal = true;
+    },
+    handleOpenDocumentation() {
+      this.closeHelpMenu();
+      window.open("https://github.com/latarc/mininet-gui", "_blank", "noopener,noreferrer");
     },
     handleOpenAbout() {
       this.closeHelpMenu();
@@ -995,6 +1155,9 @@ export default {
       const selected = [];
       const nodes = this.nodes?.get ? this.nodes.get() : [];
       nodes.forEach((node) => {
+        if (node?.type === "portLabel") {
+          return;
+        }
         const box = this.network.getBoundingBox(node.id);
         if (
           box.right >= rectCanvas.left &&
@@ -1027,6 +1190,7 @@ export default {
         console.warn("Failed to load settings", error);
       }
       this.applyVisibilitySettings();
+      this.applyPortLabels();
     },
     persistSettings() {
       try {
@@ -1037,6 +1201,7 @@ export default {
       this.applyVisibilitySettings();
       this.applyHostLabels();
       this.applySwitchLabels();
+      this.applyPortLabels();
     },
     handleShowHostsSetting() {
       this.applyHostsVisibility();
@@ -1070,6 +1235,17 @@ export default {
       if (options.use_htb) parts.push("htb: true");
       return parts.length ? parts.join(" | ") : "No link attributes";
     },
+    formatPortLabel(intfs) {
+      if (!intfs?.from || !intfs?.to) return "";
+      return `${intfs.from} ↔ ${intfs.to}`;
+    },
+    getPortLabelTexts(intfs) {
+      if (!intfs) return null;
+      const fromLabel = intfs.from || "";
+      const toLabel = intfs.to || "";
+      if (!fromLabel && !toLabel) return null;
+      return { fromLabel, toLabel };
+    },
     hostLabel(host) {
       if (!host) return "";
       if (this.settings.showHostIp && host.ip) {
@@ -1086,6 +1262,36 @@ export default {
         }
       }
       return `${sw.name}`;
+    },
+    controllerLabel(ctl) {
+      if (!ctl) return "";
+      const controllerType = (ctl.controller_type || "").toLowerCase();
+      const isRyu = controllerType === "ryu";
+      const isRemote = ctl.remote || controllerType === "remote";
+      if (isRemote || isRyu) {
+        const targetParts = [];
+        if (ctl.ip) targetParts.push(ctl.ip);
+        if (ctl.port) targetParts.push(String(ctl.port));
+        const target = targetParts.length ? ` <${targetParts.join(":")}>` : "";
+        const parts = [`${ctl.name}${target}`];
+        if (isRyu && ctl.ryu_app) {
+          parts.push(`[ryu:${ctl.ryu_app}]`);
+        }
+        return parts.join(" ");
+      }
+      return `${ctl.name}`;
+    },
+    controllerColor() {
+      return {
+        background: "#252526",
+        border: "#00000000",
+        highlight: { background: "#848484", border: "#848484" },
+      };
+    },
+    controllerImageForColor(colorCode) {
+      const fill = colorCode || "#ffffff";
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><path d="M26.5,2h-17C8.7,2,8,2.7,8,3.5V34h20V3.5C28,2.7,27.3,2,26.5,2z M18,30.5c-1.5,0-2.8-1.2-2.8-2.8S16.5,25,18,25s2.8,1.2,2.8,2.8S19.5,30.5,18,30.5z M23,22.6H13V21h10V22.6z M24,11.6H12V10h12V11.6z M24,7.6H12V6h12V7.6z" fill="${fill}"/><circle cx="18" cy="27.8" r="1.2" fill="${fill}"/></svg>`;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     },
     applyHostLabels() {
       Object.values(this.hosts || {}).forEach((host) => {
@@ -1125,6 +1331,142 @@ export default {
       this.applyHostsVisibility();
       this.applyControllersVisibility();
     },
+    applyPortLabels() {
+      if (!this.edges || !this.edges.forEach || !this.nodes) return;
+      const showLabels = !!this.settings.showPortLabels;
+      if (!showLabels) {
+        this.edges.forEach((edge) => {
+          this.edges.updateOnly({ id: edge.id, label: "" });
+        });
+        this.clearAllPortLabelNodes();
+        return;
+      }
+      this.edges.forEach((edge) => {
+        this.edges.updateOnly({ id: edge.id, label: "" });
+        this.ensurePortLabelNodes(edge);
+      });
+      this.updateAllPortLabelPositions();
+    },
+    bindPortLabelListeners() {
+      if (!this.edges || !this.edges.on) return;
+      if (this.portLabelListeners?.dataset && this.portLabelListeners?.dataset.off) {
+        this.portLabelListeners.dataset.off("add", this.portLabelListeners.onAdd);
+        this.portLabelListeners.dataset.off("update", this.portLabelListeners.onUpdate);
+        this.portLabelListeners.dataset.off("remove", this.portLabelListeners.onRemove);
+      }
+      const onAdd = (event) => {
+        if (!this.settings.showPortLabels) return;
+        event.items.forEach((id) => {
+          const edge = this.edges.get(id);
+          if (edge) this.ensurePortLabelNodes(edge);
+        });
+      };
+      const onUpdate = (event) => {
+        if (!this.settings.showPortLabels) return;
+        event.items.forEach((id) => {
+          const edge = this.edges.get(id);
+          if (edge) this.ensurePortLabelNodes(edge);
+        });
+      };
+      const onRemove = (event) => {
+        event.items.forEach((id) => this.removePortLabelNodes(id));
+      };
+      this.edges.on("add", onAdd);
+      this.edges.on("update", onUpdate);
+      this.edges.on("remove", onRemove);
+      this.portLabelListeners = { dataset: this.edges, onAdd, onUpdate, onRemove };
+    },
+    clearAllPortLabelNodes() {
+      if (!this.portLabelNodes || !this.nodes) return;
+      Object.keys(this.portLabelNodes).forEach((edgeId) => this.removePortLabelNodes(edgeId));
+      this.portLabelNodes = {};
+    },
+    removePortLabelNodes(edgeId) {
+      if (!this.portLabelNodes?.[edgeId] || !this.nodes) return;
+      const { fromId, toId } = this.portLabelNodes[edgeId];
+      this.nodes.remove([fromId, toId]);
+      delete this.portLabelNodes[edgeId];
+    },
+    ensurePortLabelNodes(edge) {
+      if (!edge || !edge.id || !this.nodes) return;
+      const texts = this.getPortLabelTexts(edge.intfs);
+      if (!texts || !this.settings.showPortLabels) {
+        this.removePortLabelNodes(edge.id);
+        return;
+      }
+      const fromId = `port-label-from-${edge.id}`;
+      const toId = `port-label-to-${edge.id}`;
+      const labelNodes = this.portLabelNodes[edge.id] || { fromId, toId };
+      const baseNode = {
+        type: "portLabel",
+        shape: "text",
+        selectable: false,
+        physics: false,
+        fixed: true,
+        hidden: false,
+        font: {
+          size: 12,
+          color: "#e6e6e6",
+          face: "Fira Sans",
+        },
+      };
+      if (!this.nodes.get(fromId)) {
+        this.nodes.add({ id: fromId, label: texts.fromLabel, ...baseNode });
+      } else {
+        this.nodes.update({ id: fromId, label: texts.fromLabel, hidden: false });
+      }
+      if (!this.nodes.get(toId)) {
+        this.nodes.add({ id: toId, label: texts.toLabel, ...baseNode });
+      } else {
+        this.nodes.update({ id: toId, label: texts.toLabel, hidden: false });
+      }
+      this.portLabelNodes[edge.id] = labelNodes;
+      this.updatePortLabelPositionsForEdge(edge);
+    },
+    updatePortLabelPositionsForEdge(edgeOrId) {
+      if (!this.nodes || !this.network) return;
+      const edge = typeof edgeOrId === "string" ? this.edges.get(edgeOrId) : edgeOrId;
+      if (!edge?.from || !edge?.to) return;
+      const labelNodes = this.portLabelNodes?.[edge.id];
+      if (!labelNodes) return;
+      const fromNode = this.network?.body?.nodes?.[edge.from];
+      const toNode = this.network?.body?.nodes?.[edge.to];
+      const fromX = fromNode?.x ?? this.nodes.get(edge.from)?.x;
+      const fromY = fromNode?.y ?? this.nodes.get(edge.from)?.y;
+      const toX = toNode?.x ?? this.nodes.get(edge.to)?.x;
+      const toY = toNode?.y ?? this.nodes.get(edge.to)?.y;
+      if (fromX === undefined || toX === undefined) return;
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+      const offset = 26;
+      const perp = 10;
+      const fromPos = {
+        x: fromX + ux * offset + px * perp,
+        y: fromY + uy * offset + py * perp,
+      };
+      const toPos = {
+        x: toX - ux * offset - px * perp,
+        y: toY - uy * offset - py * perp,
+      };
+      this.nodes.update([
+        { id: labelNodes.fromId, x: fromPos.x, y: fromPos.y },
+        { id: labelNodes.toId, x: toPos.x, y: toPos.y },
+      ]);
+    },
+    updatePortLabelPositionsForNode(nodeId) {
+      if (!this.settings.showPortLabels || !this.network) return;
+      const edges = this.network.getConnectedEdges(nodeId) || [];
+      edges.forEach((edgeId) => this.updatePortLabelPositionsForEdge(edgeId));
+    },
+    updateAllPortLabelPositions() {
+      if (!this.portLabelNodes) return;
+      Object.keys(this.portLabelNodes).forEach((edgeId) => this.updatePortLabelPositionsForEdge(edgeId));
+    },
     showSettingsModal() {
       this.closeAllActiveModes();
       this.modalHeader = "Settings";
@@ -1150,7 +1492,7 @@ export default {
         host.color = {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         };
         host.image = hostImg;
         host.label = this.hostLabel(host);
@@ -1163,7 +1505,7 @@ export default {
         sw.color = {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         };
         sw.image = this.switchImageForType(sw.switch_type);
         sw.label = this.switchLabel(sw);
@@ -1172,12 +1514,10 @@ export default {
 
       Object.values(this.controllers).map((ctl) => {
         ctl.shape = "circularImage";
-        ctl.color = {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
-        };
-        ctl.image = controllerImg;
+        ctl.colorCode = ctl.color || "#ffffff";
+        ctl.color = this.controllerColor();
+        ctl.image = this.controllerImageForColor(ctl.colorCode);
+        ctl.label = this.controllerLabel(ctl);
         ctl.hidden = this.controllersHidden;
         return ctl;
       });
@@ -1187,7 +1527,7 @@ export default {
         nat.color = {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         };
         nat.image = natImg;
         nat.label = nat.name || nat.id;
@@ -1199,7 +1539,7 @@ export default {
         router.color = {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         };
         router.image = routerImg;
         router.label = router.name || router.id;
@@ -1209,12 +1549,14 @@ export default {
       this.links = await getEdges();
       for (const link of this.links) {
         const options = link.options || null;
+        const intfs = link.intfs || null;
         this.edges.add({
           from: link.from,
           to: link.to,
           color: this.networkStarted ? "#00aa00ff" : "#999999ff",
           title: this.formatLinkTitle(options),
           options,
+          intfs,
         });
       }
       for (const sw in this.switches) {
@@ -1238,6 +1580,8 @@ export default {
       this.nodes = nodes;
       this.applyVisibilitySettings();
       this.selectInitialWebshell();
+      this.bindPortLabelListeners();
+      this.applyPortLabels();
       console.log("network inside mounted, before setup:", this.network);
       this.network.setOptions({
         manipulation: {
@@ -1276,9 +1620,13 @@ export default {
               data.color = {color: this.networkStarted ? "#00aa00ff" : "#999999ff"};
               data.title = this.formatLinkTitle(options);
               data.options = options;
+              data.intfs = link?.intfs || null;
             }
             callback(data);
             this.enterAddEdgeMode();
+            if (this.settings.showPortLabels && data.intfs) {
+              this.ensurePortLabelNodes(this.edges.get(data.id));
+            }
           },
           deleteNode: async (data, callback) => {
             console.log("node deletion", data);
@@ -1447,6 +1795,7 @@ export default {
     openNodeStatsFromMenu() {
       const nodeId = this.contextMenu.nodeId;
       this.hideContextMenu();
+      if (nodeId && this.nodes.get(nodeId)?.type === "portLabel") return;
       if (nodeId) this.showStatsModal(nodeId);
     },
     handleCloseSession(sessionId) {
@@ -1467,12 +1816,17 @@ export default {
       }
       const options = this.getLinkOptionsPayload();
       const link = await deployLink(fromId, toId, options);
-      this.edges.add({
+      const [edgeId] = this.edges.add({
         from: fromId,
         to: toId,
         color: { color: this.networkStarted ? "#00aa00ff" : "#999999ff" },
         title: this.formatLinkTitle(options),
+        options,
+        intfs: link?.intfs || null,
       });
+      if (this.settings.showPortLabels) {
+        this.ensurePortLabelNodes(this.edges.get(edgeId));
+      }
       return link;
     },
     async llmCreateHost({ nodes } = {}) {
@@ -1617,7 +1971,7 @@ export default {
         color: {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         },
       };
       host.label = this.hostLabel(host);
@@ -1652,7 +2006,7 @@ export default {
         color: {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         },
       };
       router.image = routerImg;
@@ -1685,7 +2039,7 @@ export default {
         color: {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         },
       };
       nat.image = natImg;
@@ -1719,7 +2073,7 @@ export default {
         color: {
           background: "#252526",
           border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
+          highlight: { background: "#848484", border: "#848484" },
         },
       };
       sw.label = this.switchLabel(sw);
@@ -1750,6 +2104,7 @@ export default {
       this.modalOption = "controllerForm";
       this.showModal = true;
       this.controllerFormPreset = presetType;
+      this.controllerFormData = null;
       this.formData = null;
 
       const result = await new Promise((resolve) => {
@@ -1763,8 +2118,21 @@ export default {
         this.formData.ip,
         this.formData.port,
         this.formData.type,
-        this.formData.ryu_app
+        this.formData.ryu_app,
+        this.formData.color
       );
+    },
+    showControllerEditModal(controllerId) {
+      const controller = this.controllers?.[controllerId] || (this.modalData?.id === controllerId ? this.modalData : null);
+      if (!controller) return;
+      this.modalHeader = `Edit Controller: ${controllerId}`;
+      this.modalOption = "controllerForm";
+      this.showModal = true;
+      this.controllerFormPreset = null;
+      this.controllerFormData = {
+        ...controller,
+        color: controller.colorCode || controller.color || "#ffffff",
+      };
     },
     handleControllerFormSubmit(data) {
       this.formData = data;
@@ -1774,13 +2142,50 @@ export default {
       }
       this.showModal = false;
     },
-    async createController(position, remote, ip, port, controllerType = "default", ryuApp = null) {
+    async handleControllerFormUpdate(data) {
+      if (!this.controllerFormData?.id) return;
+      const controllerId = this.controllerFormData.id;
+      const payload = {
+        controller_type: data.type,
+        remote: data.type === "remote",
+        ip: data.ip,
+        port: data.port,
+        ryu_app: data.ryu_app,
+        color: data.color,
+      };
+      const updated = await updateController(controllerId, payload);
+      if (!updated) return;
+      const existing = this.controllers[controllerId] || {};
+      const colorCode = updated.color || data.color || existing.colorCode || "#ffffff";
+      const merged = {
+        ...existing,
+        ...updated,
+        colorCode,
+        color: this.controllerColor(),
+      };
+      merged.label = this.controllerLabel(merged);
+      merged.image = this.controllerImageForColor(colorCode);
+      this.controllers[controllerId] = merged;
+      this.nodes.update({
+        id: controllerId,
+        label: merged.label,
+        ip: merged.ip,
+        port: merged.port,
+        ryu_app: merged.ryu_app,
+        controller_type: merged.controller_type,
+        color: merged.color,
+        image: merged.image,
+      });
+      this.closeModal();
+    },
+    async createController(position, remote, ip, port, controllerType = "default", ryuApp = null, colorCode = null) {
       let ctlId = Object.values(this.controllers).length + 1;
       while (`c${ctlId}` in this.controllers) {
         ctlId++;
       }
       const isRyu = controllerType === "ryu";
       const effectiveIp = ip || (isRyu ? "127.0.0.1" : ip);
+      const color = colorCode || "#ffffff";
       let ctl = {
         id: `c${ctlId}`,
         type: "controller",
@@ -1793,21 +2198,12 @@ export default {
         x: position.x,
         y: position.y,
         shape: "circularImage",
-        color: {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#007acc", border: "#007acc" },
-        },
+        color: this.controllerColor(),
+        colorCode: color,
       };
       if (isRyu) ctl.ryu_app = ryuApp;
-      if (remote || isRyu) {
-        const info = [`${ctl.name} <${ctl.ip}:${ctl.port}>`];
-        if (isRyu && ryuApp) info.push(`[ryu:${ryuApp}]`);
-        ctl.label = info.join(" ");
-      } else {
-        ctl.label = `${ctl.name}`;
-      }
-      ctl.image = controllerImg;
+      ctl.label = this.controllerLabel(ctl);
+      ctl.image = this.controllerImageForColor(color);
       ctl.hidden = !this.settings.showControllers;
       if (await deployController(ctl)) {
         this.nodes.add(ctl);
@@ -1887,8 +2283,11 @@ export default {
     },
     async handleNodeDragEnd(event) {
       event.nodes.forEach(async nodeId => {
+        const nodeData = this.nodes.get(nodeId);
+        if (nodeData?.type === "portLabel") return;
         let node = this.network.body.nodes[nodeId];
         await updateNodePosition(nodeId, [node.x, node.y]);
+        this.updatePortLabelPositionsForNode(nodeId);
       });
     },
     enterAddEdgeMode() {
@@ -1906,6 +2305,7 @@ export default {
       this.modalData = null;
       this.linkModalEdgeId = null;
       this.controllerFormPreset = null;
+      this.controllerFormData = null;
       this.formData = null;
       this.iperfError = "";
       this.iperfResult = null;
@@ -1940,7 +2340,8 @@ export default {
     doSelectAll() {
       console.log("CTRL A PRESSED");
       this.closeAllActiveModes();
-      this.network.setSelection({nodes: this.nodes.getIds()});
+      const ids = this.nodes.getIds().filter((id) => this.nodes.get(id)?.type !== "portLabel");
+      this.network.setSelection({nodes: ids});
     },
     async showPingallModal() {
       if (this.pingallRunning) return;
@@ -2080,11 +2481,15 @@ export default {
       for (var i=0; i<nDevices; i++) {
         let newHost = await this.createHost({x: 200+i*90, y: 300});
         let link = await deployLink(newSw.id, newHost.id);
-        this.edges.add({
+        const [edgeId] = this.edges.add({
           from: newSw.id,
           to: newHost.id,
           color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+          intfs: link?.intfs || null,
         });
+        if (this.settings.showPortLabels) {
+          this.ensurePortLabelNodes(this.edges.get(edgeId));
+        }
       }
     },
     async createLinearTopo(nDevices, nHosts, controller) {
@@ -2097,21 +2502,29 @@ export default {
           let newHost = await this.createHost({ x: 200 + i * 90, y: 300 + j * 50 });
           console.log("newHost", newHost);
 
-          await deployLink(newSw.id, newHost.id);
-          this.edges.add({
+          const link = await deployLink(newSw.id, newHost.id);
+          const [edgeId] = this.edges.add({
             from: newSw.id,
             to: newHost.id,
             color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+            intfs: link?.intfs || null,
           });
+          if (this.settings.showPortLabels) {
+            this.ensurePortLabelNodes(this.edges.get(edgeId));
+          }
         }
 
         if (prevSw) {
-          await deployLink(newSw.id, prevSw.id);
-          this.edges.add({
+          const link = await deployLink(newSw.id, prevSw.id);
+          const [edgeId] = this.edges.add({
             from: newSw.id,
             to: prevSw.id,
             color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+            intfs: link?.intfs || null,
           });
+          if (this.settings.showPortLabels) {
+            this.ensurePortLabelNodes(this.edges.get(edgeId));
+          }
         }
         prevSw = newSw;
       }
@@ -2136,12 +2549,16 @@ export default {
             const endIndex = startIndex + fanout;
             for (let j = startIndex; j < endIndex && j < nodes[d + 1].length; j++) {
               const child = nodes[d + 1][j];
-              await deployLink(node.id, child.id);
-              this.edges.add({
+              const link = await deployLink(node.id, child.id);
+              const [edgeId] = this.edges.add({
                 from: node.id,
                 to: child.id,
                 color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+                intfs: link?.intfs || null,
               });
+              if (this.settings.showPortLabels) {
+                this.ensurePortLabelNodes(this.edges.get(edgeId));
+              }
             }
           }
           layer.push(node);
@@ -2198,6 +2615,8 @@ export default {
       this.links = [];
       this.nodes = new DataSet();
       this.edges = new DataSet();
+      this.portLabelNodes = {};
+      this.bindPortLabelListeners();
       if (this.network) {
         this.network.setData({ nodes: this.nodes, edges: this.edges });
         this.network.redraw();
@@ -2205,6 +2624,9 @@ export default {
     },
     handleSidebarToggle(isActive) {
       this.sidebarCollapsed = !isActive;
+    },
+    handleWebshellMinimizeChange(isMinimized) {
+      this.webshellMinimized = !!isMinimized;
     },
     async toggleSniffer() {
       try {
@@ -2422,7 +2844,9 @@ export default {
       try {
         const nodes = this.nodes?.get ? this.nodes.get() : [];
         const edges = this.edges?.get ? this.edges.get() : [];
-        const nodesExport = nodes.map((node) => {
+        const nodesExport = nodes
+          .filter((node) => node?.type !== "portLabel")
+          .map((node) => {
           if (node.type === "host") {
             return {
               id: node.id,
@@ -2585,6 +3009,25 @@ export default {
 
 .menu-action:hover {
   background: #3c3c3c;
+}
+
+.menu-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d4d4d4;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.menu-checkbox:hover {
+  background: #3c3c3c;
+}
+
+.menu-checkbox input {
+  accent-color: #007acc;
 }
 
 .health-overlay {
@@ -2886,6 +3329,16 @@ export default {
   padding: 6px 8px;
   font-size: 0.85rem;
   background: #f8fafc;
+}
+
+.iperf-select:focus {
+  outline: 2px solid #777;
+  box-shadow: 0 0 0 2px #777;
+}
+
+.iperf-select option:checked {
+  background-color: #b3b3b3;
+  color: #000;
 }
 
 .iperf-run {

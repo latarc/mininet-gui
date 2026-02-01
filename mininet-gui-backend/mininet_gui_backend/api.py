@@ -80,6 +80,15 @@ class LinkUpdate(BaseModel):
     options: Optional[LinkOptions] = None
 
 
+class ControllerUpdate(BaseModel):
+    controller_type: Optional[str] = None
+    remote: Optional[bool] = None
+    ip: Optional[str] = None
+    port: Optional[int] = None
+    ryu_app: Optional[str] = None
+    color: Optional[str] = None
+
+
 class LinuxRouter(Node):
     def config(self, **params):
         super().config(**params)
@@ -450,8 +459,18 @@ def list_edges():
     for key in app.links:
         nodes = list(key)
         attrs = app.link_attrs.get(key) or {}
-        if len(nodes) == 2:
-            edges.append({"from": nodes[0], "to": nodes[1], "options": attrs})
+        link = app.links.get(key)
+        from_node = nodes[0] if len(nodes) > 0 else None
+        to_node = nodes[1] if len(nodes) > 1 else None
+        intfs = None
+        intf1 = getattr(link, "intf1", None)
+        intf2 = getattr(link, "intf2", None)
+        if intf1 and intf2 and getattr(intf1, "node", None) and getattr(intf2, "node", None):
+            from_node = intf1.node.name
+            to_node = intf2.node.name
+            intfs = {"from": intf1.name, "to": intf2.name}
+        if from_node and to_node:
+            edges.append({"from": from_node, "to": to_node, "options": attrs, "intfs": intfs})
     return edges
 
 @app.get("/api/mininet/start")
@@ -699,6 +718,18 @@ def create_controller(controller: Controller):
     debug(new_controller)
     return {"status": "ok"}
 
+
+@app.put("/api/mininet/controllers/{controller_id}")
+def update_controller(controller_id: str, payload: ControllerUpdate):
+    if controller_id not in app.controllers:
+        raise HTTPException(status_code=404, detail="controller not found")
+    controller = app.controllers[controller_id]
+    updates = payload.model_dump(exclude_none=True)
+    for key, value in updates.items():
+        setattr(controller, key, value)
+    app.controllers[controller_id] = controller
+    return {"controller": controller.model_dump()}
+
 @app.post("/api/mininet/associate_switch")
 def associate_switch(data: dict):
     # Associate switch to controller.
@@ -772,7 +803,10 @@ def create_link(payload: Union[Tuple[str, str], LinkCreate]):
         app.link_attrs[key] = options.model_dump(exclude_none=True)
     else:
         app.link_attrs[key] = {}
-    return {"from": src, "to": dst, "options": app.link_attrs[key]}
+    intfs = None
+    if getattr(new_link, "intf1", None) and getattr(new_link, "intf2", None):
+        intfs = {"from": new_link.intf1.name, "to": new_link.intf2.name}
+    return {"from": src, "to": dst, "options": app.link_attrs[key], "intfs": intfs}
 
 
 @app.put("/api/mininet/links")

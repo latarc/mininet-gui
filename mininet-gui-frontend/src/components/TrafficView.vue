@@ -352,6 +352,16 @@ export default {
   font-size: 0.8rem;
 }
 
+.traffic-select:focus {
+  outline: 2px solid #777;
+  box-shadow: 0 0 0 2px #777;
+}
+
+.traffic-select option:checked {
+  background-color: #b3b3b3;
+  color: #000;
+}
+
 .traffic-input {
   min-width: 180px;
   flex: 1;

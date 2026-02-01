@@ -20,6 +20,7 @@ class Controller(Node):
     ip: Union[str, None]
     port: Union[int, None]
     ryu_app: Union[str, None] = None
+    color: Union[str, None] = None
 
     def format_controller(self) -> str:
         controller_type = (self.controller_type or "").lower()

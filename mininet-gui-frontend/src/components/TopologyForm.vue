@@ -88,4 +88,14 @@
   input {
     width: 80px;
   }
+
+  select:focus {
+    outline: 2px solid #777;
+    box-shadow: 0 0 0 2px #777;
+  }
+
+  select option:checked {
+    background-color: #b3b3b3;
+    color: #000;
+  }
   </style>

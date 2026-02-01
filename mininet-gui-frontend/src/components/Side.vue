@@ -596,6 +596,16 @@ export default {
   color: #000;
 }
 
+.side select:focus {
+  outline: 2px solid #777;
+  box-shadow: 0 0 0 2px #777;
+}
+
+.side select option:checked {
+  background-color: #b3b3b3;
+  color: #000;
+}
+
 .draggable-node > img {
   width: 100%;
 }

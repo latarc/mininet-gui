@@ -24,12 +24,12 @@ export const options = {
       border: "#00000000",
       background: "#252526",
       highlight: {
-        border: "#007acc",
-        background: "#ffffffff",
+        border: "#848484",
+        background: "#848484",
       },
       hover: {
-        border: "#007acc",
-        background: "#ffffffff",
+        border: "#848484",
+        background: "#848484",
       },
     },
   },
