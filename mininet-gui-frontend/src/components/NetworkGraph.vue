@@ -2646,19 +2646,19 @@ export default {
   max-width: calc(var(--sidebar-width) + 16px);
 }
 
-.main-content {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  min-height: 0;
-  min-width: 0;
-  position: relative;
-  z-index: 0;
-  width: calc(100% - var(--sidebar-width));
-  padding-bottom: 28px;
-  box-sizing: border-box;
-}
+  .main-content {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    position: relative;
+    z-index: 0;
+    width: calc(100% - var(--sidebar-width));
+    padding-bottom: 28px;
+    box-sizing: border-box;
+  }
 
 .graph-wrapper {
   position: relative;

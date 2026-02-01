@@ -30,6 +30,14 @@
         <button
           type="button"
           class="view-tab"
+          :class="{ active: activeView === 'monitor' }"
+          @click="activeView = 'monitor'"
+        >
+          Monitoring
+        </button>
+        <button
+          type="button"
+          class="view-tab"
           :class="{ active: activeView === 'logs' }"
           @click="activeView = 'logs'"
         >
@@ -91,6 +99,9 @@
     <div v-show="!isMinimized && activeView === 'traffic'" class="traffic-window">
       <TrafficView :enabled="snifferActive" @toggleSniffer="$emit('toggleSniffer')" />
     </div>
+    <div v-show="!isMinimized && activeView === 'monitor'" class="monitoring-window">
+      <MonitoringView />
+    </div>
     <div v-show="!isMinimized && activeView === 'logs'" class="terminal-window" @click="focusLogTerminal">
       <div
         ref="logTerminal"
@@ -129,11 +140,12 @@ import "@xterm/xterm/css/xterm.css";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import TrafficView from "./TrafficView.vue";
+import MonitoringView from "./MonitoringView.vue";
 import { llmTools, runToolCalls } from "@/llm/actions";
 import { buildSystemPrompt } from "@/llm/systemPrompt";
 
 export default {
-  components: { TrafficView },
+  components: { TrafficView, MonitoringView },
   emits: ["viewChange", "toggleSniffer", "closeSession"],
   props: {
     nodes: { type: Object, required: true },
@@ -776,6 +788,11 @@ export default {
 }
 
 .traffic-window {
+  flex: 1;
+  min-height: 0;
+}
+
+.monitoring-window {
   flex: 1;
   min-height: 0;
 }

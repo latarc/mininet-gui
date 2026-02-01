@@ -53,6 +53,8 @@ FLOW_FIELDS = [
     "idle_timeout", "priority", "actions"
 ]
 
+MONITOR_INTERVAL_SECONDS = 0.5
+
 class LinkOptions(BaseModel):
     bw: Optional[float] = Field(None, ge=0)
     delay: Optional[Union[str, float]] = None
@@ -409,6 +411,22 @@ async def _stop_mininet_with_timeout(timeout: float = 5.0):
         debug(f"mininet.stop() did not complete within {timeout} seconds, continuing cleanup")
     except Exception as exc:
         debug("error while stopping mininet", exc)
+
+def _get_interface_stats_path(interface_name: str):
+    base_path = os.path.join("/sys/class/net", interface_name, "statistics")
+    return {
+        "tx": os.path.join(base_path, "tx_bytes"),
+        "rx": os.path.join(base_path, "rx_bytes"),
+    }
+
+def _read_interface_counter(path: str) -> Optional[int]:
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "r") as stream:
+            return int(stream.read().strip())
+    except Exception:
+        return None
 
 def list_mininet_interfaces():
     nodes = []
@@ -1265,6 +1283,88 @@ async def websocket_sniffer(websocket: WebSocket):
         pass
     finally:
         await app.sniffer_manager.unsubscribe(queue)
+
+
+@app.websocket("/api/mininet/monitor")
+async def websocket_interface_monitor(websocket: WebSocket):
+    """WebSocket endpoint that streams tx/rx traffic rates for a single interface"""
+    await websocket.accept()
+
+    if not getattr(app.net, "is_started", False):
+        await websocket.send_text("Error: network must be started to monitor.")
+        await websocket.close()
+        return
+
+    node_id = websocket.query_params.get("node")
+    intf_name = websocket.query_params.get("intf")
+    interval_param = websocket.query_params.get("interval")
+    try:
+        interval = float(interval_param) if interval_param else MONITOR_INTERVAL_SECONDS
+    except (ValueError, TypeError):
+        interval = MONITOR_INTERVAL_SECONDS
+    interval = max(0.1, min(interval, 5.0))
+
+    if not node_id or not intf_name:
+        await websocket.send_text("Error: node and intf query parameters are required.")
+        await websocket.close()
+        return
+
+    nodes = list_mininet_interfaces()
+    node_info = next((node for node in nodes if node["id"] == node_id), None)
+    if not node_info or intf_name not in node_info.get("intfs", []):
+        await websocket.send_text(f"Error: interface {intf_name} for node {node_id} was not found.")
+        await websocket.close()
+        return
+
+    stats = _get_interface_stats_path(intf_name)
+    tx_path = stats.get("tx")
+    rx_path = stats.get("rx")
+    if not tx_path or not rx_path or not os.path.isdir(os.path.dirname(tx_path)):
+        await websocket.send_text(f"Error: statistics for interface {intf_name} are unavailable.")
+        await websocket.close()
+        return
+
+    last_tx = None
+    last_rx = None
+    last_time = None
+    try:
+        while True:
+            current_time = datetime.now(timezone.utc)
+            tx_bytes = _read_interface_counter(tx_path)
+            rx_bytes = _read_interface_counter(rx_path)
+            if tx_bytes is None or rx_bytes is None:
+                await websocket.send_text(f"Error: failed to read counters for {intf_name}.")
+                break
+
+            if last_tx is not None and last_rx is not None and last_time:
+                elapsed = (current_time - last_time).total_seconds()
+                if elapsed > 0:
+                    tx_delta = max(0, tx_bytes - last_tx)
+                    rx_delta = max(0, rx_bytes - last_rx)
+                    tx_gbps = (tx_delta * 8) / elapsed / 1e9
+                    rx_gbps = (rx_delta * 8) / elapsed / 1e9
+                    payload = {
+                        "node": node_id,
+                        "intf": intf_name,
+                        "ts": current_time.isoformat(),
+                        "tx_gbps": tx_gbps,
+                        "rx_gbps": rx_gbps,
+                    }
+                    await websocket.send_json(payload)
+
+            last_tx = tx_bytes
+            last_rx = rx_bytes
+            last_time = current_time
+            await asyncio.sleep(interval)
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        debug(f"Monitor WebSocket error: {exc}")
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass
 
 @app.get("/api/mininet/sniffer/state")
 def sniffer_state():
