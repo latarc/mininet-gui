@@ -74,6 +74,12 @@ class LinkCreate(BaseModel):
     options: Optional[LinkOptions] = None
 
 
+class LinkUpdate(BaseModel):
+    src: str
+    dst: str
+    options: Optional[LinkOptions] = None
+
+
 class LinuxRouter(Node):
     def config(self, **params):
         super().config(**params)
@@ -116,6 +122,7 @@ async def lifespan(app: FastAPI):
     app.sniffers = dict()
     app.sniffer_manager = SnifferManager(list_mininet_interfaces, start_sniffer_process)
     app.pingall_running = False
+    app.iperf_running = False
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
     app.net.is_started = False
@@ -479,6 +486,7 @@ async def stop_network():
     """Stop network and nodes"""
     await _stop_all_sniffers_quietly()
     _terminate_all_terminals()
+    app.iperf_running = False
 
     await _stop_mininet_with_timeout()
 
@@ -553,6 +561,7 @@ async def full_reset_network():
     app.terminals = dict()
     app.sniffers = dict()
     app.pingall_running = False
+    app.iperf_running = False
 
     setLogLevel("debug")
     app.net = Mininet(autoSetMacs=True, topo=Topo())
@@ -764,6 +773,59 @@ def create_link(payload: Union[Tuple[str, str], LinkCreate]):
     else:
         app.link_attrs[key] = {}
     return {"from": src, "to": dst, "options": app.link_attrs[key]}
+
+
+@app.put("/api/mininet/links")
+def update_link(payload: LinkUpdate):
+    src, dst = payload.src, payload.dst
+    options = payload.options
+    if src not in app.net.nameToNode or dst not in app.net.nameToNode:
+        raise HTTPException(status_code=400, detail="node not in net")
+    key = frozenset((src, dst))
+    if key not in app.links:
+        raise HTTPException(status_code=404, detail="link not found")
+    stored_opts = options.model_dump(exclude_none=True) if options else {}
+    config_opts = dict(stored_opts)
+    if "delay" in config_opts and isinstance(config_opts["delay"], (int, float)):
+        config_opts["delay"] = f"{config_opts['delay']}ms"
+    if "jitter" in config_opts and isinstance(config_opts["jitter"], (int, float)):
+        config_opts["jitter"] = f"{config_opts['jitter']}ms"
+    app.link_attrs[key] = stored_opts
+
+    link = app.links.get(key)
+    if link and config_opts:
+        try:
+            link.intf1.config(**config_opts)
+            link.intf2.config(**config_opts)
+        except Exception as exc:
+            debug("failed to update link config", exc)
+
+    return {"from": src, "to": dst, "options": app.link_attrs[key]}
+
+
+@app.get("/api/mininet/links/stats/{src_id}/{dst_id}")
+def get_link_stats(src_id: str, dst_id: str):
+    key = frozenset((src_id, dst_id))
+    link = app.links.get(key)
+    if not link:
+        raise HTTPException(status_code=404, detail="link not found")
+    intfs = []
+    for intf in (getattr(link, "intf1", None), getattr(link, "intf2", None)):
+        if not intf or not getattr(intf, "name", None):
+            continue
+        stats_paths = get_interface_stats_path(intf.name)
+        intfs.append({
+            "name": intf.name,
+            "tx_bytes": read_interface_counter(stats_paths["tx"]),
+            "rx_bytes": read_interface_counter(stats_paths["rx"]),
+        })
+    return {
+        "from": src_id,
+        "to": dst_id,
+        "intfs": intfs,
+        "options": app.link_attrs.get(key, {}),
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
 
 
 @app.post("/api/mininet/node_position")
@@ -1034,6 +1096,8 @@ def delete_flow_by_id(switch_id: str, flow_id: int):
 def run_iperf(request: IperfRequest):
     if not app.net.is_started:
         raise HTTPException(status_code=400, detail="network must be started to run iperf")
+    if app.iperf_running:
+        raise HTTPException(status_code=409, detail="iperf already running")
     if request.client == request.server:
         raise HTTPException(status_code=400, detail="client and server must be different hosts")
     if request.client not in app.net.nameToNode or request.server not in app.net.nameToNode:
@@ -1053,15 +1117,18 @@ def run_iperf(request: IperfRequest):
     if request.port:
         kwargs["port"] = request.port
 
-    result = app.net.iperf(
-        hosts=[client_node, server_node],
-        l4Type=request.l4_type or "TCP",
-        **kwargs,
-    )
-
-    if isinstance(result, (list, tuple)) and len(result) >= 2:
-        return {"client": result[0], "server": result[1]}
-    return {"result": result}
+    app.iperf_running = True
+    try:
+        result = app.net.iperf(
+            hosts=[client_node, server_node],
+            l4Type=request.l4_type or "TCP",
+            **kwargs,
+        )
+        if isinstance(result, (list, tuple)) and len(result) >= 2:
+            return {"client": result[0], "server": result[1]}
+        return {"result": result}
+    finally:
+        app.iperf_running = False
 
 @app.get("/api/mininet/export_script", response_class=PlainTextResponse)
 def export_network():

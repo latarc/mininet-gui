@@ -43,6 +43,7 @@ import Side from "./Side.vue";
 import Modal from "./Modal.vue";
 import Webshell from "./Webshell.vue";
 import NodeStats from "./NodeStats.vue";
+import LinkStats from "./LinkStats.vue";
 import PingallResults from "./PingallResults.vue";
 import ControllerForm from "./ControllerForm.vue";
 import TopologyForm from "./TopologyForm.vue";
@@ -199,6 +200,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :showSpecialControllers="settings.showSpecialControllers"
             :addEdgeMode="addEdgeMode"
             :pingallRunning="pingallRunning"
+            :iperfRunning="iperfBusy"
           />
         </div>
       
@@ -291,6 +293,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
       </template>
       <template #body>
         <node-stats v-if="modalOption === 'nodeStats'" :stats="modalData" @hostUpdated="handleHostUpdated" />
+        <link-stats v-if="modalOption === 'linkStats'" :link="modalData" @linkUpdated="handleLinkUpdated" />
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <div v-if="modalOption === 'iperf'" class="iperf-modal">
           <div class="iperf-form">
@@ -308,6 +311,45 @@ import logoImage from "@/assets/logo-mininet-gui.png";
                 {{ host.id }}
               </option>
             </select>
+            <label class="iperf-label" for="iperf-proto">Protocol</label>
+            <select id="iperf-proto" v-model="iperfForm.l4_type" class="iperf-select">
+              <option value="TCP">TCP</option>
+              <option value="UDP">UDP</option>
+            </select>
+            <label class="iperf-label" for="iperf-duration">Duration (s)</label>
+            <input
+              id="iperf-duration"
+              v-model.number="iperfForm.seconds"
+              class="iperf-select"
+              type="number"
+              min="1"
+            />
+            <label class="iperf-label" for="iperf-udp-bw">UDP BW (e.g. 10M)</label>
+            <input
+              id="iperf-udp-bw"
+              v-model="iperfForm.udp_bw"
+              class="iperf-select"
+              type="text"
+              :disabled="iperfForm.l4_type !== 'UDP'"
+              placeholder="10M"
+            />
+            <label class="iperf-label" for="iperf-format">Format (K/M/G)</label>
+            <input
+              id="iperf-format"
+              v-model="iperfForm.fmt"
+              class="iperf-select"
+              type="text"
+              placeholder="M"
+            />
+            <label class="iperf-label" for="iperf-port">Port</label>
+            <input
+              id="iperf-port"
+              v-model.number="iperfForm.port"
+              class="iperf-select"
+              type="number"
+              min="1"
+              max="65535"
+            />
             <button
               class="iperf-run"
               type="button"
@@ -468,6 +510,7 @@ export default {
   components: {
     Side,
     NodeStats,
+    LinkStats,
     PingallResults,
     ControllerForm,
     TopologyForm,
@@ -495,6 +538,11 @@ export default {
       iperfForm: {
         client: "",
         server: "",
+        l4_type: "TCP",
+        seconds: 5,
+        udp_bw: "",
+        fmt: "",
+        port: "",
       },
       snifferActive: false,
       hostsHidden: false,
@@ -504,6 +552,7 @@ export default {
       modalHeader: "",
       modalOption: null,
       modalData: {},
+      linkModalEdgeId: null,
       helpTab: "welcome",
       controllerFormPreset: null,
       ryuApps: [],
@@ -1165,6 +1214,7 @@ export default {
           to: link.to,
           color: this.networkStarted ? "#00aa00ff" : "#999999ff",
           title: this.formatLinkTitle(options),
+          options,
         });
       }
       for (const sw in this.switches) {
@@ -1225,6 +1275,7 @@ export default {
               data.id = link.id;
               data.color = {color: this.networkStarted ? "#00aa00ff" : "#999999ff"};
               data.title = this.formatLinkTitle(options);
+              data.options = options;
             }
             callback(data);
             this.enterAddEdgeMode();
@@ -1271,6 +1322,10 @@ export default {
       this.network.on("doubleClick", async (event) => {
         if (event.nodes.length === 1) {
           this.showStatsModal(event.nodes[0]);
+          return;
+        }
+        if (event.edges.length === 1) {
+          this.showLinkModal(event.edges[0]);
         }
       });
       this.network.on("oncontext", (event) => {
@@ -1849,11 +1904,11 @@ export default {
       this.showModal = false;
       this.modalOption = null;
       this.modalData = null;
+      this.linkModalEdgeId = null;
       this.controllerFormPreset = null;
       this.formData = null;
       this.iperfError = "";
       this.iperfResult = null;
-      this.iperfBusy = false;
     },
     closeAllActiveModes() {
       this.closeAddEdgeMode();
@@ -1905,10 +1960,16 @@ export default {
       this.pingallRunning = false;
     },
     showIperfModal() {
+      if (this.iperfBusy) return;
       this.closeAllActiveModes();
       const hostIds = Object.keys(this.hosts || {});
       this.iperfForm.client = hostIds[0] || "";
       this.iperfForm.server = hostIds[1] || "";
+      this.iperfForm.l4_type = "TCP";
+      this.iperfForm.seconds = 5;
+      this.iperfForm.udp_bw = "";
+      this.iperfForm.fmt = "";
+      this.iperfForm.port = "";
       this.iperfError = "";
       this.iperfResult = null;
       this.modalHeader = "Run Iperf";
@@ -1921,18 +1982,39 @@ export default {
         this.iperfError = "Client and server must be different hosts.";
         return;
       }
+      this.closeModal();
       this.iperfBusy = true;
       this.iperfError = "";
-      const result = await runIperf({
+      this.iperfResult = null;
+      const payload = {
         client: this.iperfForm.client,
         server: this.iperfForm.server,
-      });
+        l4_type: this.iperfForm.l4_type,
+      };
+      if (this.iperfForm.seconds) payload.seconds = Number(this.iperfForm.seconds);
+      if (this.iperfForm.port) payload.port = Number(this.iperfForm.port);
+      if (this.iperfForm.fmt) payload.fmt = this.iperfForm.fmt;
+      if (this.iperfForm.l4_type === "UDP" && this.iperfForm.udp_bw) {
+        payload.udp_bw = this.iperfForm.udp_bw;
+      }
+      const result = await runIperf(payload);
+      if (result?.running) {
+        this.iperfError = "Iperf already running.";
+        this.iperfBusy = false;
+        this.modalHeader = "Run Iperf";
+        this.modalOption = "iperf";
+        this.showModal = true;
+        return;
+      }
       if (!result) {
         this.iperfError = "Failed to run iperf.";
       } else {
         this.iperfResult = result;
       }
       this.iperfBusy = false;
+      this.modalHeader = "Iperf Results";
+      this.modalOption = "iperf";
+      this.showModal = true;
     },
     formatIperfResult(result) {
       if (!result) return "";
@@ -1949,6 +2031,37 @@ export default {
       console.log("nodeStats", nodeStats);
       this.modalData = nodeStats || null;
       this.showModal = true;
+    },
+    showLinkModal(edgeId) {
+      if (!edgeId) return;
+      const link = this.edges.get(edgeId);
+      if (!link?.from || !link?.to) return;
+      const srcNode = this.nodes.get(link.from);
+      const dstNode = this.nodes.get(link.to);
+      if (srcNode?.type === "controller" || dstNode?.type === "controller") {
+        return;
+      }
+      this.closeAllActiveModes();
+      this.modalHeader = `Link Info: ${link.from} ↔ ${link.to}`;
+      this.modalOption = "linkStats";
+      this.modalData = {
+        from: link.from,
+        to: link.to,
+        options: link.options || null,
+      };
+      this.linkModalEdgeId = edgeId;
+      this.showModal = true;
+    },
+    handleLinkUpdated(options) {
+      if (!this.linkModalEdgeId) return;
+      this.edges.update({
+        id: this.linkModalEdgeId,
+        options,
+        title: this.formatLinkTitle(options),
+      });
+      if (this.modalOption === "linkStats") {
+        this.modalData = { ...this.modalData, options };
+      }
     },
     handleHostUpdated(updatedHost) {
       if (!updatedHost?.id) return;

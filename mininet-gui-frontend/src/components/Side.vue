@@ -69,7 +69,8 @@
       <button
         id="button-iperf"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
-        :disabled="!networkConnected"
+        :class="iperfRunning ? 'opacity-60 cursor-not-allowed' : ''"
+        :disabled="!networkConnected || iperfRunning"
         data-tooltip="Run iperf test"
         @mouseenter="handleTooltipMouseEnter($event, 'Run iperf test')"
         @mousemove="handleTooltipMouseMove"
@@ -77,7 +78,7 @@
         @click="$emit('runIperf')"
       >
         <span class="material-symbols-outlined">speed</span>
-        <span class="label">Run Iperf</span>
+        <span class="label">{{ iperfRunning ? "Iperf running..." : "Run Iperf" }}</span>
       </button>
       <button
         id="button-create-link"
@@ -332,6 +333,7 @@ export default {
     showSpecialControllers: { type: Boolean, default: true },
     addEdgeMode: { type: Boolean, default: false },
     pingallRunning: { type: Boolean, default: false },
+    iperfRunning: { type: Boolean, default: false },
   },
   data() {
     return {

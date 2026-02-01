@@ -147,7 +147,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import TrafficView from "./TrafficView.vue";
 import MonitoringView from "./MonitoringView.vue";
 import { llmTools, runToolCalls } from "@/llm/actions";
-import { buildSystemPrompt } from "@/llm/systemPrompt";
+import { buildGraphStateMessage, buildSystemPrompt } from "@/llm/systemPrompt";
 
 export default {
   components: { TrafficView, MonitoringView },
@@ -554,7 +554,11 @@ export default {
         this.chatError = "OpenAI API key is missing. Add it in Settings.";
         return;
       }
-      const userMessage = { role: "user", content: this.chatInput.trim() };
+      const graphStateMessage = this.buildGraphContext();
+      const content = graphStateMessage
+        ? `${this.chatInput.trim()}\n\n${graphStateMessage}`
+        : this.chatInput.trim();
+      const userMessage = { role: "user", content };
       console.log("[AI] user message", userMessage);
       this.chatMessages.push(userMessage);
       this.$nextTick(this.scrollChatToBottom);
@@ -590,9 +594,9 @@ export default {
       }
     },
     async callOpenAI(messages) {
-      const contextMessage = this.buildGraphContext();
-      const payloadMessages = contextMessage
-        ? [...messages, { role: "system", content: contextMessage }]
+      const systemPrompt = buildSystemPrompt();
+      const payloadMessages = systemPrompt
+        ? [{ role: "system", content: systemPrompt }, ...messages]
         : messages;
       console.log("[AI] sending messages", payloadMessages);
       const payload = {
@@ -639,7 +643,7 @@ export default {
           dashes: edge.dashes,
           color: edge.color,
         }));
-        return buildSystemPrompt({ nodes: summarizedNodes, edges: summarizedEdges });
+        return buildGraphStateMessage({ nodes: summarizedNodes, edges: summarizedEdges });
       } catch (error) {
         console.warn("Failed to build graph context", error);
         return "";

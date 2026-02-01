@@ -214,6 +214,38 @@ export const deleteLink = async (srcId, dstId) => {
   }
 };
 
+export const updateLinkOptions = async (src, dst, options = {}) => {
+  try {
+    const payload = { src, dst, options };
+    const response = await axios.put(
+      baseUrl + "/api/mininet/links",
+      JSON.stringify(payload),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.status === 200 ? response.data : null;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return null;
+  }
+};
+
+export const getLinkStats = async (srcId, dstId) => {
+  try {
+    const response = await axios.get(
+      baseUrl + `/api/mininet/links/stats/${srcId}/${dstId}`,
+    );
+    return response.status === 200 ? response.data : null;
+  } catch (error) {
+    console.warn("Failed to fetch link stats", error);
+    return null;
+  }
+};
+
 export const getInterfaces = async () => {
   try {
     const response = await axios.get(baseUrl + "/api/mininet/interfaces", {
@@ -512,6 +544,9 @@ export const runIperf = async (payload) => {
     );
     return response.data || null;
   } catch (error) {
+    if (error.response?.status === 409) {
+      return { running: true };
+    }
     alert(error.response ? error.response.data["detail"] : "Network Error");
     return null;
   }
