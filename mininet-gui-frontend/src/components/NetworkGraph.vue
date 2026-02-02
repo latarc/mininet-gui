@@ -39,7 +39,7 @@ import {
   getBackendVersion,
   getRyuApps,
 } from "../core/api";
-import { options } from "../core/options";
+import { buildOptions } from "../core/options";
 import Side from "./Side.vue";
 import Modal from "./Modal.vue";
 import Webshell from "./Webshell.vue";
@@ -52,18 +52,26 @@ import frontendPackage from "../../package.json";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
-import switchImg from "@/assets/light-switch.svg";
-import switchOvsImg from "@/assets/light-switch-ovs.svg";
-import switchOvsBridgeImg from "@/assets/light-switch-ovsbridge.svg";
-import switchUserImg from "@/assets/light-switch-user.svg";
-import hostImg from "@/assets/light-host.svg";
-import natImg from "@/assets/light-nat.svg";
-import routerImg from "@/assets/light-router.svg";
+import switchImgLight from "@/assets/light-switch.svg";
+import switchOvsImgLight from "@/assets/light-switch-ovs.svg";
+import switchOvsBridgeImgLight from "@/assets/light-switch-ovsbridge.svg";
+import switchUserImgLight from "@/assets/light-switch-user.svg";
+import hostImgLight from "@/assets/light-host.svg";
+import natImgLight from "@/assets/light-nat.svg";
+import routerImgLight from "@/assets/light-router.svg";
+
+import switchImgDark from "@/assets/switch.svg";
+import switchOvsImgDark from "@/assets/switch-ovs.svg";
+import switchOvsBridgeImgDark from "@/assets/switch-ovsbridge.svg";
+import switchUserImgDark from "@/assets/switch-user.svg";
+import hostImgDark from "@/assets/host.svg";
+import natImgDark from "@/assets/nat.svg";
+import routerImgDark from "@/assets/router.svg";
 import logoImage from "@/assets/logo-mininet-gui.png";
 </script>
 
 <template>
-  <div class="app-shell">
+  <div :class="['app-shell', themeClass]">
     <div v-if="!mininetConnected" class="health-overlay">
       <div class="health-overlay__card">
         <p>{{ $t("status.backendDisconnected") }}</p>
@@ -108,6 +116,16 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               {{ $t("menu.exportAddressing") }}
             </button>
             <div class="menu-separator"></div>
+            <label class="menu-checkbox">
+              <input
+                type="checkbox"
+                v-model="settings.theme"
+                :true-value="'light'"
+                :false-value="'dark'"
+                @change="handleThemeSetting"
+              />
+              {{ $t("menu.lightTheme") }}
+            </label>
             <button type="button" class="menu-action" @click="handleOpenSettings">
               {{ $t("menu.settings") }}
             </button>
@@ -157,6 +175,17 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showPortLabels" @change="persistSettings" />
               {{ $t("menu.showPortLabels") }}
+            </label>
+            <div class="menu-separator"></div>
+            <label class="menu-checkbox">
+              <input
+                type="checkbox"
+                v-model="settings.theme"
+                :true-value="'light'"
+                :false-value="'dark'"
+                @change="handleThemeSetting"
+              />
+              {{ $t("menu.lightTheme") }}
             </label>
           </div>
         </div>
@@ -277,6 +306,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :addEdgeMode="addEdgeMode"
             :pingallRunning="pingallRunning"
             :iperfRunning="iperfBusy"
+            :theme="settings.theme"
           />
         </div>
       
@@ -328,6 +358,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         :minimized="webshellMinimized"
         :openaiKey="settings.openaiApiKey"
         :llmHandlers="llmHandlers"
+        :theme="settings.theme"
         @viewChange="handleWebshellViewChange"
         @toggleSniffer="toggleSniffer"
         @minimizeChange="handleWebshellMinimizeChange"
@@ -378,74 +409,109 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         />
         <link-stats v-if="modalOption === 'linkStats'" :link="modalData" @linkUpdated="handleLinkUpdated" />
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
-        <div v-if="modalOption === 'iperf'" class="iperf-modal">
-          <div class="iperf-form">
-            <label class="iperf-label" for="iperf-client">{{ $t("iperf.client") }}</label>
-            <select id="iperf-client" v-model="iperfForm.client" class="iperf-select">
-              <option value="" disabled>{{ $t("iperf.selectClient") }}</option>
-              <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
-                {{ host.id }}
-              </option>
-            </select>
-            <label class="iperf-label" for="iperf-server">{{ $t("iperf.server") }}</label>
-            <select id="iperf-server" v-model="iperfForm.server" class="iperf-select">
-              <option value="" disabled>{{ $t("iperf.selectServer") }}</option>
-              <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
-                {{ host.id }}
-              </option>
-            </select>
-            <label class="iperf-label" for="iperf-proto">{{ $t("iperf.protocol") }}</label>
-            <select id="iperf-proto" v-model="iperfForm.l4_type" class="iperf-select">
-              <option value="TCP">TCP</option>
-              <option value="UDP">UDP</option>
-            </select>
-            <label class="iperf-label" for="iperf-duration">{{ $t("iperf.duration") }}</label>
-            <input
-              id="iperf-duration"
-              v-model.number="iperfForm.seconds"
-              class="iperf-select"
-              type="number"
-              min="1"
-            />
-            <label class="iperf-label" for="iperf-udp-bw">{{ $t("iperf.udpBw") }}</label>
-            <input
-              id="iperf-udp-bw"
-              v-model="iperfForm.udp_bw"
-              class="iperf-select"
-              type="text"
-              :disabled="iperfForm.l4_type !== 'UDP'"
-              placeholder="10M"
-            />
-            <label class="iperf-label" for="iperf-format">{{ $t("iperf.format") }}</label>
-            <input
-              id="iperf-format"
-              v-model="iperfForm.fmt"
-              class="iperf-select"
-              type="text"
-              placeholder="M"
-            />
-            <label class="iperf-label" for="iperf-port">{{ $t("iperf.port") }}</label>
-            <input
-              id="iperf-port"
-              v-model.number="iperfForm.port"
-              class="iperf-select"
-              type="number"
-              min="1"
-              max="65535"
-            />
-            <button
-              class="iperf-run"
-              type="button"
-              :disabled="iperfBusy || !iperfForm.client || !iperfForm.server || iperfForm.client === iperfForm.server"
-              @click="runIperfTest"
-            >
-              {{ iperfBusy ? $t("iperf.running") : $t("menu.runIperf") }}
+        <div v-if="modalOption === 'iperf'" class="modal-ui">
+          <div class="modal-tabs">
+            <button type="button" class="modal-tab" :class="{ 'is-active': iperfTab === 'config' }" @click="iperfTab = 'config'">
+              {{ $t("iperf.configTab") }}
             </button>
-            <p v-if="iperfError" class="iperf-error">{{ iperfError }}</p>
+            <button type="button" class="modal-tab" :class="{ 'is-active': iperfTab === 'results' }" @click="iperfTab = 'results'">
+              {{ $t("iperf.resultsTab") }}
+            </button>
           </div>
-          <div v-if="iperfResult" class="iperf-result">
-            <h4>{{ $t("iperf.result") }}</h4>
-            <pre>{{ formatIperfResult(iperfResult) }}</pre>
+          <div class="modal-tab-panels">
+            <div class="modal-section tab-panel" :class="{ 'is-hidden': iperfTab !== 'config' }">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("iperf.configTitle") }}</div>
+              <span class="modal-muted">{{ $t("iperf.configHint") }}</span>
+            </div>
+            <div class="modal-form-grid">
+              <label class="modal-field" for="iperf-client">
+                {{ $t("iperf.client") }}
+                <select id="iperf-client" v-model="iperfForm.client" class="modal-select">
+                  <option value="" disabled>{{ $t("iperf.selectClient") }}</option>
+                  <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
+                    {{ host.id }}
+                  </option>
+                </select>
+              </label>
+              <label class="modal-field" for="iperf-server">
+                {{ $t("iperf.server") }}
+                <select id="iperf-server" v-model="iperfForm.server" class="modal-select">
+                  <option value="" disabled>{{ $t("iperf.selectServer") }}</option>
+                  <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
+                    {{ host.id }}
+                  </option>
+                </select>
+              </label>
+              <label class="modal-field" for="iperf-proto">
+                {{ $t("iperf.protocol") }}
+                <select id="iperf-proto" v-model="iperfForm.l4_type" class="modal-select">
+                  <option value="TCP">TCP</option>
+                  <option value="UDP">UDP</option>
+                </select>
+              </label>
+              <label class="modal-field" for="iperf-duration">
+                {{ $t("iperf.duration") }}
+                <input
+                  id="iperf-duration"
+                  v-model.number="iperfForm.seconds"
+                  class="modal-input"
+                  type="number"
+                  min="1"
+                />
+              </label>
+              <label class="modal-field" for="iperf-udp-bw">
+                {{ $t("iperf.udpBw") }}
+                <input
+                  id="iperf-udp-bw"
+                  v-model="iperfForm.udp_bw"
+                  class="modal-input"
+                  type="text"
+                  :disabled="iperfForm.l4_type !== 'UDP'"
+                  placeholder="10M"
+                />
+              </label>
+              <label class="modal-field" for="iperf-format">
+                {{ $t("iperf.format") }}
+                <input
+                  id="iperf-format"
+                  v-model="iperfForm.fmt"
+                  class="modal-input"
+                  type="text"
+                  placeholder="M"
+                />
+              </label>
+              <label class="modal-field" for="iperf-port">
+                {{ $t("iperf.port") }}
+                <input
+                  id="iperf-port"
+                  v-model.number="iperfForm.port"
+                  class="modal-input"
+                  type="number"
+                  min="1"
+                  max="65535"
+                />
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button
+                class="modal-button modal-button--primary"
+                type="button"
+                :disabled="iperfBusy || !iperfForm.client || !iperfForm.server || iperfForm.client === iperfForm.server"
+                @click="runIperfTest"
+              >
+                {{ iperfBusy ? $t("iperf.running") : $t("menu.runIperf") }}
+              </button>
+              <span v-if="iperfError" class="modal-error">{{ iperfError }}</span>
+            </div>
+            </div>
+            <div class="modal-section tab-panel" :class="{ 'is-hidden': iperfTab !== 'results' }">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("iperf.result") }}</div>
+              <span class="modal-muted">{{ iperfResult ? $t("iperf.resultReady") : $t("iperf.noResult") }}</span>
+            </div>
+            <pre class="modal-pre">{{ iperfResult ? formatIperfResult(iperfResult) : $t("iperf.noResultBody") }}</pre>
+            </div>
           </div>
         </div>
         <controller-form
@@ -457,150 +523,201 @@ import logoImage from "@/assets/logo-mininet-gui.png";
           @form-update="handleControllerFormUpdate"
         />
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
-        <div v-if="modalOption === 'usage'" class="help-modal">
-          <div class="help-modal__tabs">
-            <button type="button" :class="{ active: helpTab === 'welcome' }" @click="helpTab = 'welcome'">{{ $t("help.welcomeTab") }}</button>
-            <button type="button" :class="{ active: helpTab === 'shortcuts' }" @click="helpTab = 'shortcuts'">{{ $t("help.shortcutsTab") }}</button>
-            <button type="button" :class="{ active: helpTab === 'devices' }" @click="helpTab = 'devices'">{{ $t("help.devicesTab") }}</button>
+        <div v-if="modalOption === 'usage'" class="modal-ui">
+          <div class="modal-tabs">
+            <button type="button" class="modal-tab" :class="{ 'is-active': helpTab === 'welcome' }" @click="helpTab = 'welcome'">{{ $t("help.welcomeTab") }}</button>
+            <button type="button" class="modal-tab" :class="{ 'is-active': helpTab === 'shortcuts' }" @click="helpTab = 'shortcuts'">{{ $t("help.shortcutsTab") }}</button>
+            <button type="button" class="modal-tab" :class="{ 'is-active': helpTab === 'devices' }" @click="helpTab = 'devices'">{{ $t("help.devicesTab") }}</button>
           </div>
-          <div v-if="helpTab === 'welcome'" class="help-tab">
-            <p>{{ $t("help.welcomeLine1") }}</p>
-            <p>{{ $t("help.welcomeLine2") }}</p>
-            <p>{{ $t("help.welcomeLine3") }}</p>
-            <p>{{ $t("help.welcomeLine4") }}</p>
-          </div>
-          <div v-if="helpTab === 'shortcuts'" class="help-tab">
-            <p>{{ $t("help.shortcuts1") }}</p>
-            <p>{{ $t("help.shortcuts2") }}</p>
-            <p>{{ $t("help.shortcuts3") }}</p>
-            <p>{{ $t("help.shortcuts4") }}</p>
-            <p>{{ $t("help.shortcuts5") }}</p>
-            <p>{{ $t("help.shortcuts6") }}</p>
-          </div>
-          <div v-if="helpTab === 'devices'" class="help-tab">
-            <p>{{ $t("help.deviceHost") }}</p>
-            <p>{{ $t("help.deviceSwitch") }}</p>
-            <p>{{ $t("help.deviceController") }}</p>
-            <p>{{ $t("help.deviceRouter") }}</p>
-            <p>{{ $t("help.deviceNat") }}</p>
-          </div>
-        </div>
-        <div v-if="modalOption === 'about'" class="help-modal">
-          <img :src="logoImage" alt="Mininet GUI logo" class="help-modal__logo" />
-          <h4>{{ $t("about.title") }}</h4>
-          <p>{{ $t("about.frontendVersion", { version: frontendVersion }) }}</p>
-          <p>{{ $t("about.backendVersion", { version: backendVersion }) }}</p>
-          <p>{{ $t("about.mininetVersion", { version: mininetVersion }) }}</p>
-          <p>{{ $t("about.authors") }}</p>
-          <p>
-            {{ $t("about.repository") }}
-            <a
-              class="help-link"
-              href="https://github.com/latarc/mininet-gui"
-              target="_blank"
-              rel="noreferrer"
-            >
-              https://github.com/latarc/mininet-gui
-            </a>
-          </p>
-          <p>{{ $t("about.license") }}</p>
-        </div>
-        <div v-if="modalOption === 'settings'" class="settings-modal">
-          <div class="settings-group">
-            <label class="settings-toggle">
-              <input type="checkbox" v-model="settings.showHosts" @change="handleShowHostsSetting" />
-              <span>{{ $t("menu.showHosts") }}</span>
-            </label>
-            <label class="settings-toggle">
-              <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
-              <span>{{ $t("menu.showControllers") }}</span>
-            </label>
-            <label class="settings-toggle">
-              <input type="checkbox" v-model="settings.showSpecialSwitches" @change="persistSettings" />
-              <span>{{ $t("menu.showSpecialSwitches") }}</span>
-            </label>
-            <label class="settings-toggle">
-              <input type="checkbox" v-model="settings.showSpecialControllers" @change="persistSettings" />
-              <span>{{ $t("menu.showSpecialControllers") }}</span>
-            </label>
-            <label class="settings-toggle">
-              <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
-              <span>{{ $t("menu.showHostIp") }}</span>
-            </label>
-            <label class="settings-toggle">
-              <input type="checkbox" v-model="settings.showSwitchDpids" @change="persistSettings" />
-              <span>{{ $t("menu.showSwitchDpids") }}</span>
-            </label>
-            <label class="settings-input">
-              <span>{{ $t("settings.language") }}</span>
-              <select v-model="settings.language" @change="handleLanguageChange">
-                <option value="en">{{ $t("language.english") }}</option>
-                <option value="pt">{{ $t("language.portuguese") }}</option>
-              </select>
-            </label>
-            <label class="settings-input">
-              <span>{{ $t("settings.defaultOpenflow") }}</span>
-              <select v-model="settings.switchOpenflow" @change="persistSettings">
-                <option value="">{{ $t("node.openflowAuto") }}</option>
-                <option value="OpenFlow10">OpenFlow10</option>
-                <option value="OpenFlow11">OpenFlow11</option>
-                <option value="OpenFlow12">OpenFlow12</option>
-                <option value="OpenFlow13">OpenFlow13</option>
-                <option value="OpenFlow14">OpenFlow14</option>
-                <option value="OpenFlow15">OpenFlow15</option>
-              </select>
-            </label>
-            <label class="settings-input">
-              <span>{{ $t("settings.openaiKey") }}</span>
-              <input
-                type="password"
-                v-model="settings.openaiApiKey"
-                @change="persistSettings"
-                placeholder="sk-..."
-              />
-            </label>
-            <div class="settings-link">
-              <div class="settings-link-title">{{ $t("settings.defaultLinkAttributes") }}</div>
-              <div class="settings-link-grid">
-                <label>
-                  {{ $t("link.bandwidth") }}
-                  <input type="number" v-model="settings.linkOptions.bw" @change="persistSettings" min="0" />
-                </label>
-                <label>
-                  {{ $t("link.delay") }}
-                  <input type="number" v-model="settings.linkOptions.delay" @change="persistSettings" min="0" />
-                </label>
-                <label>
-                  {{ $t("link.jitter") }}
-                  <input type="number" v-model="settings.linkOptions.jitter" @change="persistSettings" min="0" />
-                </label>
-                <label>
-                  {{ $t("link.loss") }}
-                  <input type="number" v-model="settings.linkOptions.loss" @change="persistSettings" min="0" max="100" />
-                </label>
-                <label>
-                  {{ $t("link.maxQueue") }}
-                  <input type="number" v-model="settings.linkOptions.max_queue_size" @change="persistSettings" min="0" />
-                </label>
-                <label class="settings-toggle settings-inline">
-                  <input type="checkbox" v-model="settings.linkOptions.use_htb" @change="persistSettings" />
-                  <span>{{ $t("link.useHtb") }}</span>
-                </label>
+          <div class="modal-section">
+            <div class="modal-tab-panels">
+              <div class="modal-stack tab-panel" :class="{ 'is-hidden': helpTab !== 'welcome' }">
+                <p>{{ $t("help.welcomeLine1") }}</p>
+                <p>{{ $t("help.welcomeLine2") }}</p>
+                <p>{{ $t("help.welcomeLine3") }}</p>
+                <p>{{ $t("help.welcomeLine4") }}</p>
+              </div>
+              <div class="modal-stack tab-panel" :class="{ 'is-hidden': helpTab !== 'shortcuts' }">
+                <p>{{ $t("help.shortcuts1") }}</p>
+                <p>{{ $t("help.shortcuts2") }}</p>
+                <p>{{ $t("help.shortcuts3") }}</p>
+                <p>{{ $t("help.shortcuts4") }}</p>
+                <p>{{ $t("help.shortcuts5") }}</p>
+                <p>{{ $t("help.shortcuts6") }}</p>
+              </div>
+              <div class="modal-stack tab-panel" :class="{ 'is-hidden': helpTab !== 'devices' }">
+                <p>{{ $t("help.deviceHost") }}</p>
+                <p>{{ $t("help.deviceSwitch") }}</p>
+                <p>{{ $t("help.deviceController") }}</p>
+                <p>{{ $t("help.deviceRouter") }}</p>
+                <p>{{ $t("help.deviceNat") }}</p>
               </div>
             </div>
           </div>
         </div>
-        <div v-if="modalOption === 'confirmReset'" class="confirm-reset">
-          <p class="confirm-reset__text">
-            {{ $t("confirm.resetTopologyText") }}
-          </p>
-          <div class="confirm-reset__actions">
-            <button class="confirm-reset__button confirm-reset__button--cancel" @click="closeModal">
-              {{ $t("actions.cancel") }}
-            </button>
-            <button class="confirm-reset__button confirm-reset__button--danger" @click="confirmResetTopology">
-              {{ $t("actions.resetTopology") }}
-            </button>
+        <div v-if="modalOption === 'about'" class="modal-ui">
+          <div class="modal-section">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("about.title") }}</div>
+            </div>
+            <div class="about-grid">
+              <img :src="logoImage" alt="Mininet GUI logo" class="about-logo" />
+              <div class="about-details">
+                <p>{{ $t("about.frontendVersion", { version: frontendVersion }) }}</p>
+                <p>{{ $t("about.backendVersion", { version: backendVersion }) }}</p>
+                <p>{{ $t("about.mininetVersion", { version: mininetVersion }) }}</p>
+                <p>{{ $t("about.authors") }}</p>
+                <p>
+                  {{ $t("about.repository") }}
+                  <a
+                    class="about-link"
+                    href="https://github.com/latarc/mininet-gui"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    https://github.com/latarc/mininet-gui
+                  </a>
+                </p>
+                <p>{{ $t("about.license") }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="modalOption === 'settings'" class="modal-ui">
+          <div class="modal-tabs">
+            <button type="button" class="modal-tab" :class="{ 'is-active': settingsTab === 'view' }" @click="settingsTab = 'view'">{{ $t("settings.tabs.view") }}</button>
+            <button type="button" class="modal-tab" :class="{ 'is-active': settingsTab === 'defaults' }" @click="settingsTab = 'defaults'">{{ $t("settings.tabs.defaults") }}</button>
+            <button type="button" class="modal-tab" :class="{ 'is-active': settingsTab === 'integrations' }" @click="settingsTab = 'integrations'">{{ $t("settings.tabs.integrations") }}</button>
+          </div>
+          <div class="modal-tab-panels">
+            <div class="modal-section tab-panel" :class="{ 'is-hidden': settingsTab !== 'view' }">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("settings.viewTitle") }}</div>
+            </div>
+            <div class="settings-grid">
+              <label class="settings-toggle">
+                <input
+                  type="checkbox"
+                  v-model="settings.theme"
+                  :true-value="'light'"
+                  :false-value="'dark'"
+                  @change="handleThemeSetting"
+                />
+                <span>{{ $t("settings.lightTheme") }}</span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" v-model="settings.showHosts" @change="handleShowHostsSetting" />
+                <span>{{ $t("menu.showHosts") }}</span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
+                <span>{{ $t("menu.showControllers") }}</span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" v-model="settings.showSpecialSwitches" @change="persistSettings" />
+                <span>{{ $t("menu.showSpecialSwitches") }}</span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" v-model="settings.showSpecialControllers" @change="persistSettings" />
+                <span>{{ $t("menu.showSpecialControllers") }}</span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
+                <span>{{ $t("menu.showHostIp") }}</span>
+              </label>
+              <label class="settings-toggle">
+                <input type="checkbox" v-model="settings.showSwitchDpids" @change="persistSettings" />
+                <span>{{ $t("menu.showSwitchDpids") }}</span>
+              </label>
+            </div>
+            </div>
+            <div class="modal-section tab-panel" :class="{ 'is-hidden': settingsTab !== 'defaults' }">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("settings.defaultsTitle") }}</div>
+            </div>
+            <div class="modal-form-grid">
+              <label class="modal-field">
+                {{ $t("settings.defaultOpenflow") }}
+                <select v-model="settings.switchOpenflow" class="modal-select" @change="persistSettings">
+                  <option value="">{{ $t("node.openflowAuto") }}</option>
+                  <option value="OpenFlow10">OpenFlow10</option>
+                  <option value="OpenFlow11">OpenFlow11</option>
+                  <option value="OpenFlow12">OpenFlow12</option>
+                  <option value="OpenFlow13">OpenFlow13</option>
+                  <option value="OpenFlow14">OpenFlow14</option>
+                  <option value="OpenFlow15">OpenFlow15</option>
+                </select>
+              </label>
+            </div>
+            <div class="modal-divider"></div>
+            <div class="modal-section__title">{{ $t("settings.defaultLinkAttributes") }}</div>
+            <div class="modal-form-grid">
+              <label class="modal-field">
+                {{ $t("link.bandwidth") }}
+                <input type="number" v-model="settings.linkOptions.bw" class="modal-input" @change="persistSettings" min="0" />
+              </label>
+              <label class="modal-field">
+                {{ $t("link.delay") }}
+                <input type="number" v-model="settings.linkOptions.delay" class="modal-input" @change="persistSettings" min="0" />
+              </label>
+              <label class="modal-field">
+                {{ $t("link.jitter") }}
+                <input type="number" v-model="settings.linkOptions.jitter" class="modal-input" @change="persistSettings" min="0" />
+              </label>
+              <label class="modal-field">
+                {{ $t("link.loss") }}
+                <input type="number" v-model="settings.linkOptions.loss" class="modal-input" @change="persistSettings" min="0" max="100" />
+              </label>
+              <label class="modal-field">
+                {{ $t("link.maxQueue") }}
+                <input type="number" v-model="settings.linkOptions.max_queue_size" class="modal-input" @change="persistSettings" min="0" />
+              </label>
+              <label class="modal-field settings-toggle">
+                <input type="checkbox" v-model="settings.linkOptions.use_htb" @change="persistSettings" />
+                <span>{{ $t("link.useHtb") }}</span>
+              </label>
+            </div>
+            </div>
+            <div class="modal-section tab-panel" :class="{ 'is-hidden': settingsTab !== 'integrations' }">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("settings.integrationsTitle") }}</div>
+            </div>
+            <div class="modal-form-grid">
+              <label class="modal-field">
+                {{ $t("settings.language") }}
+                <select v-model="settings.language" class="modal-select" @change="handleLanguageChange">
+                  <option value="en">{{ $t("language.english") }}</option>
+                  <option value="pt">{{ $t("language.portuguese") }}</option>
+                </select>
+              </label>
+              <label class="modal-field">
+                {{ $t("settings.openaiKey") }}
+                <input
+                  type="password"
+                  v-model="settings.openaiApiKey"
+                  class="modal-input"
+                  @change="persistSettings"
+                  placeholder="sk-..."
+                />
+              </label>
+            </div>
+            </div>
+          </div>
+        </div>
+        <div v-if="modalOption === 'confirmReset'" class="modal-ui">
+          <div class="modal-section">
+            <div class="modal-section__header">
+              <div class="modal-section__title">{{ $t("confirm.resetTopologyTitle") }}</div>
+            </div>
+            <p class="modal-muted">{{ $t("confirm.resetTopologyText") }}</p>
+            <div class="modal-actions">
+              <button class="modal-button" @click="closeModal">
+                {{ $t("actions.cancel") }}
+              </button>
+              <button class="modal-button modal-button--danger" @click="confirmResetTopology">
+                {{ $t("actions.resetTopology") }}
+              </button>
+            </div>
           </div>
         </div>
       </template>
@@ -643,6 +760,7 @@ export default {
       iperfBusy: false,
       iperfError: "",
       iperfResult: null,
+      iperfTab: "config",
       iperfForm: {
         client: "",
         server: "",
@@ -663,6 +781,7 @@ export default {
       modalData: {},
       linkModalEdgeId: null,
       helpTab: "welcome",
+      settingsTab: "view",
       controllerFormPreset: null,
       controllerFormData: null,
       ryuApps: [],
@@ -708,15 +827,16 @@ export default {
       boundPanMouseUp: null,
       boundContextMenu: null,
       settings: {
-      showHosts: true,
-      showControllers: true,
-      showSpecialSwitches: true,
-      showSpecialControllers: true,
-      showHostIp: false,
-      showSwitchDpids: false,
-      showPortLabels: false,
-      language: "en",
-      switchOpenflow: "",
+        showHosts: true,
+        showControllers: true,
+        showSpecialSwitches: true,
+        showSpecialControllers: true,
+        showHostIp: false,
+        showSwitchDpids: false,
+        showPortLabels: false,
+        theme: "dark",
+        language: "en",
+        switchOpenflow: "",
         openaiApiKey: "",
         linkOptions: {
           bw: "",
@@ -730,6 +850,12 @@ export default {
     };
   },
   computed: {
+    isLightTheme() {
+      return this.settings.theme === "light";
+    },
+    themeClass() {
+      return this.isLightTheme ? "theme-light" : "theme-dark";
+    },
     network() {
       console.log("computed ran again");
       return this.computeNetwork();
@@ -789,13 +915,126 @@ export default {
     if (this.healthTimer) clearInterval(this.healthTimer);
   },
   methods: {
+    currentAssets() {
+      if (this.isLightTheme) {
+        return {
+          host: hostImgDark,
+          nat: natImgDark,
+          router: routerImgDark,
+          switch: switchImgDark,
+          switchOvs: switchOvsImgDark,
+          switchOvsBridge: switchOvsBridgeImgDark,
+          switchUser: switchUserImgDark,
+        };
+      }
+      return {
+        host: hostImgLight,
+        nat: natImgLight,
+        router: routerImgLight,
+        switch: switchImgLight,
+        switchOvs: switchOvsImgLight,
+        switchOvsBridge: switchOvsBridgeImgLight,
+        switchUser: switchUserImgLight,
+      };
+    },
+    nodeBaseColor() {
+      const highlight = this.isLightTheme ? "#bdbdbd" : "#848484";
+      const background = this.isLightTheme ? "#f3f3f3" : "#252526";
+      return {
+        background,
+        border: "#00000000",
+        highlight: { background: highlight, border: highlight },
+      };
+    },
+    portLabelFontColor() {
+      return this.isLightTheme ? "#2b2b2b" : "#e6e6e6";
+    },
+    linkInactiveColor() {
+      return this.isLightTheme ? "#7a7a7aff" : "#999999ff";
+    },
+    controllerLinkColor() {
+      return this.isLightTheme ? "#8a8a8a" : "#777788af";
+    },
+    applyThemeSetting() {
+      const toggleClass = (el, className, enabled) => {
+        if (!el) return;
+        if (enabled) el.classList.add(className);
+        else el.classList.remove(className);
+      };
+      const root = document.documentElement;
+      const body = document.body;
+      const app = document.getElementById("app");
+      const targetSet = [root, body, app];
+      targetSet.forEach((el) => toggleClass(el, "theme-light", this.isLightTheme));
+      targetSet.forEach((el) => toggleClass(el, "theme-dark", !this.isLightTheme));
+    },
+    handleThemeSetting() {
+      this.applyThemeSetting();
+      this.applyNetworkTheme();
+      this.persistSettings();
+    },
+    applyNetworkTheme() {
+      if (this.network) {
+        this.network.setOptions(buildOptions(this.settings.theme));
+      }
+      const assets = this.currentAssets();
+      if (this.nodes?.forEach) {
+        this.nodes.forEach((node) => {
+          if (node.type === "portLabel") {
+            this.nodes.updateOnly({
+              id: node.id,
+              font: { ...(node.font || {}), color: this.portLabelFontColor() },
+            });
+            return;
+          }
+          if (node.type === "controller") {
+            this.nodes.updateOnly({ id: node.id, color: this.nodeBaseColor() });
+            return;
+          }
+          if (node.type === "host") {
+            this.nodes.updateOnly({ id: node.id, color: this.nodeBaseColor(), image: assets.host });
+            return;
+          }
+          if (node.type === "switch") {
+            this.nodes.updateOnly({
+              id: node.id,
+              color: this.nodeBaseColor(),
+              image: this.switchImageForType(node.switch_type),
+            });
+            return;
+          }
+          if (node.type === "nat") {
+            this.nodes.updateOnly({ id: node.id, color: this.nodeBaseColor(), image: assets.nat });
+            return;
+          }
+          if (node.type === "router") {
+            this.nodes.updateOnly({ id: node.id, color: this.nodeBaseColor(), image: assets.router });
+          }
+        });
+      }
+      if (this.edges?.forEach) {
+        const updates = [];
+        this.edges.forEach((edge) => {
+          if (!edge?.dashes?.length) return;
+          const currentColor = edge.color;
+          const normalizedColor =
+            typeof currentColor === "object" && currentColor !== null && "color" in currentColor
+              ? { ...currentColor, color: this.controllerLinkColor() }
+              : { color: this.controllerLinkColor() };
+          updates.push({ id: edge.id, color: normalizedColor });
+        });
+        if (updates.length) this.edges.update(updates);
+      }
+      this.updateLinkColors();
+    },
     switchImageForType(type) {
+      const assets = this.currentAssets();
       const key = (type || "ovskernel").toLowerCase();
-      if (key === "user") return switchUserImg;
-      if (key === "ovs") return switchOvsImg;
-      if (key === "ovsbridge") return switchOvsBridgeImg;
-      if (key === "ovskernel") return switchImg;
-      return switchImg;
+      if (key === "user") return assets.switchUser;
+      if (key === "ovs") return assets.switchOvs;
+      if (key === "ovsbridge") return assets.switchOvsBridge;
+      if (key === "ovskernel") return assets.switch;
+      return assets.switch;
     },
     async loadVersions() {
       const backendInfo = await getBackendVersion();
@@ -1210,9 +1449,11 @@ export default {
       } catch (error) {
         console.warn("Failed to load settings", error);
       }
+      this.applyThemeSetting();
       this.applyLocaleSetting();
       this.applyVisibilitySettings();
       this.applyPortLabels();
+      this.applyNetworkTheme();
     },
     persistSettings() {
       try {
@@ -1314,11 +1555,7 @@ export default {
       return `${ctl.name}`;
     },
     controllerColor() {
-      return {
-        background: "#252526",
-        border: "#00000000",
-        highlight: { background: "#848484", border: "#848484" },
-      };
+      return this.nodeBaseColor();
     },
     controllerImageForColor(colorCode) {
       const fill = colorCode || "#ffffff";
@@ -1438,7 +1675,7 @@ export default {
         hidden: false,
         font: {
           size: 12,
-          color: "#e6e6e6",
+          color: this.portLabelFontColor(),
           face: "Fira Sans",
         },
       };
@@ -1501,6 +1738,7 @@ export default {
     },
     showSettingsModal() {
       this.closeAllActiveModes();
+      this.settingsTab = "view";
       this.modalHeader = this.$t("menu.settings");
       this.modalOption = "settings";
       this.showModal = true;
@@ -1508,7 +1746,7 @@ export default {
     computeNetwork() {
       if (this.network)
         return this.network;
-      return new Network(this.$refs.graph, {nodes: this.nodes, edges: this.edges}, options);
+      return new Network(this.$refs.graph, { nodes: this.nodes, edges: this.edges }, buildOptions(this.settings.theme));
     },
     async setupNetwork() {
       await this.refreshBackendHealth();
@@ -1521,12 +1759,8 @@ export default {
       Object.values(this.hosts).map((host) => {
         host.shape = "circularImage";
 
-        host.color = {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        };
-        host.image = hostImg;
+        host.color = this.nodeBaseColor();
+        host.image = this.currentAssets().host;
         host.label = this.hostLabel(host);
         host.hidden = this.hostsHidden;
         return host;
@@ -1534,11 +1768,7 @@ export default {
 
       Object.values(this.switches).map((sw) => {
         sw.shape = "circularImage";
-        sw.color = {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        };
+        sw.color = this.nodeBaseColor();
         sw.image = this.switchImageForType(sw.switch_type);
         sw.label = this.switchLabel(sw);
         return sw;
@@ -1556,24 +1786,16 @@ export default {
 
       Object.values(this.nats).map((nat) => {
         nat.shape = "circularImage";
-        nat.color = {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        };
-        nat.image = natImg;
+        nat.color = this.nodeBaseColor();
+        nat.image = this.currentAssets().nat;
         nat.label = nat.name || nat.id;
         return nat;
       });
 
       Object.values(this.routers).map((router) => {
         router.shape = "circularImage";
-        router.color = {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        };
-        router.image = routerImg;
+        router.color = this.nodeBaseColor();
+        router.image = this.currentAssets().router;
         router.label = router.name || router.id;
         return router;
       });
@@ -1585,7 +1807,7 @@ export default {
         this.edges.add({
           from: link.from,
           to: link.to,
-          color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+          color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
           title: this.formatLinkTitle(options),
           options,
           intfs,
@@ -1597,7 +1819,7 @@ export default {
           this.edges.add({
             from: sw,
             to: ctl,
-            color: "#777788af",
+            color: this.controllerLinkColor(),
             dashes: [10, 10]
           });
       }
@@ -1643,13 +1865,13 @@ export default {
                 let [sw, ctl] = (from.type === "controller") ? [to, from] : [from, to];
                 sw.controller = ctl.id;
                 await assocSwitch(sw.id, ctl.id);
-                data.color = {color: "#777788af"};
+                data.color = { color: this.controllerLinkColor() };
                 data.dashes = [10, 10];
             } else {
               const options = this.getLinkOptionsPayload();
               let link = await deployLink(data.from, data.to, options);
               data.id = link.id;
-              data.color = {color: this.networkStarted ? "#00aa00ff" : "#999999ff"};
+              data.color = { color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor() };
               data.title = this.formatLinkTitle(options);
               data.options = options;
               data.intfs = link?.intfs || null;
@@ -1755,7 +1977,7 @@ export default {
     },
     updateLinkColors() {
       if (!this.edges?.forEach) return;
-      const colorValue = this.networkStarted ? "#00aa00ff" : "#999999ff";
+      const colorValue = this.networkStarted ? "#00aa00ff" : this.linkInactiveColor();
       const updates = [];
       this.edges.forEach((edge) => {
         if (edge?.dashes?.length) return;
@@ -1851,7 +2073,7 @@ export default {
       const [edgeId] = this.edges.add({
         from: fromId,
         to: toId,
-        color: { color: this.networkStarted ? "#00aa00ff" : "#999999ff" },
+        color: { color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor() },
         title: this.formatLinkTitle(options),
         options,
         intfs: link?.intfs || null,
@@ -1920,7 +2142,7 @@ export default {
       this.edges.add({
         from: switch_id,
         to: controller_id,
-        color: { color: "#777788af" },
+        color: { color: this.controllerLinkColor() },
         dashes: [10, 10],
       });
       if (this.switches[switch_id]) {
@@ -2000,14 +2222,10 @@ export default {
         ip: `10.0.0.${hostId}/8`,
         mac: hostId.toString(16).toUpperCase().padStart(12, "0"),
         shape: "circularImage",
-        color: {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        },
+        color: this.nodeBaseColor(),
       };
       host.label = this.hostLabel(host);
-      host.image = hostImg;
+      host.image = this.currentAssets().host;
       host.hidden = !this.settings.showHosts;
       if (position) {
         host.x = position.x;
@@ -2035,13 +2253,9 @@ export default {
         ip: `10.0.0.${octet}/8`,
         mac: octet.toString(16).toUpperCase().padStart(12, "0"),
         shape: "circularImage",
-        color: {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        },
+        color: this.nodeBaseColor(),
       };
-      router.image = routerImg;
+      router.image = this.currentAssets().router;
       if (position) {
         router.x = position.x;
         router.y = position.y;
@@ -2068,13 +2282,9 @@ export default {
         ip: `10.0.0.${octet}/8`,
         mac: octet.toString(16).toUpperCase().padStart(12, "0"),
         shape: "circularImage",
-        color: {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        },
+        color: this.nodeBaseColor(),
       };
-      nat.image = natImg;
+      nat.image = this.currentAssets().nat;
       if (position) {
         nat.x = position.x;
         nat.y = position.y;
@@ -2107,11 +2317,7 @@ export default {
         switch_type: switchType,
         of_version: ofVersion,
         shape: "circularImage",
-        color: {
-          background: "#252526",
-          border: "#00000000",
-          highlight: { background: "#848484", border: "#848484" },
-        },
+        color: this.nodeBaseColor(),
       };
       sw.label = this.switchLabel(sw);
       sw.image = this.switchImageForType(sw.switch_type);
@@ -2130,7 +2336,7 @@ export default {
         this.edges.add({
           from: sw.id,
           to: switchData.controller,
-          color: {color: "#777788af"},
+          color: { color: this.controllerLinkColor() },
           dashes: [10, 10]
         });
       }
@@ -2410,6 +2616,7 @@ export default {
       this.iperfForm.port = "";
       this.iperfError = "";
       this.iperfResult = null;
+      this.iperfTab = "config";
       this.modalHeader = this.$t("menu.runIperf");
       this.modalOption = "iperf";
       this.showModal = true;
@@ -2441,6 +2648,7 @@ export default {
         this.iperfBusy = false;
         this.modalHeader = this.$t("menu.runIperf");
         this.modalOption = "iperf";
+        this.iperfTab = "config";
         this.showModal = true;
         return;
       }
@@ -2452,6 +2660,7 @@ export default {
       this.iperfBusy = false;
       this.modalHeader = this.$t("iperf.resultsTitle");
       this.modalOption = "iperf";
+      this.iperfTab = "results";
       this.showModal = true;
     },
     formatIperfResult(result) {
@@ -2521,7 +2730,7 @@ export default {
         const [edgeId] = this.edges.add({
           from: newSw.id,
           to: newHost.id,
-          color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+          color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
           intfs: link?.intfs || null,
         });
         if (this.settings.showPortLabels) {
@@ -2543,7 +2752,7 @@ export default {
           const [edgeId] = this.edges.add({
             from: newSw.id,
             to: newHost.id,
-            color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+            color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
             intfs: link?.intfs || null,
           });
           if (this.settings.showPortLabels) {
@@ -2556,7 +2765,7 @@ export default {
           const [edgeId] = this.edges.add({
             from: newSw.id,
             to: prevSw.id,
-            color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+            color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
             intfs: link?.intfs || null,
           });
           if (this.settings.showPortLabels) {
@@ -2590,7 +2799,7 @@ export default {
               const [edgeId] = this.edges.add({
                 from: node.id,
                 to: child.id,
-                color: this.networkStarted ? "#00aa00ff" : "#999999ff",
+                color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
                 intfs: link?.intfs || null,
               });
               if (this.settings.showPortLabels) {
@@ -2888,70 +3097,72 @@ export default {
       try {
         const nodes = this.nodes?.get ? this.nodes.get() : [];
         const edges = this.edges?.get ? this.edges.get() : [];
+        const pickDefined = (source, keys) => {
+          const out = {};
+          keys.forEach((key) => {
+            if (source?.[key] !== undefined) out[key] = source[key];
+          });
+          return out;
+        };
+        const baseNodeFields = (node) => ({
+          id: node.id,
+          type: node.type,
+          name: node.name ?? node.id,
+          label: node.label ?? node.name ?? node.id,
+          x: node.x,
+          y: node.y,
+        });
+        const normalizeControllerColor = (node) => {
+          if (node?.colorCode) return node.colorCode;
+          if (typeof node?.color === "string") return node.color;
+          if (node?.color && typeof node.color.color === "string") return node.color.color;
+          return null;
+        };
         const nodesExport = nodes
           .filter((node) => node?.type !== "portLabel")
           .map((node) => {
-          if (node.type === "host") {
+            const base = baseNodeFields(node);
+            if (node.type === "host") {
+              return {
+                ...base,
+                ...pickDefined(node, ["ip", "mac", "default_route", "default_route_type", "default_route_dev", "default_route_ip"]),
+              };
+            }
+            if (node.type === "router") {
+              return {
+                ...base,
+                ...pickDefined(node, ["ip", "mac"]),
+              };
+            }
+            if (node.type === "controller") {
+              return {
+                ...base,
+                controller_type: node.controller_type ?? (node.remote ? "remote" : "default"),
+                remote: node.remote ?? false,
+                ip: node.ip ?? null,
+                port: node.port ?? null,
+                ryu_app: node.ryu_app ?? null,
+                color: normalizeControllerColor(node),
+              };
+            }
+            if (node.type === "nat") {
+              return {
+                ...base,
+                ...pickDefined(node, ["ip", "mac"]),
+              };
+            }
             return {
-              id: node.id,
-              type: "host",
-              name: node.name,
-              ip: node.ip,
-              mac: node.mac,
-              x: node.x,
-              y: node.y,
+              ...base,
+              dpid: node.dpid,
+              ports: node.ports,
+              controller: node.controller ?? null,
+              switch_type: node.switch_type ?? "ovskernel",
+              of_version: node.of_version ?? null,
+              ...pickDefined(node, ["stp", "fail_mode"]),
             };
-          }
-          if (node.type === "router") {
-            return {
-              id: node.id,
-              type: "router",
-              name: node.name,
-              ip: node.ip,
-              mac: node.mac,
-              x: node.x,
-              y: node.y,
-            };
-          }
-          if (node.type === "controller") {
-            return {
-              id: node.id,
-              type: "controller",
-              name: node.name,
-              controller_type: node.controller_type ?? (node.remote ? "remote" : "default"),
-              remote: node.remote ?? false,
-              ip: node.ip ?? null,
-              port: node.port ?? null,
-              x: node.x,
-              y: node.y,
-            };
-          }
-          if (node.type === "nat") {
-            return {
-              id: node.id,
-              type: "nat",
-              name: node.name,
-              label: node.label ?? node.name,
-              ip: node.ip ?? null,
-              mac: node.mac ?? null,
-              x: node.x,
-              y: node.y,
-            };
-          }
-          return {
-            id: node.id,
-            type: "switch",
-            name: node.name,
-            dpid: node.dpid,
-            ports: node.ports,
-            controller: node.controller ?? null,
-            switch_type: node.switch_type ?? "ovskernel",
-            of_version: node.of_version ?? null,
-            x: node.x,
-            y: node.y,
-          };
-        });
+          });
         const edgesExport = edges.map((edge) => ({
+          id: edge.id ?? undefined,
           from: edge.from,
           to: edge.to,
           options: edge.options ?? null,
@@ -3114,26 +3325,6 @@ export default {
   height: 1px;
   margin: 4px 0;
   background: #444;
-}
-
-.help-modal__tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.help-modal__tabs button {
-  background: #2d2d2d;
-  border: 1px solid #444;
-  color: #d4d4d4;
-  padding: 4px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.help-modal__tabs button.active {
-  background: #007acc;
-  border-color: #007acc;
 }
 
 .menu-file-input {
@@ -3341,166 +3532,245 @@ export default {
   background: #2f2f2f;
 }
 
-.confirm-reset {
-  text-align: left;
-  color: #1e293b;
-}
-
-.confirm-reset__text {
-  margin: 0 0 16px;
-  font-size: 0.95rem;
-}
-
-.iperf-modal {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.iperf-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.iperf-label {
-  font-size: 0.85rem;
-  color: #1f2937;
-}
-
-.iperf-select {
-  border: 1px solid #cbd5f5;
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 0.85rem;
-  background: #f8fafc;
-}
-
-.iperf-select:focus {
-  outline: 2px solid #777;
-  box-shadow: 0 0 0 2px #777;
-}
-
-.iperf-select option:checked {
-  background-color: #b3b3b3;
-  color: #000;
-}
-
-.iperf-run {
-  align-self: flex-start;
-  background: #007acc;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.iperf-run:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.iperf-error {
-  color: #b91c1c;
-  font-size: 0.85rem;
-}
-
-.iperf-result pre {
-  background: #0f172a;
+.modal-pre {
+  background: #0b1220;
+  border: 1px solid #1f2937;
   color: #e2e8f0;
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 0.8rem;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
   white-space: pre-wrap;
 }
 
-.confirm-reset__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.help-modal {
-  color: #1e293b;
+.modal-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 460px;
-  height: 320px;
-  min-width: 420px;
-  min-height: 280px;
-  padding: 20px;
-  box-sizing: border-box;
+  gap: 6px;
+  font-size: 13px;
 }
 
-.help-modal__logo {
-  width: 210px;
+.about-grid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.about-logo {
+  width: 200px;
   height: auto;
-  align-self: center;
-  margin-bottom: 8px;
+  justify-self: center;
 }
 
-.help-modal h4 {
-  margin: 4px 0 0;
-  font-size: 0.95rem;
+.about-details p {
+  margin: 4px 0;
+  font-size: 13px;
 }
 
-.help-modal p {
-  margin: 0;
-  font-size: 0.9rem;
+:global(.theme-light) .topbar {
+  background: #f2f2f2 !important;
+  color: #2b2b2b !important;
+  border-bottom: 1px solid #d0d0d0 !important;
 }
 
-.help-link {
-  color: #2563eb;
+:global(.theme-light) .menu-item:hover,
+:global(.theme-light) .menu-item.open {
+  background: #e6e6e6 !important;
+}
+
+:global(.theme-light) .menu-item:disabled {
+  color: #a0a0a0 !important;
+}
+
+:global(.theme-light) .menu-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #d0d0d0 !important;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+:global(.theme-light) .menu-action {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .menu-action:hover {
+  background: #efefef !important;
+}
+
+:global(.theme-light) .menu-checkbox {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .menu-checkbox:hover {
+  background: #efefef !important;
+}
+
+:global(.theme-light) .menu-separator {
+  background: #d0d0d0 !important;
+}
+
+:global(.theme-light) .health-overlay {
+  background: rgba(245, 245, 245, 0.92) !important;
+}
+
+:global(.theme-light) .health-overlay__card {
+  background: #ffffff !important;
+  border: 1px solid #d0d0d0 !important;
+  color: #2b2b2b !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15) !important;
+}
+
+:global(.theme-light) .status-bar {
+  background: #f2f2f2 !important;
+  border-top: 1px solid #d0d0d0 !important;
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .status-bar__version {
+  color: #6b6b6b !important;
+}
+
+:global(.theme-light) .status-bar__counts,
+:global(.theme-light) .status-bar__network {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .network-graph {
+  background: #f5f5f5 !important;
+}
+
+:global(.theme-light) .webshell {
+  background: #f2f2f2 !important;
+  color: #2b2b2b !important;
+  border-top: 2px solid #d0d0d0 !important;
+}
+
+:global(.theme-light) .node-context-menu {
+  background: #ffffff !important;
+  border: 1px solid #d0d0d0 !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+:global(.theme-light) .node-context-item {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .node-context-item:hover {
+  background: #efefef !important;
+}
+
+:global(.theme-light) .modal-pre {
+  background: #f3f3f3 !important;
+  border: 1px solid #d0d0d0 !important;
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .settings-toggle {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .app-shell {
+  background: #f6f6f6 !important;
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .layout {
+  background: #f6f6f6 !important;
+}
+
+:global(.theme-light) .main-content {
+  background: #f5f5f5 !important;
+}
+
+:global(.theme-light) .graph-wrapper {
+  background: #f5f5f5 !important;
+}
+
+:global(.theme-light) .side-container,
+:global(.theme-light) .side-wrapper {
+  background: #f5f5f5 !important;
+}
+
+:global(.theme-light) .menu-bar {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .menu-action {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) .menu-action:hover,
+:global(.theme-light) .menu-item:hover,
+:global(.theme-light) .menu-item.open {
+  background: #e6e6e6 !important;
+}
+
+:global(.theme-light) .status-bar {
+  border-top-color: #d0d0d0 !important;
+}
+
+:global(.theme-light) .webshell {
+  border-top-color: #d0d0d0 !important;
+}
+
+:global(.theme-light) .health-overlay {
+  background: rgba(245, 245, 245, 0.92) !important;
+}
+
+:global(.theme-light) .health-overlay__card {
+  background: #ffffff !important;
+}
+
+:global(.theme-light) .status-dot--started {
+  background-color: #3c9c4e !important;
+}
+
+:global(.app-shell.theme-light) :deep(.app-shell) {
+  background: #f6f6f6;
+  color: #2b2b2b;
+}
+
+:global(.app-shell.theme-light) :deep(.layout) {
+  background: #f6f6f6;
+}
+
+:global(.app-shell.theme-light) :deep(.main-content) {
+  background: #f5f5f5;
+}
+
+:global(.app-shell.theme-light) :deep(.graph-wrapper) {
+  background: #f5f5f5;
+}
+
+:global(.app-shell.theme-light) :deep(.status-bar) {
+  border-top-color: #d0d0d0;
+}
+
+:global(.app-shell.theme-light) :deep(.webshell) {
+  border-top-color: #d0d0d0;
+}
+
+:global(.app-shell.theme-light) :deep(.network-graph) {
+  background: #f5f5f5;
+}
+
+.about-link {
+  color: #60a5fa;
   text-decoration: underline;
+  word-break: break-all;
 }
 
-.confirm-reset__button {
-  border: 1px solid #cbd5f5;
-  border-radius: 6px;
-  padding: 6px 12px;
-  background: #f8fafc;
-  color: #0f172a;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.confirm-reset__button--cancel:hover {
-  background: #e2e8f0;
-}
-
-.confirm-reset__button--danger {
-  background: #ef4444;
-  border-color: #ef4444;
-  color: #fff;
-}
-
-.confirm-reset__button--danger:hover {
-  background: #dc2626;
-}
-
-.settings-modal {
-  display: flex;
-  flex-direction: column;
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
-  text-align: left;
-  color: #1e293b;
-}
-
-.settings-group {
-  padding: 10px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #f8fafc;
 }
 
 .settings-toggle {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 0.95rem;
+  font-size: 12px;
+  color: #e2e8f0;
 }
 
 .settings-toggle input {
@@ -3508,54 +3778,57 @@ export default {
   height: 16px;
 }
 
-.settings-input {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.9rem;
+:global(.app-shell.theme-light) .topbar,
+:global(.app-shell.theme-light) .status-bar,
+:global(.app-shell.theme-light) .side,
+:global(.app-shell.theme-light) .layout,
+:global(.app-shell.theme-light) .app-shell,
+:global(.app-shell.theme-light) .main-content,
+:global(.app-shell.theme-light) .network-graph,
+:global(.app-shell.theme-light) .webshell {
+  background: #f2f2f2;
+  color: #2b2b2b;
 }
 
-.settings-input input {
-  border: 1px solid #cbd5f5;
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 0.85rem;
+:global(.app-shell.theme-light) .topbar {
+  border-bottom: 1px solid #d0d0d0;
 }
 
-.settings-link {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 6px;
+:global(.app-shell.theme-light) .menu-bar,
+:global(.app-shell.theme-light) .menu-action,
+:global(.app-shell.theme-light) .menu-item {
+  color: #2b2b2b;
 }
 
-.settings-link-title {
-  font-size: 0.9rem;
-  font-weight: 600;
+:global(.app-shell.theme-light) .menu-action:hover,
+:global(.app-shell.theme-light) .menu-item:hover,
+:global(.app-shell.theme-light) .menu-item.open {
+  background: #e6e6e6;
 }
 
-.settings-link-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+:global(.app-shell.theme-light) .menu-dropdown,
+:global(.app-shell.theme-light) .node-context-menu {
+  background: #ffffff;
+  border-color: #d0d0d0;
 }
 
-.settings-link-grid label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
+:global(.app-shell.theme-light) .menu-dropdown {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
 }
 
-.settings-link-grid input {
-  border: 1px solid #cbd5f5;
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 0.8rem;
+:global(.app-shell.theme-light) .status-bar {
+  border-top: 1px solid #d0d0d0;
 }
 
-.settings-inline {
-  align-items: center;
-  flex-direction: row;
+:global(.app-shell.theme-light) .status-bar__counts,
+:global(.app-shell.theme-light) .status-bar__network,
+:global(.app-shell.theme-light) .status-bar__version {
+  color: #2b2b2b;
+}
+
+:global(.app-shell.theme-light) .side input,
+:global(.app-shell.theme-light) .side select,
+:global(.app-shell.theme-light) .settings-toggle {
+  color: #2b2b2b;
 }
 </style>

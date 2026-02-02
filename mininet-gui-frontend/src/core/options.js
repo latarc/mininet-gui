@@ -1,44 +1,53 @@
-export const options = {
-  edges: {
-    width: 5,
-    color: {
-      color: "#848484",
-      highlight: "#848484",
-      hover: "#848484",
-      inherit: "from",
-      opacity: 1.0,
-    },
-    smooth: false,
-  },
-  nodes: {
-    margin: 10,
-    widthConstraint: {
-      maximum: 200,
-    },
-    font: {
-      color: "#cccccc",
-      size: 14,
-      face: "Fira Sans",
-    },
-    color: {
-      border: "#00000000",
-      background: "#252526",
-      highlight: {
-        border: "#848484",
-        background: "#848484",
+export const buildOptions = (theme = "dark") => {
+  const isLight = theme === "light";
+  const edgeColor = isLight ? "#7a7a7a" : "#848484";
+  const nodeBackground = isLight ? "#f3f3f3" : "#252526";
+  const nodeHighlight = isLight ? "#bdbdbd" : "#848484";
+  const fontColor = isLight ? "#2b2b2b" : "#cccccc";
+  return {
+    edges: {
+      width: 5,
+      color: {
+        color: edgeColor,
+        highlight: edgeColor,
+        hover: edgeColor,
+        inherit: "from",
+        opacity: 1.0,
       },
-      hover: {
-        border: "#848484",
-        background: "#848484",
+      smooth: false,
+    },
+    nodes: {
+      margin: 10,
+      widthConstraint: {
+        maximum: 200,
+      },
+      font: {
+        color: fontColor,
+        size: 14,
+        face: "Fira Sans",
+      },
+      color: {
+        border: "#00000000",
+        background: nodeBackground,
+        highlight: {
+          border: nodeHighlight,
+          background: nodeHighlight,
+        },
+        hover: {
+          border: nodeHighlight,
+          background: nodeHighlight,
+        },
       },
     },
-  },
-  interaction: {
-    keyboard: true,
-    multiselect: true,
-    dragView: false,
-  },
-  physics: {
-    enabled: false,
-  },
+    interaction: {
+      keyboard: true,
+      multiselect: true,
+      dragView: false,
+    },
+    physics: {
+      enabled: false,
+    },
+  };
 };
+
+export const options = buildOptions("dark");

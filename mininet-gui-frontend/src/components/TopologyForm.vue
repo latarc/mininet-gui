@@ -1,46 +1,49 @@
 <template>
-  <div>
-    <form @submit.prevent="submitForm">
-      <div>
-        <label for="type">{{ $t("topology.type") }}</label>
-        <select id="type" v-model="topologyType">
-          <option value="Single" selected="selected">{{ $t("topology.single") }}</option>
-          <option value="Linear">{{ $t("topology.linear") }}</option>
-          <option value="Tree">{{ $t("topology.tree") }}</option>
-        </select>
+  <div class="modal-ui topology-form">
+    <form class="modal-section" @submit.prevent="submitForm">
+      <div class="modal-section__header">
+        <div class="modal-section__title">{{ $t("topology.createTitle") }}</div>
       </div>
-      <div>
-        <label for="controller">{{ $t("topology.controller") }}</label>
-        <select id="controller" v-model="controller">
-          <option value="" selected="selected">{{ $t("topology.none") }}</option>
-          <option v-for="(v, k) of controllers" :key="k" :value="k">{{k}}</option>
-        </select>
+      <div class="modal-form-grid">
+        <label class="modal-field" for="type">
+          {{ $t("topology.type") }}
+          <select id="type" v-model="topologyType" class="modal-select">
+            <option value="Single" selected="selected">{{ $t("topology.single") }}</option>
+            <option value="Linear">{{ $t("topology.linear") }}</option>
+            <option value="Tree">{{ $t("topology.tree") }}</option>
+          </select>
+        </label>
+        <label class="modal-field" for="controller">
+          {{ $t("topology.controller") }}
+          <select id="controller" v-model="controller" class="modal-select">
+            <option value="" selected="selected">{{ $t("topology.none") }}</option>
+            <option v-for="(v, k) of controllers" :key="k" :value="k">{{ k }}</option>
+          </select>
+        </label>
+        <label v-if="topologyType === 'Single'" class="modal-field" for="nDevices">
+          {{ $t("topology.hosts") }}
+          <input id="nDevices" type="number" v-model="nDevices" class="modal-input" required />
+        </label>
+        <label v-if="topologyType === 'Linear'" class="modal-field" for="nDevices">
+          {{ $t("topology.switches") }}
+          <input id="nDevices" type="number" v-model="nDevices" class="modal-input" required />
+        </label>
+        <label v-if="topologyType === 'Linear'" class="modal-field" for="nLayers">
+          {{ $t("topology.hostsPerSwitch") }}
+          <input id="nLayers" type="number" v-model="nLayers" class="modal-input" required />
+        </label>
+        <label v-if="topologyType === 'Tree'" class="modal-field" for="nLayers">
+          {{ $t("topology.layers") }}
+          <input id="nLayers" type="number" v-model="nLayers" class="modal-input" required />
+        </label>
+        <label v-if="topologyType === 'Tree'" class="modal-field" for="nDevices">
+          {{ $t("topology.fanout") }}
+          <input id="nDevices" type="number" v-model="nDevices" class="modal-input" required />
+        </label>
       </div>
-      <div v-if="topologyType === 'Single'">
-        <label for="nDevices">{{ $t("topology.hosts") }}</label>
-        <input id="nDevices" type="number" v-model="nDevices" required />
+      <div class="modal-actions">
+        <button class="modal-button modal-button--primary" type="submit">{{ $t("actions.submit") }}</button>
       </div>
-      <div v-if="topologyType === 'Linear'" class="tree-options">
-        <div>
-          <label for="nDevices">{{ $t("topology.switches") }}</label>
-          <input id="nDevices" type="number" v-model="nDevices" required />
-        </div>
-        <div>
-          <label for="nLayers">{{ $t("topology.hostsPerSwitch") }}</label>
-          <input id="nLayers" type="number" v-model="nLayers" required />
-        </div>
-      </div>
-      <div v-if="topologyType === 'Tree'" class="tree-options">
-        <div>
-          <label for="nLayers">{{ $t("topology.layers") }}</label>
-          <input id="nLayers" type="number" v-model="nLayers" required />
-        </div>
-        <div>
-          <label for="nDevices">{{ $t("topology.fanout") }}</label>
-          <input id="nDevices" type="number" v-model="nDevices" required />
-        </div>
-      </div>
-      <button class="submit-button" type="submit">{{ $t("actions.submit") }}</button>
     </form>
   </div>
 </template>
@@ -73,29 +76,7 @@
 </script>
 
 <style scoped>
-  .tree-options {
-    margin-top: 1rem;
-  }
-
-  label {
-    color: black;
-  }
-  
-  .submit-button {
-    float: right;
-  }
-
-  input {
-    width: 80px;
-  }
-
-  select:focus {
-    outline: 2px solid #777;
-    box-shadow: 0 0 0 2px #777;
-  }
-
-  select option:checked {
-    background-color: #b3b3b3;
-    color: #000;
-  }
-  </style>
+.topology-form .modal-form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+</style>

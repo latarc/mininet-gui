@@ -1,48 +1,55 @@
 <template>
-  <div class="controller-form">
-    <form class="controller-form__body" @submit.prevent="submitForm">
-      <div class="controller-form__title">
-        {{ titleText }}
+  <div class="modal-ui controller-form">
+    <form class="modal-section controller-form__body" @submit.prevent="submitForm">
+      <div class="modal-section__header">
+        <div class="modal-section__title">{{ titleText }}</div>
       </div>
-      <div class="controller-form__fields">
+      <div class="modal-form-grid">
         <template v-if="isRemote">
-          <label class="controller-form__label" for="ip">{{ $t("controller.ip") }}</label>
+          <label class="modal-field" for="ip">
+            {{ $t("controller.ip") }}
+            <input
+              id="ip"
+              class="modal-input"
+              type="text"
+              v-model="ip"
+              :disabled="isEditMode && !isEditing"
+              required
+            />
+          </label>
+        </template>
+
+        <label class="modal-field" for="port">
+          {{ $t("controller.port") }}
           <input
-            id="ip"
-            class="controller-form__input"
-            type="text"
-            v-model="ip"
-            :disabled="isEditMode && !isEditing"
+            id="port"
+            class="modal-input"
+            type="number"
+            v-model="port"
+            :disabled="(isEditMode && !isEditing) || isDefault"
             required
           />
-        </template>
-
-        <label class="controller-form__label" for="port">{{ $t("controller.port") }}</label>
-        <input
-          id="port"
-          class="controller-form__input"
-          type="number"
-          v-model="port"
-          :disabled="(isEditMode && !isEditing) || isDefault"
-          required
-        />
+        </label>
 
         <template v-if="isRyu">
-          <label class="controller-form__label" for="ryu-app">{{ $t("controller.ryuApp") }}</label>
-          <select
-            id="ryu-app"
-            class="controller-form__select"
-            v-model="ryuApp"
-            :disabled="isEditMode && !isEditing"
-            required
-          >
-            <option value="" disabled>{{ $t("controller.selectRyuApp") }}</option>
-            <option v-for="app in ryuApps" :key="app" :value="app">{{ app }}</option>
-          </select>
+          <label class="modal-field" for="ryu-app">
+            {{ $t("controller.ryuApp") }}
+            <select
+              id="ryu-app"
+              class="modal-select"
+              v-model="ryuApp"
+              :disabled="isEditMode && !isEditing"
+              required
+            >
+              <option value="" disabled>{{ $t("controller.selectRyuApp") }}</option>
+              <option v-for="app in ryuApps" :key="app" :value="app">{{ app }}</option>
+            </select>
+          </label>
         </template>
 
-        <label class="controller-form__label">{{ $t("controller.color") }}</label>
-        <div class="controller-form__colors">
+        <div class="modal-field">
+          {{ $t("controller.color") }}
+          <div class="controller-form__colors">
           <button
             v-for="color in colorChoices"
             :key="color"
@@ -54,23 +61,24 @@
           >
             <span v-if="color === colorCode" class="controller-form__color-check">✓</span>
           </button>
+          </div>
         </div>
       </div>
 
-      <div class="controller-form__actions">
+      <div class="modal-actions">
         <button
           v-if="isEditMode && !isEditing"
-          class="controller-form__submit"
+          class="modal-button"
           type="button"
           @click="startEdit"
         >
           {{ $t("actions.edit") }}
         </button>
         <div v-else-if="isEditMode" class="controller-form__edit-actions">
-          <button class="controller-form__submit" type="submit">{{ $t("actions.save") }}</button>
-          <button class="controller-form__cancel" type="button" @click="cancelEdit">{{ $t("actions.cancel") }}</button>
+          <button class="modal-button modal-button--primary" type="submit">{{ $t("actions.save") }}</button>
+          <button class="modal-button" type="button" @click="cancelEdit">{{ $t("actions.cancel") }}</button>
         </div>
-        <button v-else class="controller-form__submit" type="submit">{{ $t("actions.create") }}</button>
+        <button v-else class="modal-button modal-button--primary" type="submit">{{ $t("actions.create") }}</button>
       </div>
     </form>
   </div>
@@ -195,85 +203,9 @@ export default {
 </script>
 
 <style scoped>
-.controller-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.controller-form__body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.controller-form__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e1e1e;
-}
-
-.controller-form__fields {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-
-.controller-form__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #1e1e1e;
-}
-
-.controller-form__input,
-.controller-form__select {
-  width: 100%;
-  border: 1px solid #c8c8c8;
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 12px;
-  background: #ffffff;
-  color: #1e1e1e;
-}
-
-.controller-form__select:focus {
-  outline: 2px solid #777;
-  box-shadow: 0 0 0 2px #777;
-}
-
-.controller-form__select option:checked {
-  background-color: #b3b3b3;
-  color: #000;
-}
-
-.controller-form__actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
 .controller-form__edit-actions {
   display: flex;
   gap: 8px;
-}
-
-.controller-form__submit {
-  border: 1px solid #007acc;
-  background: #007acc;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 6px;
-}
-
-.controller-form__cancel {
-  border: 1px solid #c8c8c8;
-  background: #ffffff;
-  color: #1e1e1e;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 16px;
-  border-radius: 6px;
 }
 
 .controller-form__colors {
@@ -296,7 +228,7 @@ export default {
 }
 
 .controller-form__color.selected {
-  border-color: #111827;
+  border-color: #f8fafc;
 }
 
 .controller-form__color:disabled {

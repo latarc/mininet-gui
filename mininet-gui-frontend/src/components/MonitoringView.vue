@@ -77,6 +77,7 @@ export default {
   props: {
     graphNodes: { type: Array, default: () => [] },
     graphVersion: { type: Number, default: 0 },
+    theme: { type: String, default: "dark" },
   },
   data() {
     return {
@@ -140,6 +141,9 @@ export default {
     chartsReady() {
       return !!(this.txChart && this.rxChart);
     },
+    isLightTheme() {
+      return this.theme === "light";
+    },
   },
   watch: {
     graphNodes: {
@@ -151,6 +155,9 @@ export default {
     },
     graphVersion() {
       this.loadInterfaces();
+    },
+    theme() {
+      this.applyChartTheme();
     },
     nodes: {
       handler() {
@@ -263,32 +270,46 @@ export default {
     },
 
     createChartLayout() {
+      const bg = this.isLightTheme ? "#f5f5f5" : "#0b0f17";
+      const text = this.isLightTheme ? "#2b2b2b" : "#d1d5db";
+      const grid = this.isLightTheme ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
+      const axisLine = this.isLightTheme ? "#cfcfcf" : "#2f2f37";
+      const tick = this.isLightTheme ? "#6b6b6b" : "#9fa6af";
       return {
         margin: { t: 20, b: 30, l: 40, r: 10 },
-        plot_bgcolor: "#0b0f17",
-        paper_bgcolor: "#0b0f17",
-        font: { color: "#d1d5db" },
+        plot_bgcolor: bg,
+        paper_bgcolor: bg,
+        font: { color: text },
         xaxis: {
           title: "Time",
           type: "date",
-          color: "#d1d5db",
-          gridcolor: "rgba(255,255,255,0.08)",
-          linecolor: "#2f2f37",
-          tickcolor: "#9fa6af",
+          color: text,
+          gridcolor: grid,
+          linecolor: axisLine,
+          tickcolor: tick,
         },
         yaxis: {
           title: "Traffic (Gbps)",
           autorange: true,
-          color: "#d1d5db",
-          gridcolor: "rgba(255,255,255,0.08)",
-          linecolor: "#2f2f37",
-          tickcolor: "#9fa6af",
+          color: text,
+          gridcolor: grid,
+          linecolor: axisLine,
+          tickcolor: tick,
         },
         autosize: true,
         legend: {
-          font: { color: "#d1d5db" },
+          font: { color: text },
         },
       };
+    },
+    applyChartTheme() {
+      const layout = this.createChartLayout();
+      if (this.txChart) {
+        Plotly.relayout(this.txChart, layout);
+      }
+      if (this.rxChart) {
+        Plotly.relayout(this.rxChart, layout);
+      }
     },
     destroyCharts() {
       if (this.txChart) {
@@ -652,5 +673,65 @@ export default {
 .chart-container > div {
   width: 100%;
   height: 100%;
+}
+
+:global(.theme-light) .monitoring-toolbar {
+  background: #f5f5f5;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .monitoring-select {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .monitoring-select select {
+  background: #ffffff;
+  color: #2b2b2b;
+  border: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .monitoring-select select:focus {
+  outline: 2px solid #007acc;
+  box-shadow: 0 0 0 2px #007acc;
+}
+
+:global(.theme-light) .monitoring-toggle,
+:global(.theme-light) .monitoring-export,
+:global(.theme-light) .monitoring-clear {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .monitoring-toggle.active {
+  border-color: #007acc;
+  background: #e6f2ff;
+  color: #0b2b3b;
+}
+
+:global(.theme-light) .monitoring-export:not(:disabled):hover,
+:global(.theme-light) .monitoring-clear:not(:disabled):hover {
+  background: #efefef;
+}
+
+:global(.theme-light) .monitoring-status {
+  color: #6b6b6b;
+}
+
+:global(.theme-light) .monitoring-status.monitoring {
+  color: #2f7d46;
+}
+
+:global(.theme-light) .monitoring-status.error {
+  color: #c62828;
+}
+
+:global(.theme-light) .chart-card {
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .chart-label {
+  color: #6b6b6b;
 }
 </style>

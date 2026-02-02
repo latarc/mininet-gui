@@ -127,7 +127,7 @@
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
-              <img alt="host" class="h-10 w-10" src="@/assets/light-host.svg" draggable="false" />
+              <img alt="host" class="h-10 w-10" :src="icons.host" draggable="false" />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.host") }}</figcaption>
             </figure>
             <figure
@@ -140,7 +140,7 @@
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
-              <img alt="switch" class="h-10 w-10" src="@/assets/light-switch.svg" draggable="false" />
+              <img alt="switch" class="h-10 w-10" :src="icons.switch" draggable="false" />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.switch") }}</figcaption>
             </figure>
             <figure
@@ -156,7 +156,7 @@
               <img
                 alt="controller"
                 class="h-10 w-10"
-                src="@/assets/light-controller.svg"
+                :src="icons.controller"
                 draggable="false"
               />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.controller") }}</figcaption>
@@ -174,7 +174,7 @@
               <img
                 alt="nat"
                 class="h-10 w-10"
-                src="@/assets/light-nat.svg"
+                :src="icons.nat"
                 draggable="false"
               />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.nat") }}</figcaption>
@@ -189,7 +189,7 @@
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
-              <img alt="router" class="h-10 w-10" src="@/assets/light-router.svg" draggable="false" />
+              <img alt="router" class="h-10 w-10" :src="icons.router" draggable="false" />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.router") }}</figcaption>
             </figure>
           </div>
@@ -207,7 +207,7 @@
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
-              <img alt="switch ovs" class="h-10 w-10" src="@/assets/light-switch-ovs.svg" draggable="false" />
+              <img alt="switch ovs" class="h-10 w-10" :src="icons.switchOvs" draggable="false" />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ovsSwitch") }}</figcaption>
             </figure>
             <figure
@@ -220,7 +220,7 @@
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
-              <img alt="switch user" class="h-10 w-10" src="@/assets/light-switch-user.svg" draggable="false" />
+              <img alt="switch user" class="h-10 w-10" :src="icons.switchUser" draggable="false" />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.userSwitch") }}</figcaption>
             </figure>
             <figure
@@ -233,7 +233,7 @@
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
-              <img alt="switch ovsbridge" class="h-10 w-10" src="@/assets/light-switch-ovsbridge.svg" draggable="false" />
+              <img alt="switch ovsbridge" class="h-10 w-10" :src="icons.switchOvsBridge" draggable="false" />
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ovsBridge") }}</figcaption>
             </figure>
           </div>
@@ -255,7 +255,7 @@
                 <img
                   alt="controller remote"
                   class="h-10 w-10"
-                  src="@/assets/light-controller.svg"
+                  :src="icons.controller"
                   draggable="false"
                 />
                 <span class="controller-badge controller-badge--remote">{{ $t("nodes.remoteShort") }}</span>
@@ -276,7 +276,7 @@
                 <img
                   alt="controller ryu"
                   class="h-10 w-10"
-                  src="@/assets/light-controller.svg"
+                  :src="icons.controller"
                   draggable="false"
                 />
                 <span class="controller-badge">{{ $t("nodes.ryuShort") }}</span>
@@ -297,7 +297,7 @@
                 <img
                   alt="controller nox"
                   class="h-10 w-10"
-                  src="@/assets/light-controller.svg"
+                  :src="icons.controller"
                   draggable="false"
                 />
                 <span class="controller-badge">{{ $t("nodes.noxShort") }}</span>
@@ -325,6 +325,24 @@
 </template>
 
 <script>
+import hostImgLight from "@/assets/light-host.svg";
+import switchImgLight from "@/assets/light-switch.svg";
+import controllerImgLight from "@/assets/light-controller.svg";
+import natImgLight from "@/assets/light-nat.svg";
+import routerImgLight from "@/assets/light-router.svg";
+import switchOvsImgLight from "@/assets/light-switch-ovs.svg";
+import switchUserImgLight from "@/assets/light-switch-user.svg";
+import switchOvsBridgeImgLight from "@/assets/light-switch-ovsbridge.svg";
+
+import hostImgDark from "@/assets/host.svg";
+import switchImgDark from "@/assets/switch.svg";
+import controllerImgDark from "@/assets/controller.svg";
+import natImgDark from "@/assets/nat.svg";
+import routerImgDark from "@/assets/router.svg";
+import switchOvsImgDark from "@/assets/switch-ovs.svg";
+import switchUserImgDark from "@/assets/switch-user.svg";
+import switchOvsBridgeImgDark from "@/assets/switch-ovsbridge.svg";
+
 export default {
   props: {
     networkStarted: { type: Boolean, default: true },
@@ -334,6 +352,7 @@ export default {
     addEdgeMode: { type: Boolean, default: false },
     pingallRunning: { type: Boolean, default: false },
     iperfRunning: { type: Boolean, default: false },
+    theme: { type: String, default: "dark" },
   },
   data() {
     return {
@@ -351,6 +370,33 @@ export default {
       return {
         top: `${this.tooltip.top}px`,
         left: `${this.tooltip.left}px`,
+      };
+    },
+    isLightTheme() {
+      return this.theme === "light";
+    },
+    icons() {
+      if (this.isLightTheme) {
+        return {
+          host: hostImgDark,
+          switch: switchImgDark,
+          controller: controllerImgDark,
+          nat: natImgDark,
+          router: routerImgDark,
+          switchOvs: switchOvsImgDark,
+          switchUser: switchUserImgDark,
+          switchOvsBridge: switchOvsBridgeImgDark,
+        };
+      }
+      return {
+        host: hostImgLight,
+        switch: switchImgLight,
+        controller: controllerImgLight,
+        nat: natImgLight,
+        router: routerImgLight,
+        switchOvs: switchOvsImgLight,
+        switchUser: switchUserImgLight,
+        switchOvsBridge: switchOvsBridgeImgLight,
       };
     },
   },
@@ -615,4 +661,67 @@ export default {
   opacity: 0.9;
 }
 
+:global(.theme-light) :deep(.side) {
+  background: #f2f2f2 !important;
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) :deep(.sidebar-group h2) {
+  color: #2b2b2b;
+  border-color: #d0d0d0;
+}
+
+:global(.theme-light) :deep(.palette-title) {
+  color: #6b6b6b;
+}
+
+:global(.theme-light) :deep(figcaption) {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) :deep(.button-control-network) {
+  background: #ffffff !important;
+  border-color: #d0d0d0 !important;
+  color: #2b2b2b;
+}
+
+:global(.theme-light) :deep(.button-control-network:hover) {
+  background: #efefef !important;
+}
+
+:global(.theme-light) :deep(.border-\[\#333\]) {
+  border-color: #d0d0d0;
+}
+
+:global(.theme-light) :deep(.icon-button) {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) :deep(.icon-button:hover) {
+  background-color: #e6e6e6;
+}
+
+:global(.theme-light) :deep(.side-scroll) {
+  scrollbar-color: #007acc #f2f2f2;
+}
+
+:global(.theme-light) :deep(.side-scroll::-webkit-scrollbar-track) {
+  background: #f2f2f2;
+}
+
+:global(.theme-light) :deep(.sidebar-tooltip) {
+  background: #2b2b2b;
+  color: #ffffff;
+  border-color: #1f1f1f;
+}
+
+:global(.theme-light) :deep(.side input),
+:global(.theme-light) :deep(.side select) {
+  color: #2b2b2b !important;
+}
+
+:global(.theme-light) :deep(.side select:focus) {
+  outline: 2px solid #007acc;
+  box-shadow: 0 0 0 2px #007acc;
+}
 </style>

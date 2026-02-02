@@ -31,6 +31,14 @@ body {
   background-color: var(--oxford-blue);
 }
 
+html.theme-light body {
+  background-color: #f5f5f5;
+}
+
+html.theme-dark body {
+  background-color: var(--oxford-blue);
+}
+
 #app {
   /* display: flex;
     flex-direction: column; */

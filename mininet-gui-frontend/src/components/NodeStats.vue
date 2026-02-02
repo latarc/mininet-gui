@@ -7,9 +7,7 @@ export default {
   data() {
     return {
       activeTab: "details",
-      tabs: [
-        { key: "details", labelKey: "node.tabs.details" }
-      ],
+      tabs: [{ key: "details", labelKey: "node.tabs.details" }],
       localStats: this.stats,
       isEditingHost: false,
       hostEdit: {
@@ -103,7 +101,9 @@ export default {
       this.activeTab = tabKey;
     },
     formatMatchFields(matchFields) {
-      return Object.entries(matchFields).map(([key, value]) => `${key}: ${value}`).join(', ');
+      return Object.entries(matchFields || {})
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(", ");
     },
     startHostEdit() {
       if (!this.isHost) return;
@@ -228,465 +228,6 @@ export default {
         this.flowBusy = false;
       }
     },
-  },
-  created() {
-    if (this.stats?.type === "sw" || this.stats?.type === "switch") {
-      this.tabs.push({ key: "flows", labelKey: "node.tabs.flowTable" });
-    }
-    if (this.stats?.type === "host") {
-      this.tabs.push({ key: "arp", labelKey: "node.tabs.arpTable" });
-    }
-  }
-};
-</script>
-
-<template>
-  <div class="tabs">
-      <button v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="setTab(tab.key)">
-      {{ tab.labelKey ? $t(tab.labelKey) : tab.label }}
-      </button>
-  </div>
-
-  <div class="tab-content">
-    <div v-if="isDetailsTab">
-      <div v-if="isController" class="host-edit">
-        <button @click="triggerControllerEdit">{{ $t("node.editController") }}</button>
-      </div>
-      <div v-if="isSwitch" class="host-edit">
-        <label class="host-edit-label">
-          {{ $t("node.openflowVersion") }}
-          <select v-model="switchOpenflow" class="host-edit-select" :disabled="!canSetOpenflow">
-            <option value="">{{ $t("node.openflowAuto") }}</option>
-            <option value="OpenFlow10">OpenFlow10</option>
-            <option value="OpenFlow11">OpenFlow11</option>
-            <option value="OpenFlow12">OpenFlow12</option>
-            <option value="OpenFlow13">OpenFlow13</option>
-            <option value="OpenFlow14">OpenFlow14</option>
-            <option value="OpenFlow15">OpenFlow15</option>
-          </select>
-        </label>
-        <button :disabled="switchOpenflowBusy || !canSetOpenflow" @click="saveSwitchOpenflow">
-          {{ $t("actions.save") }}
-        </button>
-        <span v-if="switchOpenflowSuccess" class="flow-success">{{ $t("actions.saved") }}</span>
-        <span v-if="switchOpenflowError" class="flow-error">{{ switchOpenflowError }}</span>
-        <span v-if="!canSetOpenflow" class="flow-error">{{ $t("node.openflowUnsupported") }}</span>
-      </div>
-      <div v-if="isHost" class="host-edit">
-        <button v-if="!isEditingHost" @click="startHostEdit">{{ $t("actions.edit") }}</button>
-        <div v-else class="host-edit-actions">
-          <button :disabled="hostEditBusy" @click="saveHostEdit">{{ $t("actions.save") }}</button>
-          <button :disabled="hostEditBusy" @click="cancelHostEdit">{{ $t("actions.cancel") }}</button>
-        </div>
-        <p v-if="hostEditError" class="flow-error">{{ hostEditError }}</p>
-      </div>
-      <div v-if="isHost && isEditingHost" class="host-edit-fields">
-        <label>
-          {{ $t("node.hostIp") }}
-          <input v-model="hostEdit.ip" type="text" class="host-edit-input" />
-        </label>
-        <label>
-          {{ $t("node.defaultRouteType") }}
-          <select v-model="hostEdit.routeType" class="host-edit-select">
-            <option value="dev">{{ $t("node.routeDevice") }}</option>
-            <option value="ip">{{ $t("node.routeGateway") }}</option>
-          </select>
-        </label>
-        <label v-if="hostEdit.routeType === 'dev'">
-          {{ $t("node.interface") }}
-          <select v-model="hostEdit.routeDev" class="host-edit-select">
-            <option value="">{{ $t("node.selectInterface") }}</option>
-            <option v-for="intf in (localStats?.interfaces || [])" :key="intf" :value="intf">
-              {{ intf }}
-            </option>
-          </select>
-        </label>
-        <label v-if="hostEdit.routeType === 'ip'">
-          {{ $t("node.gatewayIp") }}
-          <input v-model="hostEdit.routeIp" type="text" class="host-edit-input" placeholder="10.0.0.254" />
-        </label>
-      </div>
-      <ul class="stats-list">
-        <li v-for="(value, key) in filteredDetails" :key="key">
-          <strong>{{ key }}:</strong>
-          <span>{{ value }}</span>
-        </li>
-        <li v-if="isHost && !isEditingHost">
-          <strong>{{ $t("node.defaultRoute") }}:</strong> {{ localStats?.default_route || "" }}
-        </li>
-      </ul>
-    </div>
-
-    <div v-if="isFlowTableTab">
-      <div class="flow-actions flow-actions-top">
-        <button :disabled="flowBusy" @click="showFlowForm = !showFlowForm">
-          {{ showFlowForm ? $t("node.hideFlowForm") : $t("node.addFlow") }}
-        </button>
-        <button :disabled="flowBusy" @click="refreshFlows">{{ $t("actions.refresh") }}</button>
-      </div>
-      <div v-if="showFlowForm" class="flow-editor">
-        <div class="flow-fields">
-          <label>
-            {{ $t("node.flow.match") }}
-            <input v-model="flowForm.match" type="text" placeholder="ip,nw_src=10.0.0.1" />
-          </label>
-          <label>
-            {{ $t("node.flow.actions") }}
-            <input v-model="flowForm.actions" type="text" placeholder="output:2" />
-          </label>
-          <label>
-            {{ $t("node.flow.priority") }}
-            <input v-model="flowForm.priority" type="number" min="0" placeholder="100" />
-          </label>
-          <label>
-            {{ $t("node.flow.table") }}
-            <input v-model="flowForm.table" type="number" min="0" placeholder="0" />
-          </label>
-          <label>
-            {{ $t("node.flow.idleTimeout") }}
-            <input v-model="flowForm.idle_timeout" type="number" min="0" placeholder="30" />
-          </label>
-          <label>
-            {{ $t("node.flow.hardTimeout") }}
-            <input v-model="flowForm.hard_timeout" type="number" min="0" placeholder="0" />
-          </label>
-          <label>
-            {{ $t("node.flow.cookie") }}
-            <input v-model="flowForm.cookie" type="text" placeholder="0x1" />
-          </label>
-          <label>
-            {{ $t("node.flow.openflow") }}
-            <select v-model="flowForm.of_version">
-              <option value="">{{ $t("node.flow.auto") }}</option>
-              <option value="OpenFlow10">OpenFlow10</option>
-              <option value="OpenFlow11">OpenFlow11</option>
-              <option value="OpenFlow12">OpenFlow12</option>
-              <option value="OpenFlow13">OpenFlow13</option>
-              <option value="OpenFlow14">OpenFlow14</option>
-              <option value="OpenFlow15">OpenFlow15</option>
-            </select>
-          </label>
-        </div>
-        <div class="flow-actions">
-          <button :disabled="flowBusy" @click="submitFlow">{{ $t("node.addFlow") }}</button>
-        </div>
-      </div>
-      <p v-if="flowError" class="flow-error">{{ flowError }}</p>
-      <div class="flow-table">
-        <table>
-          <thead>
-            <tr>
-              <th>{{ $t("node.flow.headers.flowId") }}</th>
-              <th>{{ $t("node.flow.headers.cookie") }}</th>
-              <th>{{ $t("node.flow.headers.duration") }}</th>
-              <th>{{ $t("node.flow.headers.table") }}</th>
-              <th>{{ $t("node.flow.headers.packets") }}</th>
-              <th>{{ $t("node.flow.headers.bytes") }}</th>
-              <th>{{ $t("node.flow.headers.idleTimeout") }}</th>
-              <th>{{ $t("node.flow.headers.priority") }}</th>
-              <th>{{ $t("node.flow.headers.matchFields") }}</th>
-              <th>{{ $t("node.flow.headers.actions") }}</th>
-              <th>{{ $t("actions.delete") }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(flow, index) in (localStats?.flow_table || [])" :key="index">
-              <td>{{ index + 1 }}</td>
-              <td>{{ flow.cookie }}</td>
-              <td>{{ flow.duration }}</td>
-              <td>{{ flow.table }}</td>
-              <td>{{ flow.n_packets }}</td>
-              <td>{{ flow.n_bytes }}</td>
-              <td>{{ flow.idle_timeout }}</td>
-              <td>{{ flow.priority }}</td>
-              <td>{{ formatMatchFields(flow.match_fields) }}</td>
-              <td>{{ flow.actions }}</td>
-              <td>
-                <button class="flow-delete" :disabled="flowBusy" @click="deleteFlow(flow, index + 1)">
-                  <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="flow-dump">
-        <h4>{{ $t("node.flow.rawDump") }}</h4>
-        <pre>{{ flowDump }}</pre>
-      </div>
-    </div>
-
-    <div v-if="isArpTableTab">
-      <div class="arp-table">
-        <table>
-          <thead>
-            <tr>
-              <th>{{ $t("node.arp.ip") }}</th>
-              <th>{{ $t("node.arp.mac") }}</th>
-              <th>{{ $t("node.arp.interface") }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="entry in (localStats?.arp_table || [])" :key="entry.ip">
-              <td>{{ entry.ip }}</td>
-              <td>{{ entry.mac }}</td>
-              <td>{{ entry.interface }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped>
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.tabs button {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  background: #f8f8f8;
-  cursor: pointer;
-  transition: background 0.2s ease-in-out;
-}
-
-.tabs button:hover {
-  background: #e8e8e8;
-}
-
-.tabs button.active {
-  background: #42b983;
-  color: white;
-  font-weight: bold;
-}
-
-.host-edit {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.host-edit-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #b8b8b8;
-}
-
-.host-edit-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.host-edit-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.host-edit-fields label {
-  display: flex;
-  flex-direction: column;
-  font-size: 12px;
-  color: #b8b8b8;
-  gap: 4px;
-}
-
-.host-edit-input {
-  padding: 6px 8px;
-  border: 1px solid #333;
-  border-radius: 6px;
-  font-size: 12px;
-  background: #1e1e1e;
-  color: #e6e6e6;
-  min-width: 160px;
-}
-
-.host-edit-input::placeholder {
-  color: #777;
-}
-
-.host-edit-select {
-  padding: 6px 8px;
-  border: 1px solid #333;
-  border-radius: 6px;
-  font-size: 12px;
-  background: #1e1e1e;
-  color: #e6e6e6;
-}
-
-.host-edit-select:focus {
-  outline: 2px solid #777;
-  box-shadow: 0 0 0 2px #777;
-}
-
-.host-edit-select option:checked {
-  background-color: #b3b3b3;
-  color: #000;
-}
-
-.tab-content {
-  width: 80vw;
-  max-height: 400px;
-  overflow-y: auto;
-  text-align: left;
-}
-
-.flow-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #fafafa;
-}
-
-.flow-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-}
-
-.flow-fields label {
-  display: flex;
-  flex-direction: column;
-  font-size: 12px;
-  color: #555;
-  gap: 4px;
-}
-
-.flow-fields input,
-.flow-fields select {
-  padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 12px;
-}
-
-.flow-fields select:focus {
-  outline: 2px solid #777;
-  box-shadow: 0 0 0 2px #777;
-}
-
-.flow-fields select option:checked {
-  background-color: #b3b3b3;
-  color: #000;
-}
-
-.flow-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.flow-actions button,
-.flow-table button {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #f2f2f2;
-  cursor: pointer;
-}
-
-.flow-actions button:hover,
-.flow-table button:hover {
-  background: #e6e6e6;
-}
-
-.flow-actions button:disabled,
-.flow-table button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.flow-actions-top {
-  margin-bottom: 12px;
-}
-
-.flow-delete {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid #f5b5b5;
-  background: #ffecec;
-  color: #c62828;
-  border-radius: 6px;
-}
-
-.flow-delete:hover {
-  background: #ffd9d9;
-}
-
-.flow-error {
-  color: #b00020;
-  font-size: 12px;
-}
-
-.flow-success {
-  color: #0f7a38;
-  font-size: 12px;
-}
-
-.flow-dump {
-  margin-top: 12px;
-  padding: 10px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background: #fcfcfc;
-}
-
-.flow-dump pre {
-  white-space: pre-wrap;
-  font-size: 12px;
-}
-
-.stats-list, .flow-table, .arp-table {
-  list-style: none;
-  padding: 0;
-}
-
-.flow-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.flow-table th, .flow-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  text-align: left;
-}
-
-.flow-table {
-  max-width: 100%;
-  overflow: auto;
-}
-
-.arp-table table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.arp-table th, .arp-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-.arp-table th {
-  background: #f1f1f1;
-  text-align: left;
-}
-</style>
     async saveSwitchOpenflow() {
       if (!this.isSwitch || !this.localStats?.id) return;
       this.switchOpenflowBusy = true;
@@ -714,3 +255,300 @@ export default {
         }
       }
     },
+  },
+  created() {
+    if (this.stats?.type === "sw" || this.stats?.type === "switch") {
+      this.tabs.push({ key: "flows", labelKey: "node.tabs.flowTable" });
+    }
+    if (this.stats?.type === "host") {
+      this.tabs.push({ key: "arp", labelKey: "node.tabs.arpTable" });
+    }
+  },
+};
+</script>
+
+<template>
+  <div class="modal-ui node-stats">
+    <div class="modal-tabs">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="modal-tab"
+        :class="{ 'is-active': activeTab === tab.key }"
+        @click="setTab(tab.key)"
+      >
+        {{ tab.labelKey ? $t(tab.labelKey) : tab.label }}
+      </button>
+    </div>
+
+    <div class="tab-content modal-tab-panels">
+      <div class="modal-ui tab-panel" :class="{ 'is-hidden': !isDetailsTab }">
+        <div v-if="isController" class="modal-section">
+          <div class="modal-section__header">
+            <div class="modal-section__title">{{ $t("node.controllerSection") }}</div>
+            <button class="modal-button" @click="triggerControllerEdit">
+              {{ $t("node.editController") }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="isSwitch" class="modal-section">
+          <div class="modal-section__header">
+            <div class="modal-section__title">{{ $t("node.switchConfigSection") }}</div>
+            <span class="modal-muted">{{ $t("node.openflowVersion") }}</span>
+          </div>
+          <div class="modal-form-grid">
+            <label class="modal-field">
+              {{ $t("node.openflowVersion") }}
+              <select v-model="switchOpenflow" class="modal-select" :disabled="!canSetOpenflow">
+                <option value="">{{ $t("node.openflowAuto") }}</option>
+                <option value="OpenFlow10">OpenFlow10</option>
+                <option value="OpenFlow11">OpenFlow11</option>
+                <option value="OpenFlow12">OpenFlow12</option>
+                <option value="OpenFlow13">OpenFlow13</option>
+                <option value="OpenFlow14">OpenFlow14</option>
+                <option value="OpenFlow15">OpenFlow15</option>
+              </select>
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button class="modal-button modal-button--primary" :disabled="switchOpenflowBusy || !canSetOpenflow" @click="saveSwitchOpenflow">
+              {{ $t("actions.save") }}
+            </button>
+            <span v-if="switchOpenflowSuccess" class="modal-success">{{ $t("actions.saved") }}</span>
+            <span v-if="switchOpenflowError" class="modal-error">{{ switchOpenflowError }}</span>
+            <span v-if="!canSetOpenflow" class="modal-error">{{ $t("node.openflowUnsupported") }}</span>
+          </div>
+        </div>
+
+        <div v-if="isHost" class="modal-section">
+          <div class="modal-section__header">
+            <div class="modal-section__title">{{ $t("node.hostConfigSection") }}</div>
+            <div class="modal-actions">
+              <button v-if="!isEditingHost" class="modal-button" @click="startHostEdit">
+                {{ $t("actions.edit") }}
+              </button>
+              <div v-else class="modal-actions">
+                <button class="modal-button modal-button--primary" :disabled="hostEditBusy" @click="saveHostEdit">
+                  {{ $t("actions.save") }}
+                </button>
+                <button class="modal-button" :disabled="hostEditBusy" @click="cancelHostEdit">
+                  {{ $t("actions.cancel") }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <p v-if="hostEditError" class="modal-error">{{ hostEditError }}</p>
+          <div v-if="isEditingHost" class="modal-form-grid">
+            <label class="modal-field">
+              {{ $t("node.hostIp") }}
+              <input v-model="hostEdit.ip" type="text" class="modal-input" />
+            </label>
+            <label class="modal-field">
+              {{ $t("node.defaultRouteType") }}
+              <select v-model="hostEdit.routeType" class="modal-select">
+                <option value="dev">{{ $t("node.routeDevice") }}</option>
+                <option value="ip">{{ $t("node.routeGateway") }}</option>
+              </select>
+            </label>
+            <label v-if="hostEdit.routeType === 'dev'" class="modal-field">
+              {{ $t("node.interface") }}
+              <select v-model="hostEdit.routeDev" class="modal-select">
+                <option value="">{{ $t("node.selectInterface") }}</option>
+                <option v-for="intf in (localStats?.interfaces || [])" :key="intf" :value="intf">
+                  {{ intf }}
+                </option>
+              </select>
+            </label>
+            <label v-if="hostEdit.routeType === 'ip'" class="modal-field">
+              {{ $t("node.gatewayIp") }}
+              <input v-model="hostEdit.routeIp" type="text" class="modal-input" placeholder="10.0.0.254" />
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section__header">
+            <div class="modal-section__title">{{ $t("node.detailsSection") }}</div>
+          </div>
+          <div class="modal-table__wrapper">
+            <table class="modal-table modal-table--compact">
+              <tbody>
+                <tr v-for="(value, key) in filteredDetails" :key="key">
+                  <th scope="row">{{ key }}</th>
+                  <td>{{ value }}</td>
+                </tr>
+                <tr v-if="isHost && !isEditingHost">
+                  <th scope="row">{{ $t("node.defaultRoute") }}</th>
+                  <td>{{ localStats?.default_route || "" }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-ui tab-panel" :class="{ 'is-hidden': !isFlowTableTab }">
+        <div class="modal-section">
+          <div class="modal-section__header">
+            <div class="modal-section__title">{{ $t("node.flowTableSection") }}</div>
+            <div class="modal-actions">
+              <button class="modal-button" :disabled="flowBusy" @click="showFlowForm = !showFlowForm">
+                {{ showFlowForm ? $t("node.hideFlowForm") : $t("node.addFlow") }}
+              </button>
+              <button class="modal-button" :disabled="flowBusy" @click="refreshFlows">{{ $t("actions.refresh") }}</button>
+            </div>
+          </div>
+          <div v-if="showFlowForm" class="flow-editor">
+            <div class="modal-form-grid">
+              <label class="modal-field">
+                {{ $t("node.flow.match") }}
+                <input v-model="flowForm.match" type="text" class="modal-input" placeholder="ip,nw_src=10.0.0.1" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.actions") }}
+                <input v-model="flowForm.actions" type="text" class="modal-input" placeholder="output:2" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.priority") }}
+                <input v-model="flowForm.priority" type="number" min="0" class="modal-input" placeholder="100" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.table") }}
+                <input v-model="flowForm.table" type="number" min="0" class="modal-input" placeholder="0" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.idleTimeout") }}
+                <input v-model="flowForm.idle_timeout" type="number" min="0" class="modal-input" placeholder="30" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.hardTimeout") }}
+                <input v-model="flowForm.hard_timeout" type="number" min="0" class="modal-input" placeholder="0" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.cookie") }}
+                <input v-model="flowForm.cookie" type="text" class="modal-input" placeholder="0x1" />
+              </label>
+              <label class="modal-field">
+                {{ $t("node.flow.openflow") }}
+                <select v-model="flowForm.of_version" class="modal-select">
+                  <option value="">{{ $t("node.flow.auto") }}</option>
+                  <option value="OpenFlow10">OpenFlow10</option>
+                  <option value="OpenFlow11">OpenFlow11</option>
+                  <option value="OpenFlow12">OpenFlow12</option>
+                  <option value="OpenFlow13">OpenFlow13</option>
+                  <option value="OpenFlow14">OpenFlow14</option>
+                  <option value="OpenFlow15">OpenFlow15</option>
+                </select>
+              </label>
+            </div>
+            <div class="modal-actions">
+              <button class="modal-button modal-button--primary" :disabled="flowBusy" @click="submitFlow">{{ $t("node.addFlow") }}</button>
+            </div>
+          </div>
+          <p v-if="flowError" class="modal-error">{{ flowError }}</p>
+          <div class="modal-table__wrapper">
+            <table class="modal-table">
+              <thead>
+                <tr>
+                  <th>{{ $t("node.flow.headers.flowId") }}</th>
+                  <th>{{ $t("node.flow.headers.cookie") }}</th>
+                  <th>{{ $t("node.flow.headers.duration") }}</th>
+                  <th>{{ $t("node.flow.headers.table") }}</th>
+                  <th>{{ $t("node.flow.headers.packets") }}</th>
+                  <th>{{ $t("node.flow.headers.bytes") }}</th>
+                  <th>{{ $t("node.flow.headers.idleTimeout") }}</th>
+                  <th>{{ $t("node.flow.headers.priority") }}</th>
+                  <th>{{ $t("node.flow.headers.matchFields") }}</th>
+                  <th>{{ $t("node.flow.headers.actions") }}</th>
+                  <th>{{ $t("actions.delete") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(flow, index) in (localStats?.flow_table || [])" :key="index">
+                  <td>{{ index + 1 }}</td>
+                  <td>{{ flow.cookie }}</td>
+                  <td>{{ flow.duration }}</td>
+                  <td>{{ flow.table }}</td>
+                  <td>{{ flow.n_packets }}</td>
+                  <td>{{ flow.n_bytes }}</td>
+                  <td>{{ flow.idle_timeout }}</td>
+                  <td>{{ flow.priority }}</td>
+                  <td>{{ formatMatchFields(flow.match_fields) }}</td>
+                  <td>{{ flow.actions }}</td>
+                  <td>
+                    <button class="modal-button modal-button--danger flow-delete" :disabled="flowBusy" @click="deleteFlow(flow, index + 1)">
+                      <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="flow-dump">
+            <div class="modal-section__title">{{ $t("node.flow.rawDump") }}</div>
+            <pre class="modal-pre">{{ flowDump }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-ui tab-panel" :class="{ 'is-hidden': !isArpTableTab }">
+        <div class="modal-section">
+          <div class="modal-section__header">
+            <div class="modal-section__title">{{ $t("node.arpTableSection") }}</div>
+          </div>
+          <div class="modal-table__wrapper">
+            <table class="modal-table">
+              <thead>
+                <tr>
+                  <th>{{ $t("node.arp.ip") }}</th>
+                  <th>{{ $t("node.arp.mac") }}</th>
+                  <th>{{ $t("node.arp.interface") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="entry in (localStats?.arp_table || [])" :key="entry.ip">
+                  <td>{{ entry.ip }}</td>
+                  <td>{{ entry.mac }}</td>
+                  <td>{{ entry.interface }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.node-stats {
+  min-width: 520px;
+}
+
+.tab-content {
+  width: 80vw;
+  max-height: 420px;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.flow-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.flow-delete {
+  padding: 4px 8px;
+}
+
+.flow-dump {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+</style>

@@ -1,69 +1,87 @@
 <template>
-  <div class="link-modal">
-    <div class="link-header">
-      <div class="link-title">{{ linkLabel }}</div>
-      <button class="link-refresh" type="button" :disabled="statsBusy" @click="loadStats">
-        {{ $t("actions.refresh") }}
+  <div class="modal-ui link-modal">
+    <div class="modal-tabs">
+      <button type="button" class="modal-tab" :class="{ 'is-active': activeTab === 'options' }" @click="activeTab = 'options'">
+        {{ $t("link.optionsTitle") }}
+      </button>
+      <button type="button" class="modal-tab" :class="{ 'is-active': activeTab === 'stats' }" @click="activeTab = 'stats'">
+        {{ $t("link.statsTitle") }}
       </button>
     </div>
 
-    <div class="link-section">
-      <h4>{{ $t("link.optionsTitle") }}</h4>
-      <div class="link-form">
-        <label>
+    <div class="modal-tab-panels">
+      <div class="modal-section tab-panel" :class="{ 'is-hidden': activeTab !== 'options' }">
+      <div class="modal-section__header">
+        <div class="modal-section__title">{{ linkLabel }}</div>
+        <span class="modal-muted">{{ $t("link.optionsTitle") }}</span>
+      </div>
+      <div class="modal-form-grid">
+        <label class="modal-field">
           {{ $t("link.bandwidth") }}
-          <input v-model="form.bw" type="number" min="0" step="1" />
+          <input v-model="form.bw" type="number" min="0" step="1" class="modal-input" />
         </label>
-        <label>
+        <label class="modal-field">
           {{ $t("link.delay") }}
-          <input v-model="form.delay" type="number" min="0" step="1" />
+          <input v-model="form.delay" type="number" min="0" step="1" class="modal-input" />
         </label>
-        <label>
+        <label class="modal-field">
           {{ $t("link.jitter") }}
-          <input v-model="form.jitter" type="number" min="0" step="1" />
+          <input v-model="form.jitter" type="number" min="0" step="1" class="modal-input" />
         </label>
-        <label>
+        <label class="modal-field">
           {{ $t("link.loss") }}
-          <input v-model="form.loss" type="number" min="0" max="100" step="0.1" />
+          <input v-model="form.loss" type="number" min="0" max="100" step="0.1" class="modal-input" />
         </label>
-        <label>
+        <label class="modal-field">
           {{ $t("link.maxQueue") }}
-          <input v-model="form.max_queue_size" type="number" min="0" step="1" />
+          <input v-model="form.max_queue_size" type="number" min="0" step="1" class="modal-input" />
         </label>
-        <label class="link-checkbox">
+        <label class="modal-field link-checkbox">
           <input v-model="form.use_htb" type="checkbox" />
-          {{ $t("link.useHtb") }}
+          <span>{{ $t("link.useHtb") }}</span>
         </label>
       </div>
-      <div class="link-actions">
-        <button type="button" class="link-save" :disabled="saveBusy" @click="saveOptions">
+      <div class="modal-actions">
+        <button type="button" class="modal-button modal-button--primary" :disabled="saveBusy" @click="saveOptions">
           {{ saveBusy ? $t("actions.saving") : $t("link.saveOptions") }}
         </button>
-        <span v-if="saveError" class="link-error">{{ saveError }}</span>
-        <span v-else-if="saveSuccess" class="link-success">{{ $t("actions.saved") }}</span>
+        <span v-if="saveError" class="modal-error">{{ saveError }}</span>
+        <span v-else-if="saveSuccess" class="modal-success">{{ $t("actions.saved") }}</span>
       </div>
-    </div>
+      </div>
 
-    <div class="link-section">
-      <h4>{{ $t("link.statsTitle") }}</h4>
-      <div v-if="statsError" class="link-error">{{ statsError }}</div>
+      <div class="modal-section tab-panel" :class="{ 'is-hidden': activeTab !== 'stats' }">
+      <div class="modal-section__header">
+        <div class="modal-section__title">{{ $t("link.statsTitle") }}</div>
+        <button class="modal-button" type="button" :disabled="statsBusy" @click="loadStats">
+          {{ $t("actions.refresh") }}
+        </button>
+      </div>
+      <div v-if="statsError" class="modal-error">{{ statsError }}</div>
       <div v-else class="link-stats">
-        <div v-if="stats?.intfs?.length" class="link-stats-table">
-          <div class="link-stats-row header">
-            <span>{{ $t("link.interface") }}</span>
-            <span>{{ $t("link.tx") }}</span>
-            <span>{{ $t("link.rx") }}</span>
-          </div>
-          <div v-for="intf in stats.intfs" :key="intf.name" class="link-stats-row">
-            <span>{{ intf.name }}</span>
-            <span>{{ formatBytes(intf.tx_bytes) }}</span>
-            <span>{{ formatBytes(intf.rx_bytes) }}</span>
-          </div>
+        <div v-if="stats?.intfs?.length" class="modal-table__wrapper">
+          <table class="modal-table">
+            <thead>
+              <tr>
+                <th>{{ $t("link.interface") }}</th>
+                <th>{{ $t("link.tx") }}</th>
+                <th>{{ $t("link.rx") }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="intf in stats.intfs" :key="intf.name">
+                <td>{{ intf.name }}</td>
+                <td>{{ formatBytes(intf.tx_bytes) }}</td>
+                <td>{{ formatBytes(intf.rx_bytes) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div v-else class="link-empty">{{ $t("link.noStats") }}</div>
-        <div class="link-timestamp" v-if="stats?.timestamp">
+        <div v-else class="modal-muted">{{ $t("link.noStats") }}</div>
+        <div class="modal-muted link-timestamp" v-if="stats?.timestamp">
           {{ $t("link.updatedAt", { time: formatTimestamp(stats.timestamp) }) }}
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -79,6 +97,7 @@ export default {
   emits: ["linkUpdated"],
   data() {
     return {
+      activeTab: "stats",
       form: {
         bw: "",
         delay: "",
@@ -199,47 +218,7 @@ export default {
 
 <style scoped>
 .link-modal {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  color: #111827;
-}
-
-.link-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.link-title {
-  font-weight: 600;
-}
-
-.link-section h4 {
-  margin: 0 0 8px;
-  font-weight: 600;
-}
-
-.link-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
-  gap: 10px 16px;
-}
-
-.link-form label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.85rem;
-}
-
-.link-form input[type="number"] {
-  background: #1e1e1e;
-  color: #e5e7eb;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  padding: 6px 8px;
+  min-width: 420px;
 }
 
 .link-checkbox {
@@ -248,64 +227,7 @@ export default {
   gap: 8px;
 }
 
-.link-actions {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.link-save,
-.link-refresh {
-  border: 1px solid #2a2a2a;
-  background: #1a1a1a;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.link-save:disabled,
-.link-refresh:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.link-error {
-  color: #ff6b6b;
-  font-size: 0.85rem;
-}
-
-.link-success {
-  color: #9be2a5;
-  font-size: 0.85rem;
-}
-
-.link-stats-table {
-  display: grid;
-  gap: 6px;
-}
-
-.link-stats-row {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-.link-stats-row.header {
-  font-weight: 600;
-  color: #9da9b7;
-}
-
-.link-empty {
-  color: #8a8a8a;
-  font-size: 0.85rem;
-}
-
 .link-timestamp {
   margin-top: 8px;
-  font-size: 0.75rem;
-  color: #8a8a8a;
 }
 </style>

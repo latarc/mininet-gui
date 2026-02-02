@@ -33,6 +33,7 @@
     "showHostIp": "Mostrar IPs dos hosts",
     "showSwitchDpids": "Mostrar DPIDs dos switches",
     "showPortLabels": "Mostrar rótulos de porta",
+    "lightTheme": "Tema claro",
     "usage": "Uso",
     "openDocs": "Abrir documentação",
     "about": "Sobre"
@@ -70,13 +71,26 @@
     "language": "Idioma",
     "openaiKey": "Chave da API OpenAI",
     "defaultLinkAttributes": "Atributos Padrão do Link",
-    "defaultOpenflow": "Versão OpenFlow padrão"
+    "defaultOpenflow": "Versão OpenFlow padrão",
+    "lightTheme": "Tema claro",
+    "tabs": {
+      "view": "Visualização",
+      "defaults": "Padrões",
+      "integrations": "Integrações"
+    },
+    "viewTitle": "Visibilidade",
+    "defaultsTitle": "Padrões",
+    "integrationsTitle": "Integrações"
   },
   "language": {
     "english": "Inglês",
     "portuguese": "Português"
   },
   "iperf": {
+    "configTab": "Configuração",
+    "resultsTab": "Resultados",
+    "configTitle": "Configuração do Iperf",
+    "configHint": "Selecione cliente/servidor e parâmetros antes de executar.",
     "client": "Cliente",
     "selectClient": "Selecione o host cliente",
     "server": "Servidor",
@@ -89,6 +103,9 @@
     "running": "Executando...",
     "result": "Resultado",
     "resultsTitle": "Resultados do Iperf",
+    "resultReady": "Última execução concluída.",
+    "noResult": "Sem resultados.",
+    "noResultBody": "Execute o iperf para ver os resultados aqui.",
     "errorDifferentHosts": "Cliente e servidor devem ser hosts diferentes.",
     "errorAlreadyRunning": "Iperf já está em execução.",
     "errorFailed": "Falha ao executar iperf."
@@ -268,6 +285,12 @@
   },
   "node": {
     "editController": "Editar Controlador",
+    "controllerSection": "Controlador",
+    "switchConfigSection": "Configuração do Switch",
+    "hostConfigSection": "Configuração do Host",
+    "detailsSection": "Detalhes",
+    "flowTableSection": "Tabela de Fluxos",
+    "arpTableSection": "Tabela ARP",
     "hostIp": "IP do Host",
     "defaultRouteType": "Tipo de Rota Padrão",
     "routeDevice": "Dispositivo",

@@ -87,6 +87,7 @@ export default {
     enabled: { type: Boolean, default: false },
     graphNodes: { type: Array, default: () => [] },
     graphVersion: { type: Number, default: 0 },
+    theme: { type: String, default: "dark" },
   },
   emits: ["toggleSniffer"],
   data() {
@@ -453,5 +454,66 @@ export default {
 .traffic-empty {
   padding: 1rem;
   color: #8a8a8a;
+}
+
+:global(.theme-light) .traffic-toolbar {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .traffic-status.active {
+  color: #0b6fa5;
+}
+
+:global(.theme-light) .traffic-status.inactive {
+  color: #6b6b6b;
+}
+
+:global(.theme-light) .traffic-select,
+:global(.theme-light) .traffic-input {
+  background: #ffffff;
+  color: #2b2b2b;
+  border: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .traffic-select:focus {
+  outline: 2px solid #007acc;
+  box-shadow: 0 0 0 2px #007acc;
+}
+
+:global(.theme-light) .traffic-button {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .sniffer-toggle {
+  border: 1px solid #d0d0d0;
+  background: #f5f5f5;
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .sniffer-toggle.active {
+  border-color: #007acc;
+  background: #e6f2ff;
+  color: #0b2b3b;
+  box-shadow: 0 0 0 1px #007acc;
+}
+
+:global(.theme-light) .traffic-row {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .traffic-row:nth-child(even) {
+  background: #f5f5f5;
+}
+
+:global(.theme-light) .traffic-row.header {
+  background: #efefef;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .traffic-empty {
+  color: #6b6b6b;
 }
 </style>

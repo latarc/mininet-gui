@@ -36,17 +36,17 @@ const open = computed({
       />
       <DialogContent
         :class="[
-          'fixed left-[50%] top-[50%] z-50 flex flex-col translate-x-[-50%] translate-y-[-50%] border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
+          'modal-surface fixed left-[50%] top-[50%] z-50 flex flex-col translate-x-[-50%] translate-y-[-50%] p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg',
           sizeClass,
           contentClass,
         ]"
       >
-        <div class="flex items-start justify-between gap-3 border-b bg-gradient-to-b from-slate-50 to-white px-6 py-5">
-          <DialogTitle class="text-left text-lg font-semibold tracking-tight">
+        <div class="modal-header flex items-start justify-between gap-3 px-6 py-5">
+          <DialogTitle class="modal-title text-left text-lg font-semibold tracking-tight">
             <slot name="header">{{ $t("modal.defaultHeader") }}</slot>
           </DialogTitle>
           <DialogClose
-            class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+            class="modal-close rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:pointer-events-none"
             aria-label="Close"
           >
             <span aria-hidden="true">x</span>
@@ -54,7 +54,7 @@ const open = computed({
         </div>
         <div
           :class="[
-            'flex-1 min-h-0 overflow-auto px-6 pb-6 pt-4 text-left text-slate-700',
+            'modal-body flex-1 min-h-0 overflow-auto px-6 pb-6 pt-4 text-left',
             bodyClass,
           ]"
         >
@@ -64,3 +64,414 @@ const open = computed({
     </DialogPortal>
   </DialogRoot>
 </template>
+
+<style>
+.modal-surface {
+  background: #1e1e1e;
+  border: 1px solid #333333;
+  color: #cccccc;
+}
+
+.modal-header {
+  border-bottom: 1px solid #333333;
+  background: #1d1d1d;
+}
+
+.modal-title {
+  color: #cccccc;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.modal-close {
+  color: #9b9b9b;
+}
+
+.modal-close:focus {
+  outline: 2px solid #007acc;
+  box-shadow: 0 0 0 2px #007acc;
+}
+
+.modal-body {
+  color: #cccccc;
+}
+
+.modal-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-section {
+  background: #2a2a2a;
+  border: 1px solid #333333;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.modal-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.modal-section__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cccccc;
+}
+
+.modal-muted {
+  color: #9b9b9b;
+  font-size: 12px;
+}
+
+.modal-divider {
+  height: 1px;
+  background: #333333;
+  border: none;
+  margin: 12px 0;
+}
+
+.modal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #333333;
+  padding-bottom: 10px;
+}
+
+.modal-tab {
+  border: 1px solid #333333;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: #2d2d2d;
+  color: #cccccc;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.modal-tab:hover {
+  background: #3e3e3e;
+  color: #f2f2f2;
+}
+
+.modal-tab.is-active {
+  background: #0b2b3b;
+  color: #e6f2ff;
+  border-color: #007acc;
+  box-shadow: inset 0 0 0 1px #007acc;
+}
+
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.modal-input,
+.modal-select,
+.modal-textarea {
+  background: #2d2d2d;
+  color: #e6e6e6;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.modal-input::placeholder,
+.modal-textarea::placeholder {
+  color: #888888;
+}
+
+.modal-input:focus,
+.modal-select:focus,
+.modal-textarea:focus {
+  outline: 2px solid #007acc;
+  box-shadow: 0 0 0 2px #007acc;
+}
+
+.modal-select option:checked {
+  background-color: #007acc;
+  color: #f2f2f2;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.modal-button {
+  border: 1px solid #333333;
+  background: #2d2d2d;
+  color: #cccccc;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.modal-button:hover {
+  background: #3e3e3e;
+}
+
+.modal-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-button--primary {
+  background: #007acc;
+  border-color: #007acc;
+  color: #e6f2ff;
+}
+
+.modal-button--primary:hover {
+  background: #0084e6;
+}
+
+.modal-button--danger {
+  background: #c62828;
+  border-color: #c62828;
+  color: #f2f2f2;
+}
+
+.modal-button--danger:hover {
+  background: #a61f1f;
+}
+
+.modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.modal-table th,
+.modal-table td {
+  border-bottom: 1px solid #333333;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.modal-table thead th {
+  color: #9b9b9b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}
+
+.modal-table tbody th {
+  color: #cccccc;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.modal-table tbody tr:hover {
+  background: #252525;
+}
+
+.modal-table--compact th,
+.modal-table--compact td {
+  padding: 6px 8px;
+}
+
+.modal-table__wrapper {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid #333333;
+  border-radius: 10px;
+}
+
+.modal-pre {
+  background: #2d2d2d;
+  border: 1px solid #333333;
+  color: #e6e6e6;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.modal-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #2d2d2d;
+  border: 1px solid #333333;
+  font-size: 11px;
+  color: #cccccc;
+}
+
+.modal-error {
+  color: #f28b82;
+  font-size: 12px;
+}
+
+.modal-success {
+  color: #61efb5;
+  font-size: 12px;
+}
+
+.modal-tab-panels {
+  display: grid;
+  grid-template-areas: "stack";
+  align-items: start;
+}
+
+.modal-tab-panels > .tab-panel {
+  grid-area: stack;
+}
+
+.modal-tab-panels > .tab-panel.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.theme-light .modal-surface {
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+  color: #2b2b2b;
+}
+
+.theme-light .modal-header {
+  border-bottom: 1px solid #d0d0d0;
+  background: #f5f5f5;
+}
+
+.theme-light .modal-title {
+  color: #2b2b2b;
+}
+
+.theme-light .modal-close {
+  color: #6b6b6b;
+}
+
+.theme-light .modal-body {
+  color: #2b2b2b;
+}
+
+.theme-light .modal-section {
+  background: #f7f7f7;
+  border: 1px solid #d0d0d0;
+}
+
+.theme-light .modal-section__title {
+  color: #2b2b2b;
+}
+
+.theme-light .modal-muted {
+  color: #6b6b6b;
+}
+
+.theme-light .modal-divider {
+  background: #d0d0d0;
+}
+
+.theme-light .modal-tabs {
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.theme-light .modal-tab {
+  border: 1px solid #d0d0d0;
+  background: #f5f5f5;
+  color: #2b2b2b;
+}
+
+.theme-light .modal-tab:hover {
+  background: #e6e6e6;
+  color: #1f1f1f;
+}
+
+.theme-light .modal-tab.is-active {
+  background: #e6f2ff;
+  color: #0b2b3b;
+  border-color: #007acc;
+  box-shadow: inset 0 0 0 1px #007acc;
+}
+
+.theme-light .modal-field {
+  color: #2b2b2b;
+}
+
+.theme-light .modal-input,
+.theme-light .modal-select,
+.theme-light .modal-textarea {
+  background: #ffffff;
+  color: #2b2b2b;
+  border: 1px solid #d0d0d0;
+}
+
+.theme-light .modal-input::placeholder,
+.theme-light .modal-textarea::placeholder {
+  color: #888888;
+}
+
+.theme-light .modal-select option:checked {
+  background-color: #007acc;
+  color: #ffffff;
+}
+
+.theme-light .modal-button {
+  border: 1px solid #d0d0d0;
+  background: #f5f5f5;
+  color: #2b2b2b;
+}
+
+.theme-light .modal-button:hover {
+  background: #e6e6e6;
+}
+
+.theme-light .modal-table th,
+.theme-light .modal-table td {
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.theme-light .modal-table thead th {
+  color: #6b6b6b;
+}
+
+.theme-light .modal-table tbody th {
+  color: #2b2b2b;
+}
+
+.theme-light .modal-table tbody tr:hover {
+  background: #f0f0f0;
+}
+
+.theme-light .modal-table__wrapper {
+  border: 1px solid #d0d0d0;
+}
+
+.theme-light .modal-pre {
+  background: #f3f3f3;
+  border: 1px solid #d0d0d0;
+  color: #2b2b2b;
+}
+
+.theme-light .modal-pill {
+  background: #f5f5f5;
+  border: 1px solid #d0d0d0;
+  color: #2b2b2b;
+}
+</style>

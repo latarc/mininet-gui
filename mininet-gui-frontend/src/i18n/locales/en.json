@@ -33,6 +33,7 @@
     "showHostIp": "Show host IP addresses",
     "showSwitchDpids": "Show switch DPIDs",
     "showPortLabels": "Show port labels",
+    "lightTheme": "Light theme",
     "usage": "Usage",
     "openDocs": "Open documentation",
     "about": "About"
@@ -70,13 +71,26 @@
     "language": "Language",
     "openaiKey": "OpenAI API Key",
     "defaultLinkAttributes": "Default Link Attributes",
-    "defaultOpenflow": "Default OpenFlow version"
+    "defaultOpenflow": "Default OpenFlow version",
+    "lightTheme": "Light theme",
+    "tabs": {
+      "view": "View",
+      "defaults": "Defaults",
+      "integrations": "Integrations"
+    },
+    "viewTitle": "Visibility",
+    "defaultsTitle": "Defaults",
+    "integrationsTitle": "Integrations"
   },
   "language": {
     "english": "English",
     "portuguese": "Portuguese"
   },
   "iperf": {
+    "configTab": "Config",
+    "resultsTab": "Results",
+    "configTitle": "Iperf Configuration",
+    "configHint": "Select client/server and parameters before running.",
     "client": "Client",
     "selectClient": "Select client host",
     "server": "Server",
@@ -89,6 +103,9 @@
     "running": "Running...",
     "result": "Result",
     "resultsTitle": "Iperf Results",
+    "resultReady": "Latest run completed.",
+    "noResult": "No results yet.",
+    "noResultBody": "Run iperf to see results here.",
     "errorDifferentHosts": "Client and server must be different hosts.",
     "errorAlreadyRunning": "Iperf already running.",
     "errorFailed": "Failed to run iperf."
@@ -268,6 +285,12 @@
   },
   "node": {
     "editController": "Edit Controller",
+    "controllerSection": "Controller",
+    "switchConfigSection": "Switch Configuration",
+    "hostConfigSection": "Host Configuration",
+    "detailsSection": "Details",
+    "flowTableSection": "Flow Table",
+    "arpTableSection": "ARP Table",
     "hostIp": "Host IP",
     "defaultRouteType": "Default Route Type",
     "routeDevice": "Device",

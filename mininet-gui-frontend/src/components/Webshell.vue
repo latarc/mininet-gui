@@ -101,11 +101,12 @@
         :enabled="snifferActive"
         :graphNodes="graphNodeList"
         :graphVersion="graphVersion"
+        :theme="theme"
         @toggleSniffer="$emit('toggleSniffer')"
       />
     </div>
     <div v-show="!isMinimized && activeView === 'monitor'" class="monitoring-window">
-      <MonitoringView :graphNodes="graphNodeList" :graphVersion="graphVersion" />
+      <MonitoringView :graphNodes="graphNodeList" :graphVersion="graphVersion" :theme="theme" />
     </div>
     <div v-show="!isMinimized && activeView === 'logs'" class="terminal-window" @click="focusLogTerminal">
       <div
@@ -162,6 +163,7 @@ export default {
     minimized: { type: Boolean, default: false },
     openaiKey: { type: String, default: "" },
     llmHandlers: { type: Object, default: () => ({}) },
+    theme: { type: String, default: "dark" },
   },
   data() {
     return {
@@ -195,6 +197,25 @@ export default {
     nodeCount() {
       return this.getSessionList().length;
     },
+    isLightTheme() {
+      return this.theme === "light";
+    },
+    terminalTheme() {
+      if (this.isLightTheme) {
+        return {
+          background: "#ffffff",
+          foreground: "#2b2b2b",
+          cursor: "#2b2b2b",
+          selection: "#cce8ff",
+        };
+      }
+      return {
+        background: "#1e1e1e",
+        foreground: "#cccccc",
+        cursor: "#cccccc",
+        selection: "#264f78",
+      };
+    },
   },
   watch: {
     nodes: {
@@ -224,6 +245,9 @@ export default {
     },
     minimized(value) {
       this.isMinimized = !!value;
+    },
+    theme() {
+      this.applyTerminalTheme();
     },
     activeView(value) {
       this.$emit("viewChange", value);
@@ -311,12 +335,7 @@ export default {
         cursorBlink: true,
         fontFamily: "Fira Code, Consolas, monospace",
         fontSize: 13,
-        theme: {
-          background: "#1e1e1e",
-          foreground: "#cccccc",
-          cursor: "#cccccc",
-          selection: "#264f78",
-        },
+        theme: this.terminalTheme,
       });
       const fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
@@ -373,8 +392,8 @@ export default {
         fontFamily: "Fira Code, Consolas, monospace",
         fontSize: 12,
         theme: {
-          background: "#1e1e1e",
-          foreground: "#cccccc",
+          background: this.terminalTheme.background,
+          foreground: this.terminalTheme.foreground,
         },
       });
       const fitAddon = new FitAddon();
@@ -411,6 +430,20 @@ export default {
 
     focusLogTerminal() {
       if (this.logTerminal) this.logTerminal.focus();
+    },
+    applyTerminalTheme() {
+      const theme = this.terminalTheme;
+      Object.values(this.terminals || {}).forEach((term) => {
+        if (term?.setOption) {
+          term.setOption("theme", theme);
+        }
+      });
+      if (this.logTerminal?.setOption) {
+        this.logTerminal.setOption("theme", {
+          background: theme.background,
+          foreground: theme.foreground,
+        });
+      }
     },
 
     sendChar(sessionId, char) {
@@ -964,5 +997,86 @@ export default {
   cursor: ns-resize;
   background: transparent;
   z-index: 2;
+}
+
+:global(.theme-light) .webshell-container {
+  background-color: #ffffff;
+  color: #2b2b2b;
+  border: 1px solid #d0d0d0;
+  border-top: 3px solid #007acc;
+}
+
+:global(.theme-light) .webshell-header {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .view-tab {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .view-tab:hover {
+  background-color: #e6e6e6;
+}
+
+:global(.theme-light) .view-tab.active {
+  background-color: #ffffff;
+  color: #2b2b2b;
+  border-color: #007acc;
+}
+
+:global(.theme-light) .icon-button {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .icon-button:hover {
+  background-color: #e6e6e6;
+}
+
+:global(.theme-light) .tabs {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .tab-button {
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .tab-button.active {
+  background-color: #ffffff;
+  border-bottom: 2px solid #007acc;
+}
+
+:global(.theme-light) .tab-button:hover {
+  background-color: #e6e6e6;
+}
+
+:global(.theme-light) .tab-close {
+  color: #6b6b6b;
+}
+
+:global(.theme-light) .tab-close:hover {
+  background: #e6e6e6;
+  color: #2b2b2b;
+}
+
+:global(.theme-light) .terminal-empty {
+  color: #6b6b6b;
+}
+
+:global(.theme-light) .chat-message {
+  background: #f5f5f5;
+  border: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .chat-input textarea {
+  background: #ffffff;
+  color: #2b2b2b;
+  border: 1px solid #d0d0d0;
+}
+
+:global(.theme-light) .chat-input button {
+  background: #007acc;
+  color: #ffffff;
 }
 </style>

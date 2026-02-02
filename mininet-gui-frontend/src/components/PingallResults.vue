@@ -1,20 +1,30 @@
 <template>
-  <div v-if="parsedResults.length">
-    <table class="pingall-table">
-      <thead>
-        <tr>
-          <th v-for="header in headers" :key="header">{{ $t(`pingall.headers.${header}`) }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(row, index) in parsedResults" :key="index">
-          <td v-for="(value, key) in row" :key="key">{{ value }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <div v-else>
-    <p>{{ $t("pingall.noResults") }}</p>
+  <div class="modal-ui">
+    <div v-if="parsedResults.length" class="modal-section">
+      <div class="modal-section__header">
+        <div class="modal-section__title">{{ $t("pingall.resultsTitle") }}</div>
+      </div>
+      <div class="modal-table__wrapper">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th v-for="header in headers" :key="header">{{ $t(`pingall.headers.${header}`) }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(row, index) in parsedResults" :key="index">
+              <td v-for="(value, key) in row" :key="key">{{ value }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div v-else class="modal-section">
+      <div class="modal-section__header">
+        <div class="modal-section__title">{{ $t("pingall.resultsTitle") }}</div>
+      </div>
+      <p class="modal-muted">{{ $t("pingall.noResults") }}</p>
+    </div>
   </div>
 </template>
 
@@ -65,18 +75,4 @@ export default {
 </script>
 
 <style scoped>
-.pingall-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-.pingall-table th, .pingall-table td {
-  border: 1px solid #ddd;
-  padding: 8px;
-}
-
-.pingall-table th {
-  background-color: #f2f2f2;
-}
 </style>
