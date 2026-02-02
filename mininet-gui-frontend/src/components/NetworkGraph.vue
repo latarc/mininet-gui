@@ -539,6 +539,18 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               </select>
             </label>
             <label class="settings-input">
+              <span>{{ $t("settings.defaultOpenflow") }}</span>
+              <select v-model="settings.switchOpenflow" @change="persistSettings">
+                <option value="">{{ $t("node.openflowAuto") }}</option>
+                <option value="OpenFlow10">OpenFlow10</option>
+                <option value="OpenFlow11">OpenFlow11</option>
+                <option value="OpenFlow12">OpenFlow12</option>
+                <option value="OpenFlow13">OpenFlow13</option>
+                <option value="OpenFlow14">OpenFlow14</option>
+                <option value="OpenFlow15">OpenFlow15</option>
+              </select>
+            </label>
+            <label class="settings-input">
               <span>{{ $t("settings.openaiKey") }}</span>
               <input
                 type="password"
@@ -704,6 +716,7 @@ export default {
       showSwitchDpids: false,
       showPortLabels: false,
       language: "en",
+      switchOpenflow: "",
         openaiApiKey: "",
         linkOptions: {
           bw: "",
@@ -2080,6 +2093,10 @@ export default {
         swId++;
       }
       const switchType = switchData?.switch_type || "ovskernel";
+      const defaultOpenflow = this.settings.switchOpenflow || "";
+      const rawOfVersion = (switchData?.of_version ?? defaultOpenflow) || null;
+      const isOvsType = ["ovs", "ovskernel", "ovsbridge"].includes(String(switchType || "").toLowerCase());
+      const ofVersion = isOvsType ? rawOfVersion : null;
       let sw = {
         id: `s${swId}`,
         type: "sw",
@@ -2088,6 +2105,7 @@ export default {
         ports: switchData.ports || 4,
         controller: null,
         switch_type: switchType,
+        of_version: ofVersion,
         shape: "circularImage",
         color: {
           background: "#252526",
@@ -2928,6 +2946,7 @@ export default {
             ports: node.ports,
             controller: node.controller ?? null,
             switch_type: node.switch_type ?? "ovskernel",
+            of_version: node.of_version ?? null,
             x: node.x,
             y: node.y,
           };

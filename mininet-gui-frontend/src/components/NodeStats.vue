@@ -1,5 +1,5 @@
 <script>
-import { addFlow, deleteFlowById, getNodeStats, listFlows, updateHost } from "@/core/api";
+import { addFlow, deleteFlowById, getNodeStats, listFlows, updateHost, updateSwitchOpenflowVersion } from "@/core/api";
 
 export default {
   props: ["stats"],
@@ -24,6 +24,10 @@ export default {
       flowDump: "",
       flowBusy: false,
       flowError: "",
+      switchOpenflow: "",
+      switchOpenflowBusy: false,
+      switchOpenflowError: "",
+      switchOpenflowSuccess: false,
       showFlowForm: false,
       flowForm: {
         match: "",
@@ -64,6 +68,10 @@ export default {
     isHost() {
       return this.localStats?.type === "host";
     },
+    canSetOpenflow() {
+      const type = (this.localStats?.switch_type || "").toLowerCase();
+      return this.isSwitch && ["ovs", "ovskernel", "ovsbridge"].includes(type);
+    },
   },
   watch: {
     stats: {
@@ -77,9 +85,12 @@ export default {
           this.isEditingHost = false;
           this.hostEditError = "";
         }
-      if (value?.type === "sw" || value?.type === "switch") {
-        this.refreshFlows();
-      }
+        if (value?.type === "sw" || value?.type === "switch") {
+          this.refreshFlows();
+          this.switchOpenflow = value?.of_version || "";
+          this.switchOpenflowError = "";
+          this.switchOpenflowSuccess = false;
+        }
       },
     },
   },
@@ -240,6 +251,26 @@ export default {
     <div v-if="isDetailsTab">
       <div v-if="isController" class="host-edit">
         <button @click="triggerControllerEdit">{{ $t("node.editController") }}</button>
+      </div>
+      <div v-if="isSwitch" class="host-edit">
+        <label class="host-edit-label">
+          {{ $t("node.openflowVersion") }}
+          <select v-model="switchOpenflow" class="host-edit-select" :disabled="!canSetOpenflow">
+            <option value="">{{ $t("node.openflowAuto") }}</option>
+            <option value="OpenFlow10">OpenFlow10</option>
+            <option value="OpenFlow11">OpenFlow11</option>
+            <option value="OpenFlow12">OpenFlow12</option>
+            <option value="OpenFlow13">OpenFlow13</option>
+            <option value="OpenFlow14">OpenFlow14</option>
+            <option value="OpenFlow15">OpenFlow15</option>
+          </select>
+        </label>
+        <button :disabled="switchOpenflowBusy || !canSetOpenflow" @click="saveSwitchOpenflow">
+          {{ $t("actions.save") }}
+        </button>
+        <span v-if="switchOpenflowSuccess" class="flow-success">{{ $t("actions.saved") }}</span>
+        <span v-if="switchOpenflowError" class="flow-error">{{ switchOpenflowError }}</span>
+        <span v-if="!canSetOpenflow" class="flow-error">{{ $t("node.openflowUnsupported") }}</span>
       </div>
       <div v-if="isHost" class="host-edit">
         <button v-if="!isEditingHost" @click="startHostEdit">{{ $t("actions.edit") }}</button>
@@ -440,6 +471,14 @@ export default {
   margin-bottom: 10px;
 }
 
+.host-edit-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #b8b8b8;
+}
+
 .host-edit-actions {
   display: flex;
   gap: 8px;
@@ -594,6 +633,11 @@ export default {
   font-size: 12px;
 }
 
+.flow-success {
+  color: #0f7a38;
+  font-size: 12px;
+}
+
 .flow-dump {
   margin-top: 12px;
   padding: 10px;
@@ -643,3 +687,30 @@ export default {
   text-align: left;
 }
 </style>
+    async saveSwitchOpenflow() {
+      if (!this.isSwitch || !this.localStats?.id) return;
+      this.switchOpenflowBusy = true;
+      this.switchOpenflowError = "";
+      this.switchOpenflowSuccess = false;
+      try {
+        const payload = {
+          of_version: this.switchOpenflow || null,
+        };
+        const updated = await updateSwitchOpenflowVersion(this.localStats.id, payload);
+        if (!updated) {
+          this.switchOpenflowError = this.$t("node.errors.updateSwitch");
+          return;
+        }
+        this.localStats = { ...this.localStats, of_version: updated.of_version ?? null };
+        this.switchOpenflowSuccess = true;
+      } catch (error) {
+        this.switchOpenflowError = this.$t("node.errors.updateSwitch");
+      } finally {
+        this.switchOpenflowBusy = false;
+        if (this.switchOpenflowSuccess) {
+          setTimeout(() => {
+            this.switchOpenflowSuccess = false;
+          }, 1500);
+        }
+      }
+    },

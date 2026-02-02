@@ -69,7 +69,8 @@
   "settings": {
     "language": "Language",
     "openaiKey": "OpenAI API Key",
-    "defaultLinkAttributes": "Default Link Attributes"
+    "defaultLinkAttributes": "Default Link Attributes",
+    "defaultOpenflow": "Default OpenFlow version"
   },
   "language": {
     "english": "English",
@@ -220,7 +221,10 @@
     "noxController": "NOX Controller",
     "remote": "Remote",
     "ryu": "Ryu",
-    "nox": "NOX"
+    "nox": "NOX",
+    "remoteShort": "Rem",
+    "ryuShort": "Ryu",
+    "noxShort": "NOX"
   },
   "monitoring": {
     "node": "Node",
@@ -313,9 +317,13 @@
       "refreshFlows": "Failed to refresh flows.",
       "actionsRequired": "Actions is required.",
       "addFlow": "Failed to add flow.",
-      "deleteFlow": "Failed to delete flow."
+      "deleteFlow": "Failed to delete flow.",
+      "updateSwitch": "Failed to update switch."
     },
-    "infoTitle": "Node Info: {id}"
+    "infoTitle": "Node Info: {id}",
+    "openflowVersion": "OpenFlow version",
+    "openflowAuto": "Auto",
+    "openflowUnsupported": "OpenFlow version is only supported for OVS switches."
   },
   "controller": {
     "title": "Controller",

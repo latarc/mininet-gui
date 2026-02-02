@@ -258,7 +258,7 @@
                   src="@/assets/light-controller.svg"
                   draggable="false"
                 />
-                <span class="controller-badge controller-badge--remote">Rem</span>
+                <span class="controller-badge controller-badge--remote">{{ $t("nodes.remoteShort") }}</span>
               </div>
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.remote") }}</figcaption>
             </figure>
@@ -279,7 +279,7 @@
                   src="@/assets/light-controller.svg"
                   draggable="false"
                 />
-                <span class="controller-badge">Ryu</span>
+                <span class="controller-badge">{{ $t("nodes.ryuShort") }}</span>
               </div>
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ryu") }}</figcaption>
             </figure>
@@ -300,7 +300,7 @@
                   src="@/assets/light-controller.svg"
                   draggable="false"
                 />
-                <span class="controller-badge">NOX</span>
+                <span class="controller-badge">{{ $t("nodes.noxShort") }}</span>
               </div>
               <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.nox") }}</figcaption>
             </figure>

@@ -30,6 +30,8 @@ class Controller(Node):
             return f'{self.name} = net.addController("{self.name}", controller=Ryu, ip="{self.ip or "127.0.0.1"}", port={self.port}, ryu_app="{self.ryu_app}")'
         if controller_type == "nox":
             return f'{self.name} = net.addController("{self.name}", controller=NOX)'
+        if self.port:
+            return f'{self.name} = net.addController("{self.name}", port={self.port})'
         return f'{self.name} = net.addController("{self.name}")'
 
 
@@ -66,6 +68,7 @@ class Switch(Node):
     ports: int
     controller: Union[str, None]
     switch_type: str = "ovskernel"
+    of_version: Union[str, None] = None
 
     def format_switch(self) -> str:
         switch_type = (self.switch_type or "").lower()

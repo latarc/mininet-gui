@@ -47,6 +47,8 @@ net = Mininet(controller=Controller, switch=OVSKernelSwitch, host=Host, link=TCL
 
 net.build()
 
+{openflow_versions}
+
 {controller_start}
 
 {switch_start}
@@ -149,6 +151,12 @@ class Ryu(Node):
         for s in switches.values()
     ])
 
+    openflow_versions_str = "\n".join([
+        f'errRun("ovs-vsctl --if-exists set bridge {s.name} protocols={s.of_version}")'
+        for s in switches.values()
+        if getattr(s, "of_version", None)
+    ])
+
     router_class_str = ""
     if len(routers) > 0:
         router_class_str = """
@@ -170,6 +178,7 @@ class LinuxRouter(Node):
         routers=routers_str,
         nats=nats_str,
         links=links_str,
+        openflow_versions=openflow_versions_str,
         controller_start=controller_start_str,
         switch_start=switch_start_str
     )

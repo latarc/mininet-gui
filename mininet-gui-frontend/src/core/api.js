@@ -605,6 +605,25 @@ export const getSwitches = async () => {
   return await sendGet(baseUrl + "/api/mininet/switches");
 };
 
+export const updateSwitchOpenflowVersion = async (switchId, payload) => {
+  try {
+    const response = await axios.put(
+      baseUrl + `/api/mininet/switches/${switchId}/openflow`,
+      JSON.stringify(payload),
+      {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return response.data?.switch || null;
+  } catch (error) {
+    alert(error.response ? error.response.data["detail"] : "Network Error");
+    return null;
+  }
+};
+
 export const getControllers = async () => {
   return await sendGet(baseUrl + "/api/mininet/controllers");
 };

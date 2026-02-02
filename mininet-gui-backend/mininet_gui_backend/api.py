@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from mininet_gui_backend.sniffer import SnifferManager
 import pyshark.ek_field_mapping as ek_field_mapping
 from pyshark.tshark.output_parser.tshark_ek import TsharkEkJsonParser
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, Set
 from contextlib import asynccontextmanager
 import pkgutil
 
@@ -87,6 +87,10 @@ class ControllerUpdate(BaseModel):
     port: Optional[int] = None
     ryu_app: Optional[str] = None
     color: Optional[str] = None
+
+
+class SwitchUpdate(BaseModel):
+    of_version: Optional[str] = None
 
 
 class LinuxRouter(Node):
@@ -316,8 +320,10 @@ def add_controller_to_net(controller: Controller, start=True):
             controller.name, controller=NOX
         )
     else:
+        if not controller.port or controller.port in _list_listening_ports():
+            controller.port = _find_free_controller_port()
         controller_node = app.net.addController(
-            controller.name, controller=ReferenceController
+            controller.name, controller=ReferenceController, port=controller.port
         )
 
     if start:
@@ -326,6 +332,45 @@ def add_controller_to_net(controller: Controller, start=True):
     controller_node.y = controller.y
     controller_node.type = "controller"
     return controller_node
+
+
+def _list_listening_ports() -> Set[int]:
+    result = subprocess.run(
+        ["netstat", "-tuln"],
+        text=True,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "netstat failed").strip()
+        raise HTTPException(status_code=500, detail=detail)
+    ports: Set[int] = set()
+    for line in (result.stdout or "").splitlines():
+        line = line.strip()
+        if not line or line.lower().startswith("proto"):
+            continue
+        parts = line.split()
+        if len(parts) < 4:
+            continue
+        local = parts[3]
+        if ":" not in local:
+            continue
+        port_str = local.rsplit(":", 1)[-1]
+        if port_str.isdigit():
+            ports.add(int(port_str))
+    return ports
+
+
+def _find_free_controller_port() -> int:
+    used = _list_listening_ports()
+    ranges = [
+        range(6633, 6638),
+        range(6653, 6658),
+    ]
+    for rng in ranges:
+        for port in rng:
+            if port not in used:
+                return port
+    raise HTTPException(status_code=400, detail="no available controller ports")
 
 
 def add_switch_to_net(switch: Switch, start=True):
@@ -351,7 +396,35 @@ def add_switch_to_net(switch: Switch, start=True):
     switch_node.type = "sw"
     switch_node.controller = switch.controller
     switch_node.switch_type = switch.switch_type
+    if switch.of_version:
+        _apply_switch_openflow_version(switch.name, switch.of_version, switch_type=switch.switch_type)
     return switch_node
+
+
+def _apply_switch_openflow_version(switch_id: str, of_version: Optional[str], switch_type: Optional[str] = None):
+    if switch_type is None:
+        switch = app.switches.get(switch_id)
+        if not switch:
+            raise HTTPException(status_code=404, detail="switch not found")
+        switch_type = switch.switch_type
+    switch_type = (switch_type or "").lower()
+    if switch_type not in ("ovs", "ovskernel", "ovsbridge"):
+        raise HTTPException(status_code=400, detail="openflow version is only supported for OVS switches")
+    if not of_version or of_version == "auto":
+        result = subprocess.run(
+            ["ovs-vsctl", "--if-exists", "clear", "bridge", switch_id, "protocols"],
+            text=True,
+            capture_output=True,
+        )
+    else:
+        result = subprocess.run(
+            ["ovs-vsctl", "--if-exists", "set", "bridge", switch_id, f"protocols={of_version}"],
+            text=True,
+            capture_output=True,
+        )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout or "ovs-vsctl failed").strip()
+        raise HTTPException(status_code=400, detail=detail)
 
 
 def _terminate_all_terminals():
@@ -729,6 +802,21 @@ def update_controller(controller_id: str, payload: ControllerUpdate):
         setattr(controller, key, value)
     app.controllers[controller_id] = controller
     return {"controller": controller.model_dump()}
+
+
+@app.put("/api/mininet/switches/{switch_id}/openflow")
+def update_switch_openflow_version(switch_id: str, payload: SwitchUpdate):
+    if switch_id not in app.switches:
+        raise HTTPException(status_code=404, detail="switch not found")
+    of_version = payload.of_version
+    if of_version in ("", "auto"):
+        of_version = None
+    allowed = {None, "OpenFlow10", "OpenFlow11", "OpenFlow12", "OpenFlow13", "OpenFlow14", "OpenFlow15"}
+    if of_version not in allowed:
+        raise HTTPException(status_code=400, detail="invalid OpenFlow version")
+    _apply_switch_openflow_version(switch_id, of_version)
+    app.switches[switch_id].of_version = of_version
+    return {"switch": app.switches[switch_id].model_dump()}
 
 @app.post("/api/mininet/associate_switch")
 def associate_switch(data: dict):
