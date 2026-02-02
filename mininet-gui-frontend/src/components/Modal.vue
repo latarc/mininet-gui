@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onBeforeUnmount, ref, watch, nextTick } from "vue";
 import { DialogRoot, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogClose } from "radix-vue";
 
 const props = defineProps({
@@ -25,6 +25,118 @@ const open = computed({
   set: (value) => {
     if (!value) emit("close");
   },
+});
+
+const modalBodyRef = ref(null);
+const tabPanelSize = ref({ width: 0, height: 0 });
+const tabPanelStyle = computed(() => {
+  if (!tabPanelSize.value.width && !tabPanelSize.value.height) return {};
+  return {
+    "--modal-tab-panel-min-width": tabPanelSize.value.width ? `${tabPanelSize.value.width}px` : "0px",
+    "--modal-tab-panel-min-height": tabPanelSize.value.height ? `${tabPanelSize.value.height}px` : "0px",
+  };
+});
+
+let tabPanelsContainer = null;
+let resizeObserver = null;
+let mutationObserver = null;
+let measurementFrame = 0;
+
+const measureTabPanels = () => {
+  if (!tabPanelsContainer) {
+    tabPanelSize.value = { width: 0, height: 0 };
+    return;
+  }
+
+  const panels = Array.from(tabPanelsContainer.querySelectorAll(".tab-panel"));
+  if (!panels.length) {
+    tabPanelSize.value = { width: 0, height: 0 };
+    return;
+  }
+
+  let maxWidth = 0;
+  let maxHeight = 0;
+  panels.forEach((panel) => {
+    const rect = panel.getBoundingClientRect();
+    maxWidth = Math.max(maxWidth, rect.width);
+    maxHeight = Math.max(maxHeight, rect.height);
+  });
+
+  const nextWidth = Math.max(0, Math.ceil(maxWidth));
+  const nextHeight = Math.max(0, Math.ceil(maxHeight));
+
+  if (tabPanelSize.value.width !== nextWidth || tabPanelSize.value.height !== nextHeight) {
+    tabPanelSize.value = { width: nextWidth, height: nextHeight };
+  }
+};
+
+const scheduleMeasurement = () => {
+  if (measurementFrame) return;
+  measurementFrame = requestAnimationFrame(() => {
+    measurementFrame = 0;
+    measureTabPanels();
+  });
+};
+
+const disconnectObservers = () => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  if (mutationObserver) {
+    mutationObserver.disconnect();
+    mutationObserver = null;
+  }
+};
+
+const refreshTabObservers = () => {
+  const container = modalBodyRef.value?.querySelector(".modal-tab-panels") || null;
+  tabPanelsContainer = container;
+  if (!container) {
+    tabPanelSize.value = { width: 0, height: 0 };
+    disconnectObservers();
+    return;
+  }
+
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+  resizeObserver = new ResizeObserver(() => scheduleMeasurement());
+  Array.from(container.querySelectorAll(".tab-panel")).forEach((panel) => {
+    resizeObserver.observe(panel);
+  });
+
+  if (mutationObserver) {
+    mutationObserver.disconnect();
+  }
+  mutationObserver = new MutationObserver(() => refreshTabObservers());
+  mutationObserver.observe(container, { childList: true, subtree: true, attributes: false });
+
+  scheduleMeasurement();
+};
+
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      nextTick(() => {
+        refreshTabObservers();
+      });
+      return;
+    }
+
+    tabPanelSize.value = { width: 0, height: 0 };
+    tabPanelsContainer = null;
+    disconnectObservers();
+  },
+  { immediate: true },
+);
+
+onBeforeUnmount(() => {
+  if (measurementFrame) {
+    cancelAnimationFrame(measurementFrame);
+  }
+  disconnectObservers();
 });
 </script>
 
@@ -53,10 +165,12 @@ const open = computed({
           </DialogClose>
         </div>
         <div
+          ref="modalBodyRef"
           :class="[
             'modal-body flex-1 min-h-0 overflow-auto px-6 pb-6 pt-4 text-left',
             bodyClass,
           ]"
+          :style="tabPanelStyle"
         >
           <slot name="body">{{ $t("modal.defaultBody") }}</slot>
         </div>
@@ -337,6 +451,8 @@ const open = computed({
   display: grid;
   grid-template-areas: "stack";
   align-items: start;
+  min-width: var(--modal-tab-panel-min-width, 0);
+  min-height: var(--modal-tab-panel-min-height, 0);
 }
 
 .modal-tab-panels > .tab-panel {
