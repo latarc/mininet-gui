@@ -1,5 +1,5 @@
 <template>
-  <div class="traffic-view">
+  <div :class="['traffic-view', themeClass]">
     <div class="traffic-toolbar">
       <button
         class="sniffer-toggle"
@@ -158,6 +158,12 @@ export default {
         return true;
       });
       return items.sort((a, b) => this.toEpochNs(a.ts) - this.toEpochNs(b.ts));
+    },
+    isLightTheme() {
+      return this.theme === "light";
+    },
+    themeClass() {
+      return this.isLightTheme ? "theme-light" : "theme-dark";
     },
   },
   watch: {
@@ -318,8 +324,8 @@ export default {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid #333;
-  background-color: #2d2d2d;
+  border-bottom: 1px solid var(--theme-traffic-toolbar-border);
+  background-color: var(--theme-traffic-toolbar-bg);
   flex-wrap: wrap;
 }
 
@@ -329,11 +335,11 @@ export default {
 }
 
 .traffic-status.active {
-  color: #9cdcfe;
+  color: var(--theme-traffic-status-active);
 }
 
 .traffic-status.inactive {
-  color: #8a8a8a;
+  color: var(--theme-traffic-status-inactive);
 }
 
 .traffic-filters {
@@ -345,9 +351,9 @@ export default {
 
 .traffic-select,
 .traffic-input {
-  background: #1e1e1e;
-  color: #cccccc;
-  border: 1px solid #333;
+  background: var(--theme-traffic-select-bg);
+  color: var(--theme-traffic-select-color);
+  border: 1px solid var(--theme-traffic-select-border);
   border-radius: 4px;
   padding: 4px 6px;
   font-size: 0.8rem;
@@ -375,9 +381,9 @@ export default {
 }
 
 .traffic-button {
-  border: 1px solid #333;
-  background: #1e1e1e;
-  color: #cccccc;
+  border: 1px solid var(--theme-traffic-button-border);
+  background: var(--theme-traffic-button-bg);
+  color: var(--theme-traffic-button-color);
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
@@ -393,9 +399,9 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid #333;
-  background: #2d2d2d;
-  color: #cccccc;
+  border: 1px solid var(--theme-sniffer-toggle-border);
+  background: var(--theme-sniffer-toggle-bg);
+  color: var(--theme-sniffer-toggle-color);
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -403,10 +409,10 @@ export default {
 }
 
 .sniffer-toggle.active {
-  border-color: #007acc;
-  background: #0b2b3b;
-  color: #e6f2ff;
-  box-shadow: 0 0 0 1px #007acc;
+  border-color: var(--theme-sniffer-toggle-active-border);
+  background: var(--theme-sniffer-toggle-active-bg);
+  color: var(--theme-sniffer-toggle-active-color);
+  box-shadow: 0 0 0 1px var(--theme-sniffer-toggle-active-border);
 }
 
 .traffic-table {
@@ -428,18 +434,18 @@ export default {
   padding: 6px 12px;
   font-family: "Fira Code", Consolas, monospace;
   font-size: 0.78rem;
-  color: #cccccc;
+  color: var(--theme-traffic-row-color);
   align-items: center;
 }
 
 .traffic-row:nth-child(even) {
-  background: #1f1f1f;
+  background: var(--theme-traffic-row-bg-even);
 }
 
 .traffic-row.header {
   font-weight: 600;
-  background: #262626;
-  border-bottom: 1px solid #333;
+  background: var(--theme-traffic-row-header-bg);
+  border-bottom: 1px solid var(--theme-traffic-row-header-border);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -453,67 +459,8 @@ export default {
 
 .traffic-empty {
   padding: 1rem;
-  color: #8a8a8a;
+  color: var(--theme-traffic-empty-color);
 }
 
-:global(.theme-light) .traffic-toolbar {
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #d0d0d0;
-}
 
-:global(.theme-light) .traffic-status.active {
-  color: #0b6fa5;
-}
-
-:global(.theme-light) .traffic-status.inactive {
-  color: #6b6b6b;
-}
-
-:global(.theme-light) .traffic-select,
-:global(.theme-light) .traffic-input {
-  background: #ffffff;
-  color: #2b2b2b;
-  border: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .traffic-select:focus {
-  outline: 2px solid #007acc;
-  box-shadow: 0 0 0 2px #007acc;
-}
-
-:global(.theme-light) .traffic-button {
-  border: 1px solid #d0d0d0;
-  background: #ffffff;
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .sniffer-toggle {
-  border: 1px solid #d0d0d0;
-  background: #f5f5f5;
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .sniffer-toggle.active {
-  border-color: #007acc;
-  background: #e6f2ff;
-  color: #0b2b3b;
-  box-shadow: 0 0 0 1px #007acc;
-}
-
-:global(.theme-light) .traffic-row {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .traffic-row:nth-child(even) {
-  background: #f5f5f5;
-}
-
-:global(.theme-light) .traffic-row.header {
-  background: #efefef;
-  border-bottom: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .traffic-empty {
-  color: #6b6b6b;
-}
 </style>

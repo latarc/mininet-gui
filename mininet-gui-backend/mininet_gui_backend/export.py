@@ -220,8 +220,10 @@ def build_addressing_plan(net: "Mininet") -> dict:
         for intf in node.intfList():
             if not intf.name or intf.name in ("lo", "lo0"):
                 continue
-            ipv4 = parse_ip_addrs(node.cmd(f"ip -o -4 addr show {intf.name}"))
-            ipv6 = parse_ip_addrs(node.cmd(f"ip -o -6 addr show {intf.name}"))
+            ipv4_out, _, _ = node.pexec(f"ip -o -4 addr show {intf.name}")
+            ipv6_out, _, _ = node.pexec(f"ip -o -6 addr show {intf.name}")
+            ipv4 = parse_ip_addrs(ipv4_out)
+            ipv6 = parse_ip_addrs(ipv6_out)
             mac = None
             try:
                 mac = intf.MAC()

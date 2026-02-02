@@ -80,7 +80,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         </button>
       </div>
     </div>
-    <div ref="topbar" class="topbar">
+    <div ref="topbar" :class="['topbar', themeClass]">
       <div class="topbar-title">{{ $t("app.title") }}</div>
       <div class="menu-bar">
         <div class="menu-item-wrapper">
@@ -313,7 +313,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
       <!-- Main Content (Graph + WebShell) -->
       <div class="main-content">
       <div ref="graphWrapper" class="graph-wrapper">
-        <div ref="graph" id="network-graph" class="network-graph"
+      <div ref="graph" id="network-graph" :class="['network-graph', themeClass]"
         @drop.prevent="handleDrop"
         @dragenter.prevent
         @dragover.prevent
@@ -366,7 +366,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
       />
       </div>
     </div>
-    <div class="status-bar">
+    <div :class="['status-bar', themeClass]">
       <div class="status-bar__right">
         <span
           class="status-dot"
@@ -394,6 +394,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
   <Teleport to="body">
     <modal
       :show="showModal"
+      :theme="settings.theme"
       @close="closeModal"
       @keydown.esc="closeModal"
     >
@@ -857,8 +858,9 @@ export default {
       return this.isLightTheme ? "theme-light" : "theme-dark";
     },
     network() {
-      console.log("computed ran again");
-      return this.computeNetwork();
+      const computedNetwork = this.computeNetwork();
+      console.log("[NetworkGraph] computed:", computedNetwork);
+      return computedNetwork;
     },
     networkCounts() {
       return {
@@ -987,8 +989,12 @@ export default {
             });
             return;
           }
-          if (node.type === "controller") {
-            this.nodes.updateOnly({ id: node.id, color: this.nodeBaseColor() });
+        if (node.type === "controller") {
+            this.nodes.updateOnly({
+              id: node.id,
+              color: this.nodeBaseColor(),
+              image: this.controllerImageForColor(this.controllerIconColor(node)),
+            });
             return;
           }
           if (node.type === "host") {
@@ -1418,7 +1424,10 @@ export default {
         if (node?.type === "portLabel") {
           return;
         }
-        const box = this.network.getBoundingBox(node.id);
+        const box = this.network.getBoundingBox?.(node.id);
+        if (!box) {
+          return;
+        }
         if (
           box.right >= rectCanvas.left &&
           box.left <= rectCanvas.right &&
@@ -1556,6 +1565,13 @@ export default {
     },
     controllerColor() {
       return this.nodeBaseColor();
+    },
+    controllerIconColor(nodeOrColorCode) {
+      if (this.isLightTheme) {
+        return "#000000";
+      }
+      const colorCode = typeof nodeOrColorCode === "string" ? nodeOrColorCode : nodeOrColorCode?.colorCode;
+      return colorCode || "#ffffff";
     },
     controllerImageForColor(colorCode) {
       const fill = colorCode || "#ffffff";
@@ -1778,7 +1794,7 @@ export default {
         ctl.shape = "circularImage";
         ctl.colorCode = ctl.color || "#ffffff";
         ctl.color = this.controllerColor();
-        ctl.image = this.controllerImageForColor(ctl.colorCode);
+        ctl.image = this.controllerImageForColor(this.controllerIconColor(ctl));
         ctl.label = this.controllerLabel(ctl);
         ctl.hidden = this.controllersHidden;
         return ctl;
@@ -1824,14 +1840,15 @@ export default {
           });
       }
 
-      const nodes = new DataSet([
+      const initialNodes = [
         ...Object.values(this.hosts),
         ...Object.values(this.switches),
         ...Object.values(this.controllers),
         ...Object.values(this.nats),
         ...Object.values(this.routers),
-      ]);
-      this.nodes = nodes;
+      ];
+      this.nodes.clear();
+      this.nodes.add(initialNodes);
       this.applyVisibilitySettings();
       this.selectInitialWebshell();
       this.bindPortLabelListeners();
@@ -3185,17 +3202,221 @@ export default {
   height: 100vh;
   width: 100%;
   position: relative;
+  background: var(--theme-app-bg);
+  color: var(--theme-app-color);
+}
+
+:global(:root) {
+  --theme-app-bg: #101010;
+  --theme-app-color: #d4d4d4;
+  --theme-topbar-bg: #2b2b2b;
+  --theme-topbar-color: #d4d4d4;
+  --theme-topbar-border: #1f1f1f;
+  --theme-menu-hover: #3e3e3e;
+  --theme-dropdown-bg: #2d2d2d;
+  --theme-dropdown-border: #1f1f1f;
+  --theme-health-overlay-bg: rgba(5, 5, 5, 0.92);
+  --theme-health-overlay-card-bg: #1e1e1e;
+  --theme-health-overlay-card-border: #3a3a3a;
+  --theme-health-overlay-card-color: #dcdcdc;
+  --theme-statusbar-bg: #1d1d1d;
+  --theme-statusbar-color: #d4d4d4;
+  --theme-statusbar-border: #2f2f2f;
+  --theme-statusbar-muted: #a2a2a2;
+  --theme-sidebar-bg: #1e1e1e;
+  --theme-sidebar-color: #cccccc;
+  --theme-sidebar-border: #333;
+  --theme-sidebar-muted: #9b9b9b;
+  --theme-sidebar-button-bg: #2d2d2d;
+  --theme-sidebar-button-border: #333;
+  --theme-sidebar-button-color: #cccccc;
+  --theme-sidebar-button-hover: #3e3e3e;
+  --theme-sidebar-button-active-bg: #0b2b3b;
+  --theme-sidebar-button-active-border: #007acc;
+  --theme-sidebar-button-active-color: #e6f2ff;
+  --theme-icon-button-hover: #2d2d2d;
+  --theme-network-bg: #252526;
+  --theme-webshell-bg: #1d1d1d;
+  --theme-webshell-color: #ffffff;
+  --theme-webshell-border: #444;
+  --theme-webshell-header-bg: #2d2d2d;
+  --theme-webshell-header-border: #333;
+  --theme-webshell-tab-bg: transparent;
+  --theme-webshell-tab-color: #cccccc;
+  --theme-webshell-tab-hover: #333333;
+  --theme-webshell-tab-active-bg: #1e1e1e;
+  --theme-webshell-tab-active-color: #ffffff;
+  --theme-webshell-icon-color: #cccccc;
+  --theme-webshell-tabs-bg: #2d2d2d;
+  --theme-webshell-chat-bg: #1f1f1f;
+  --theme-webshell-chat-border: #2d2d2d;
+  --theme-webshell-chat-input-bg: #121212;
+  --theme-webshell-chat-input-border: #333;
+  --theme-webshell-chat-input-color: #e5e5e5;
+  --theme-webshell-chat-button-bg: #007acc;
+  --theme-webshell-chat-button-color: #ffffff;
+  --theme-webshell-chat-error: #f87171;
+  --theme-node-context-bg: #1f1f1f;
+  --theme-node-context-border: #333;
+  --theme-node-context-color: #e5e5e5;
+  --theme-modal-pre-bg: #0b1220;
+  --theme-modal-pre-border: #1f2937;
+  --theme-monitoring-toolbar-bg: #1a1a1a;
+  --theme-monitoring-toolbar-border: #2a2a2a;
+  --theme-monitoring-select-color: #c8c8c8;
+  --theme-monitoring-select-bg: #0f0f0f;
+  --theme-monitoring-select-border: #333;
+  --theme-monitoring-toggle-bg: #111;
+  --theme-monitoring-toggle-border: #2a2a2a;
+  --theme-monitoring-toggle-color: #ffffff;
+  --theme-monitoring-toggle-active-bg: #043f5f;
+  --theme-monitoring-toggle-active-border: #07c6ef;
+  --theme-monitoring-toggle-active-color: #cff2ff;
+  --theme-monitoring-export-bg: #1a1a1a;
+  --theme-monitoring-export-border: #2a2a2a;
+  --theme-monitoring-clear-bg: #1a1a1a;
+  --theme-monitoring-clear-border: #2a2a2a;
+  --theme-monitoring-status-color: #9da9b7;
+  --theme-monitoring-status-monitoring: #9be2a5;
+  --theme-monitoring-status-error: #ff6b6b;
+  --theme-chart-card-bg: #111;
+  --theme-chart-card-border: #222;
+  --theme-chart-label-color: #9da9b7;
+  --theme-traffic-toolbar-bg: #1e1e1e;
+  --theme-traffic-toolbar-border: #2a2a2a;
+  --theme-traffic-status-active: #43b1ff;
+  --theme-traffic-status-inactive: #8a8a8a;
+  --theme-traffic-select-bg: #1e1e1e;
+  --theme-traffic-select-color: #cccccc;
+  --theme-traffic-select-border: #333;
+  --theme-traffic-button-bg: #1e1e1e;
+  --theme-traffic-button-border: #333;
+  --theme-traffic-button-color: #cccccc;
+  --theme-sniffer-toggle-bg: #2d2d2d;
+  --theme-sniffer-toggle-border: #333;
+  --theme-sniffer-toggle-color: #cccccc;
+  --theme-sniffer-toggle-active-bg: #0b2b3b;
+  --theme-sniffer-toggle-active-border: #007acc;
+  --theme-sniffer-toggle-active-color: #e6f2ff;
+  --theme-traffic-row-color: #cccccc;
+  --theme-traffic-row-bg-even: #1f1f1f;
+  --theme-traffic-row-header-bg: #262626;
+  --theme-traffic-row-header-border: #333;
+  --theme-traffic-empty-color: #8a8a8a;
+  --theme-input-bg: #1e1e1e;
+  --theme-input-border: #333;
+}
+
+:global(.theme-light) {
+  --theme-app-bg: #f8f8f8;
+  --theme-app-color: #000000;
+  --theme-topbar-bg: #f8f8f8;
+  --theme-topbar-color: #000000;
+  --theme-topbar-border: #d0d0d0;
+  --theme-menu-hover: #e6e6e6;
+  --theme-dropdown-bg: #ffffff;
+  --theme-dropdown-border: #d0d0d0;
+  --theme-health-overlay-bg: rgba(248, 248, 248, 0.92);
+  --theme-health-overlay-card-bg: #ffffff;
+  --theme-health-overlay-card-border: #d0d0d0;
+  --theme-health-overlay-card-color: #000000;
+  --theme-statusbar-bg: #f8f8f8;
+  --theme-statusbar-color: #000000;
+  --theme-statusbar-border: #d0d0d0;
+  --theme-statusbar-muted: #6b6b6b;
+  --theme-sidebar-bg: #f8f8f8;
+  --theme-sidebar-color: #000000;
+  --theme-sidebar-border: #d0d0d0;
+  --theme-sidebar-muted: #6b6b6b;
+  --theme-sidebar-button-bg: #ffffff;
+  --theme-sidebar-button-border: #d0d0d0;
+  --theme-sidebar-button-color: #000000;
+  --theme-sidebar-button-hover: #e6e6e6;
+  --theme-sidebar-button-active-bg: #e6f2ff;
+  --theme-sidebar-button-active-border: #007acc;
+  --theme-sidebar-button-active-color: #004175;
+  --theme-icon-button-hover: #d0d0d0;
+  --theme-network-bg: #ffffff;
+  --theme-webshell-bg: #f8f8f8;
+  --theme-webshell-color: #000000;
+  --theme-webshell-border: #d0d0d0;
+  --theme-node-context-bg: #ffffff;
+  --theme-node-context-border: #d0d0d0;
+  --theme-node-context-color: #000000;
+  --theme-webshell-header-bg: #f8f8f8;
+  --theme-webshell-header-border: #d0d0d0;
+  --theme-webshell-tab-bg: transparent;
+  --theme-webshell-tab-color: #2b2b2b;
+  --theme-webshell-tab-hover: #e6e6e6;
+  --theme-webshell-tab-active-bg: #ffffff;
+  --theme-webshell-tab-active-color: #000000;
+  --theme-webshell-icon-color: #2b2b2b;
+  --theme-webshell-tabs-bg: #f8f8f8;
+  --theme-webshell-chat-bg: #ffffff;
+  --theme-webshell-chat-border: #d0d0d0;
+  --theme-webshell-chat-input-bg: #ffffff;
+  --theme-webshell-chat-input-border: #d0d0d0;
+  --theme-webshell-chat-input-color: #000000;
+  --theme-webshell-chat-button-bg: #007acc;
+  --theme-webshell-chat-button-color: #ffffff;
+  --theme-webshell-chat-error: #f87171;
+  --theme-modal-pre-bg: #f5f5f5;
+  --theme-modal-pre-border: #d0d0d0;
+  --theme-monitoring-toolbar-bg: #f8f8f8;
+  --theme-monitoring-toolbar-border: #d0d0d0;
+  --theme-monitoring-select-color: #000000;
+  --theme-monitoring-select-bg: #ffffff;
+  --theme-monitoring-select-border: #d0d0d0;
+  --theme-monitoring-toggle-bg: #ffffff;
+  --theme-monitoring-toggle-border: #d0d0d0;
+  --theme-monitoring-toggle-color: #000000;
+  --theme-monitoring-toggle-active-bg: #e6f2ff;
+  --theme-monitoring-toggle-active-border: #007acc;
+  --theme-monitoring-toggle-active-color: #0b2b3b;
+  --theme-monitoring-export-bg: #ffffff;
+  --theme-monitoring-export-border: #d0d0d0;
+  --theme-monitoring-clear-bg: #ffffff;
+  --theme-monitoring-clear-border: #d0d0d0;
+  --theme-monitoring-status-color: #6b6b6b;
+  --theme-monitoring-status-monitoring: #2f7d46;
+  --theme-monitoring-status-error: #c62828;
+  --theme-chart-card-bg: #ffffff;
+  --theme-chart-card-border: #d0d0d0;
+  --theme-chart-label-color: #6b6b6b;
+  --theme-traffic-toolbar-bg: #f8f8f8;
+  --theme-traffic-toolbar-border: #d0d0d0;
+  --theme-traffic-status-active: #0b6fa5;
+  --theme-traffic-status-inactive: #6b6b6b;
+  --theme-traffic-select-bg: #ffffff;
+  --theme-traffic-select-color: #2b2b2b;
+  --theme-traffic-select-border: #d0d0d0;
+  --theme-traffic-button-bg: #ffffff;
+  --theme-traffic-button-border: #d0d0d0;
+  --theme-traffic-button-color: #2b2b2b;
+  --theme-sniffer-toggle-bg: #f8f8f8;
+  --theme-sniffer-toggle-border: #d0d0d0;
+  --theme-sniffer-toggle-color: #000000;
+  --theme-sniffer-toggle-active-bg: #e6f2ff;
+  --theme-sniffer-toggle-active-border: #007acc;
+  --theme-sniffer-toggle-active-color: #0b2b3b;
+  --theme-traffic-row-color: #2b2b2b;
+  --theme-traffic-row-bg-even: #f5f5f5;
+  --theme-traffic-row-header-bg: #efefef;
+  --theme-traffic-row-header-border: #d0d0d0;
+  --theme-traffic-empty-color: #6b6b6b;
+  --theme-input-bg: #ffffff;
+  --theme-input-border: #d0d0d0;
 }
 
 .topbar {
   height: 32px;
-  background: #2b2b2b;
-  color: #d4d4d4;
+  background: var(--theme-topbar-bg);
+  color: var(--theme-topbar-color);
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 0 12px;
-  border-bottom: 1px solid #1f1f1f;
+  border-bottom: 1px solid var(--theme-topbar-border);
   position: relative;
   z-index: 6;
   font-size: 0.85rem;
@@ -3229,7 +3450,7 @@ export default {
 
 .menu-item:hover,
 .menu-item.open {
-  background: #3c3c3c;
+  background: var(--theme-menu-hover);
 }
 
 .menu-item:disabled {
@@ -3241,8 +3462,8 @@ export default {
   position: absolute;
   top: 28px;
   left: 0;
-  background: #2d2d2d;
-  border: 1px solid #1f1f1f;
+  background: var(--theme-dropdown-bg);
+  border: 1px solid var(--theme-dropdown-border);
   border-radius: 6px;
   padding: 6px;
   display: flex;
@@ -3255,7 +3476,7 @@ export default {
 .menu-action {
   background: transparent;
   border: none;
-  color: #d4d4d4;
+  color: var(--theme-app-color);
   padding: 6px 10px;
   text-align: left;
   border-radius: 4px;
@@ -3264,14 +3485,14 @@ export default {
 }
 
 .menu-action:hover {
-  background: #3c3c3c;
+  background: var(--theme-menu-hover);
 }
 
 .menu-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #d4d4d4;
+  color: var(--theme-app-color);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 0.82rem;
@@ -3279,7 +3500,7 @@ export default {
 }
 
 .menu-checkbox:hover {
-  background: #3c3c3c;
+  background: var(--theme-menu-hover);
 }
 
 .menu-checkbox input {
@@ -3292,7 +3513,7 @@ export default {
   right: 0;
   top: 0;
   bottom: 28px;
-  background: rgba(5, 5, 5, 0.92);
+  background: var(--theme-health-overlay-bg);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -3306,13 +3527,13 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  background: #1e1e1e;
-  border: 1px solid #3a3a3a;
+  background: var(--theme-health-overlay-card-bg);
+  border: 1px solid var(--theme-health-overlay-card-border);
   border-radius: 12px;
   padding: 20px 28px;
   max-width: 360px;
   text-align: center;
-  color: #dcdcdc;
+  color: var(--theme-health-overlay-card-color);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
 }
 
@@ -3324,7 +3545,7 @@ export default {
 .menu-separator {
   height: 1px;
   margin: 4px 0;
-  background: #444;
+  background: var(--theme-topbar-border);
 }
 
 .menu-file-input {
@@ -3337,15 +3558,15 @@ export default {
   right: 0;
   bottom: 0;
   height: 28px;
-  background: #1d1d1d;
-  border-top: 1px solid #2f2f2f;
+  background: var(--theme-statusbar-bg);
+  border-top: 1px solid var(--theme-statusbar-border);
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding: 0 16px;
   z-index: 7;
   font-size: 0.8rem;
-  color: #d4d4d4;
+  color: var(--theme-statusbar-color);
 }
 
 .status-bar__right {
@@ -3383,11 +3604,11 @@ export default {
 }
 
 .status-bar__version {
-  color: #a2a2a2;
+  color: var(--theme-statusbar-muted);
 }
 
 .status-bar__counts {
-  color: #d4d4d4;
+  color: var(--theme-statusbar-color);
   font-weight: 500;
 }
 
@@ -3395,7 +3616,7 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #d4d4d4;
+  color: var(--theme-statusbar-color);
 }
 
 .network-state-dot {
@@ -3474,7 +3695,7 @@ export default {
 .network-graph {
   flex: 1 1 auto;
   min-height: 0;
-  background: #252526;
+  background: var(--theme-network-bg);
   overflow: hidden;
   position: absolute;
   inset: 0;
@@ -3490,9 +3711,9 @@ export default {
 .webshell {
   flex: 0 0 auto;
   height: auto;
-  background: black;
-  color: white;
-  border-top: 2px solid #444;
+  background: var(--theme-webshell-bg);
+  color: var(--theme-webshell-color);
+  border-top: 2px solid var(--theme-webshell-border);
   overflow: hidden;
   position: relative;
   z-index: 1;
@@ -3506,8 +3727,8 @@ export default {
 .node-context-menu {
   position: fixed;
   z-index: 10;
-  background: #1f1f1f;
-  border: 1px solid #333;
+  background: var(--theme-node-context-bg);
+  border: 1px solid var(--theme-node-context-border);
   border-radius: 6px;
   padding: 6px;
   display: flex;
@@ -3520,7 +3741,7 @@ export default {
 .node-context-item {
   background: transparent;
   border: none;
-  color: #e5e5e5;
+  color: var(--theme-node-context-color);
   padding: 6px 8px;
   text-align: left;
   cursor: pointer;
@@ -3529,13 +3750,13 @@ export default {
 }
 
 .node-context-item:hover {
-  background: #2f2f2f;
+  background: var(--theme-menu-hover);
 }
 
 .modal-pre {
-  background: #0b1220;
-  border: 1px solid #1f2937;
-  color: #e2e8f0;
+  background: var(--theme-modal-pre-bg);
+  border: 1px solid var(--theme-modal-pre-border);
+  color: var(--theme-app-color);
   padding: 12px;
   border-radius: 10px;
   font-size: 12px;
@@ -3567,192 +3788,6 @@ export default {
   font-size: 13px;
 }
 
-:global(.theme-light) .topbar {
-  background: #f2f2f2 !important;
-  color: #2b2b2b !important;
-  border-bottom: 1px solid #d0d0d0 !important;
-}
-
-:global(.theme-light) .menu-item:hover,
-:global(.theme-light) .menu-item.open {
-  background: #e6e6e6 !important;
-}
-
-:global(.theme-light) .menu-item:disabled {
-  color: #a0a0a0 !important;
-}
-
-:global(.theme-light) .menu-dropdown {
-  background: #ffffff !important;
-  border: 1px solid #d0d0d0 !important;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12) !important;
-}
-
-:global(.theme-light) .menu-action {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .menu-action:hover {
-  background: #efefef !important;
-}
-
-:global(.theme-light) .menu-checkbox {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .menu-checkbox:hover {
-  background: #efefef !important;
-}
-
-:global(.theme-light) .menu-separator {
-  background: #d0d0d0 !important;
-}
-
-:global(.theme-light) .health-overlay {
-  background: rgba(245, 245, 245, 0.92) !important;
-}
-
-:global(.theme-light) .health-overlay__card {
-  background: #ffffff !important;
-  border: 1px solid #d0d0d0 !important;
-  color: #2b2b2b !important;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15) !important;
-}
-
-:global(.theme-light) .status-bar {
-  background: #f2f2f2 !important;
-  border-top: 1px solid #d0d0d0 !important;
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .status-bar__version {
-  color: #6b6b6b !important;
-}
-
-:global(.theme-light) .status-bar__counts,
-:global(.theme-light) .status-bar__network {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .network-graph {
-  background: #f5f5f5 !important;
-}
-
-:global(.theme-light) .webshell {
-  background: #f2f2f2 !important;
-  color: #2b2b2b !important;
-  border-top: 2px solid #d0d0d0 !important;
-}
-
-:global(.theme-light) .node-context-menu {
-  background: #ffffff !important;
-  border: 1px solid #d0d0d0 !important;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
-}
-
-:global(.theme-light) .node-context-item {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .node-context-item:hover {
-  background: #efefef !important;
-}
-
-:global(.theme-light) .modal-pre {
-  background: #f3f3f3 !important;
-  border: 1px solid #d0d0d0 !important;
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .settings-toggle {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .app-shell {
-  background: #f6f6f6 !important;
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .layout {
-  background: #f6f6f6 !important;
-}
-
-:global(.theme-light) .main-content {
-  background: #f5f5f5 !important;
-}
-
-:global(.theme-light) .graph-wrapper {
-  background: #f5f5f5 !important;
-}
-
-:global(.theme-light) .side-container,
-:global(.theme-light) .side-wrapper {
-  background: #f5f5f5 !important;
-}
-
-:global(.theme-light) .menu-bar {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .menu-action {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) .menu-action:hover,
-:global(.theme-light) .menu-item:hover,
-:global(.theme-light) .menu-item.open {
-  background: #e6e6e6 !important;
-}
-
-:global(.theme-light) .status-bar {
-  border-top-color: #d0d0d0 !important;
-}
-
-:global(.theme-light) .webshell {
-  border-top-color: #d0d0d0 !important;
-}
-
-:global(.theme-light) .health-overlay {
-  background: rgba(245, 245, 245, 0.92) !important;
-}
-
-:global(.theme-light) .health-overlay__card {
-  background: #ffffff !important;
-}
-
-:global(.theme-light) .status-dot--started {
-  background-color: #3c9c4e !important;
-}
-
-:global(.app-shell.theme-light) :deep(.app-shell) {
-  background: #f6f6f6;
-  color: #2b2b2b;
-}
-
-:global(.app-shell.theme-light) :deep(.layout) {
-  background: #f6f6f6;
-}
-
-:global(.app-shell.theme-light) :deep(.main-content) {
-  background: #f5f5f5;
-}
-
-:global(.app-shell.theme-light) :deep(.graph-wrapper) {
-  background: #f5f5f5;
-}
-
-:global(.app-shell.theme-light) :deep(.status-bar) {
-  border-top-color: #d0d0d0;
-}
-
-:global(.app-shell.theme-light) :deep(.webshell) {
-  border-top-color: #d0d0d0;
-}
-
-:global(.app-shell.theme-light) :deep(.network-graph) {
-  background: #f5f5f5;
-}
-
 .about-link {
   color: #60a5fa;
   text-decoration: underline;
@@ -3770,65 +3805,11 @@ export default {
   align-items: center;
   gap: 10px;
   font-size: 12px;
-  color: #e2e8f0;
+  color: var(--theme-app-color);
 }
 
 .settings-toggle input {
   width: 16px;
   height: 16px;
-}
-
-:global(.app-shell.theme-light) .topbar,
-:global(.app-shell.theme-light) .status-bar,
-:global(.app-shell.theme-light) .side,
-:global(.app-shell.theme-light) .layout,
-:global(.app-shell.theme-light) .app-shell,
-:global(.app-shell.theme-light) .main-content,
-:global(.app-shell.theme-light) .network-graph,
-:global(.app-shell.theme-light) .webshell {
-  background: #f2f2f2;
-  color: #2b2b2b;
-}
-
-:global(.app-shell.theme-light) .topbar {
-  border-bottom: 1px solid #d0d0d0;
-}
-
-:global(.app-shell.theme-light) .menu-bar,
-:global(.app-shell.theme-light) .menu-action,
-:global(.app-shell.theme-light) .menu-item {
-  color: #2b2b2b;
-}
-
-:global(.app-shell.theme-light) .menu-action:hover,
-:global(.app-shell.theme-light) .menu-item:hover,
-:global(.app-shell.theme-light) .menu-item.open {
-  background: #e6e6e6;
-}
-
-:global(.app-shell.theme-light) .menu-dropdown,
-:global(.app-shell.theme-light) .node-context-menu {
-  background: #ffffff;
-  border-color: #d0d0d0;
-}
-
-:global(.app-shell.theme-light) .menu-dropdown {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
-}
-
-:global(.app-shell.theme-light) .status-bar {
-  border-top: 1px solid #d0d0d0;
-}
-
-:global(.app-shell.theme-light) .status-bar__counts,
-:global(.app-shell.theme-light) .status-bar__network,
-:global(.app-shell.theme-light) .status-bar__version {
-  color: #2b2b2b;
-}
-
-:global(.app-shell.theme-light) .side input,
-:global(.app-shell.theme-light) .side select,
-:global(.app-shell.theme-light) .settings-toggle {
-  color: #2b2b2b;
 }
 </style>

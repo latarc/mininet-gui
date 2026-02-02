@@ -1,8 +1,8 @@
 <template>
   <div
     id="side"
-    :class="['side', { collapsed: !sideIsActive }]"
-    class="flex h-full w-[80vw] min-w-[220px] max-w-[320px] flex-col bg-[#1e1e1e] text-[#cccccc] outline-none sm:w-[60vw] lg:w-[280px]"
+    :class="['side', themeClass, { collapsed: !sideIsActive }]"
+    class="flex h-full w-[80vw] min-w-[220px] max-w-[320px] flex-col outline-none sm:w-[60vw] lg:w-[280px]"
     tabindex="0"
     @keydown.esc="$emit('closeAllActiveModes')"
     @keydown.h="$emit('toggleShowHosts')"
@@ -33,15 +33,15 @@
         <div v-if="tooltip.visible" class="sidebar-tooltip" :style="tooltipStyle">{{ tooltip.text }}</div>
       </div>
     </div>
-    <div class="w-full border-t border-[#333]" aria-hidden="true"></div>
+    <div class="sidebar-divider w-full border-t" aria-hidden="true"></div>
     <div class="side-scroll flex flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-3">
     <!-- Core Actions Group -->
     <div class="sidebar-group flex flex-col gap-2">
-      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+      <h2 class="border-b pb-2 text-[13px] font-semibold tracking-wide">
         {{ $t("side.actions") }}
       </h2>
       <button
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        class="button-control-network flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-colors"
         id="button-create-topology"
         :disabled="!networkConnected"
         @mouseenter="handleTooltipMouseEnter($event, $t('side.generateTopology'))"
@@ -54,7 +54,7 @@
       </button>
       <button
         id="button-pingall"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        class="button-control-network flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-colors"
         :class="pingallRunning ? 'opacity-60 cursor-not-allowed' : ''"
         :disabled="!networkConnected || pingallRunning"
         :data-tooltip="$t('side.runPingall')"
@@ -68,7 +68,7 @@
       </button>
       <button
         id="button-iperf"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        class="button-control-network flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-colors"
         :class="iperfRunning ? 'opacity-60 cursor-not-allowed' : ''"
         :disabled="!networkConnected || iperfRunning"
         :data-tooltip="$t('side.runIperf')"
@@ -82,7 +82,7 @@
       </button>
       <button
         id="button-create-link"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        class="button-control-network flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-colors"
         :class="addEdgeMode ? 'border-[#007acc] bg-[#0b2b3b] text-[#e6f2ff] ring-1 ring-[#007acc]' : ''"
         :disabled="!networkConnected"
         :data-tooltip="$t('side.toggleConnectMode')"
@@ -96,7 +96,7 @@
       </button>
       <button
         id="button-delete-selected"
-        class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
+        class="button-control-network flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px] font-medium transition-colors"
         :disabled="!networkConnected"
         :data-tooltip="$t('side.deleteSelection')"
         @mouseenter="handleTooltipMouseEnter($event, $t('side.deleteSelection'))"
@@ -110,12 +110,12 @@
     </div>
 
     <div class="sidebar-group flex flex-col gap-2">
-      <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
+      <h2 class="border-b pb-2 text-[13px] font-semibold tracking-wide">
         {{ $t("side.nodesPalette") }}
       </h2>
       <div class="draggable-container flex flex-col items-center gap-4 py-2">
         <div class="palette-group w-full">
-          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">{{ $t("side.mainNodes") }}</div>
+          <div class="palette-title text-[11px] uppercase tracking-wide">{{ $t("side.mainNodes") }}</div>
           <div class="palette-items flex flex-col items-center gap-3 pt-2">
             <figure
               id="draggable-host"
@@ -128,7 +128,7 @@
               @mouseleave="hideTooltip"
             >
               <img alt="host" class="h-10 w-10" :src="icons.host" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.host") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.host") }}</figcaption>
             </figure>
             <figure
               id="draggable-switch"
@@ -141,7 +141,7 @@
               @mouseleave="hideTooltip"
             >
               <img alt="switch" class="h-10 w-10" :src="icons.switch" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.switch") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.switch") }}</figcaption>
             </figure>
             <figure
               id="draggable-controller-default"
@@ -159,7 +159,7 @@
                 :src="icons.controller"
                 draggable="false"
               />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.controller") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.controller") }}</figcaption>
             </figure>
             <figure
               id="draggable-nat"
@@ -177,7 +177,7 @@
                 :src="icons.nat"
                 draggable="false"
               />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.nat") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.nat") }}</figcaption>
             </figure>
             <figure
               id="draggable-router"
@@ -190,12 +190,12 @@
               @mouseleave="hideTooltip"
             >
               <img alt="router" class="h-10 w-10" :src="icons.router" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.router") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.router") }}</figcaption>
             </figure>
           </div>
         </div>
         <div v-if="showSpecialSwitches" class="palette-group w-full">
-          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">{{ $t("side.specialSwitches") }}</div>
+          <div class="palette-title text-[11px] uppercase tracking-wide">{{ $t("side.specialSwitches") }}</div>
           <div class="palette-items flex flex-col items-center gap-3 pt-2">
             <figure
               id="draggable-switch-ovs"
@@ -208,7 +208,7 @@
               @mouseleave="hideTooltip"
             >
               <img alt="switch ovs" class="h-10 w-10" :src="icons.switchOvs" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ovsSwitch") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.ovsSwitch") }}</figcaption>
             </figure>
             <figure
               id="draggable-switch-user"
@@ -221,7 +221,7 @@
               @mouseleave="hideTooltip"
             >
               <img alt="switch user" class="h-10 w-10" :src="icons.switchUser" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.userSwitch") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.userSwitch") }}</figcaption>
             </figure>
             <figure
               id="draggable-switch-ovsbridge"
@@ -234,12 +234,12 @@
               @mouseleave="hideTooltip"
             >
               <img alt="switch ovsbridge" class="h-10 w-10" :src="icons.switchOvsBridge" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ovsBridge") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.ovsBridge") }}</figcaption>
             </figure>
           </div>
         </div>
         <div v-if="showSpecialControllers" class="palette-group w-full">
-          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">{{ $t("side.specialControllers") }}</div>
+          <div class="palette-title text-[11px] uppercase tracking-wide">{{ $t("side.specialControllers") }}</div>
           <div class="palette-items flex flex-col items-center gap-3 pt-2">
             <figure
               id="draggable-controller-remote"
@@ -260,7 +260,7 @@
                 />
                 <span class="controller-badge controller-badge--remote">{{ $t("nodes.remoteShort") }}</span>
               </div>
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.remote") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.remote") }}</figcaption>
             </figure>
             <figure
               id="draggable-controller-ryu"
@@ -281,7 +281,7 @@
                 />
                 <span class="controller-badge">{{ $t("nodes.ryuShort") }}</span>
               </div>
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ryu") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.ryu") }}</figcaption>
             </figure>
             <figure
               id="draggable-controller-nox"
@@ -302,7 +302,7 @@
                 />
                 <span class="controller-badge">{{ $t("nodes.noxShort") }}</span>
               </div>
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.nox") }}</figcaption>
+              <figcaption class="text-[11px] whitespace-nowrap">{{ $t("nodes.nox") }}</figcaption>
             </figure>
           </div>
         </div>
@@ -374,6 +374,9 @@ export default {
     },
     isLightTheme() {
       return this.theme === "light";
+    },
+    themeClass() {
+      return this.isLightTheme ? "theme-light" : "theme-dark";
     },
     icons() {
       if (this.isLightTheme) {
@@ -481,11 +484,17 @@ export default {
   position: relative;
   z-index: 2;
   box-sizing: border-box;
+  background: var(--theme-sidebar-bg);
+  color: var(--theme-sidebar-color);
 }
 
 .side-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #007acc #1e1e1e;
+  scrollbar-color: #007acc var(--theme-sidebar-bg);
+}
+
+.sidebar-divider {
+  border-color: var(--theme-sidebar-border);
 }
 
 .controller-icon {
@@ -552,15 +561,32 @@ export default {
   box-sizing: border-box;
 }
 
+.side .button-control-network {
+  background: var(--theme-sidebar-button-bg);
+  color: var(--theme-sidebar-button-color);
+  border: 1px solid var(--theme-sidebar-button-border);
+}
+
+.side .button-control-network:hover {
+  background: var(--theme-sidebar-button-hover);
+}
+
+.side .button-control-network:active,
+.side .button-control-network:focus-visible {
+  background: var(--theme-sidebar-button-active-bg);
+  border-color: var(--theme-sidebar-button-active-border);
+  color: var(--theme-sidebar-button-active-color);
+}
+
 .sidebar-tooltip {
   position: fixed;
   pointer-events: none;
-  background: #111;
-  color: #fff;
+  background: var(--theme-node-context-bg);
+  color: var(--theme-node-context-color);
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 11px;
-  border: 1px solid #2f2f2f;
+  border: 1px solid var(--theme-node-context-border);
   white-space: nowrap;
   z-index: 30;
   transition: opacity 0.1s ease;
@@ -569,6 +595,7 @@ export default {
 .button-control-network:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  background: var(--theme-sidebar-button-bg);
 }
 
 .side.collapsed .button-control-network .material-symbols-outlined {
@@ -605,7 +632,7 @@ export default {
   height: 40px;
   border: none;
   background: transparent;
-  color: #cccccc;
+  color: var(--theme-sidebar-color);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -616,7 +643,21 @@ export default {
 }
 
 .icon-button:hover {
-  background-color: #2d2d2d;
+  background-color: var(--theme-icon-button-hover);
+}
+
+.sidebar-group h2 {
+  color: var(--theme-sidebar-color) !important;
+  border-bottom-color: var(--theme-sidebar-border) !important;
+}
+
+.palette-title {
+  color: var(--theme-sidebar-muted) !important;
+}
+
+.side .label,
+.side figcaption {
+  color: var(--theme-sidebar-color) !important;
 }
 
 /* SCROLLBAR FOR WEBKIT (Chrome, Edge, Safari) */
@@ -625,7 +666,7 @@ export default {
 }
 
 .side-scroll::-webkit-scrollbar-track {
-  background: #1e1e1e;
+  background: var(--theme-sidebar-bg);
 }
 
 .side-scroll::-webkit-scrollbar-thumb {
@@ -639,7 +680,11 @@ export default {
 
 .side input,
 .side select {
-  color: #000;
+  background: var(--theme-input-bg);
+  color: var(--theme-sidebar-color);
+  border: 1px solid var(--theme-input-border);
+  border-radius: 4px;
+  padding: 4px 6px;
 }
 
 .side select:focus {
@@ -661,67 +706,4 @@ export default {
   opacity: 0.9;
 }
 
-:global(.theme-light) :deep(.side) {
-  background: #f2f2f2 !important;
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) :deep(.sidebar-group h2) {
-  color: #2b2b2b;
-  border-color: #d0d0d0;
-}
-
-:global(.theme-light) :deep(.palette-title) {
-  color: #6b6b6b;
-}
-
-:global(.theme-light) :deep(figcaption) {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) :deep(.button-control-network) {
-  background: #ffffff !important;
-  border-color: #d0d0d0 !important;
-  color: #2b2b2b;
-}
-
-:global(.theme-light) :deep(.button-control-network:hover) {
-  background: #efefef !important;
-}
-
-:global(.theme-light) :deep(.border-\[\#333\]) {
-  border-color: #d0d0d0;
-}
-
-:global(.theme-light) :deep(.icon-button) {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) :deep(.icon-button:hover) {
-  background-color: #e6e6e6;
-}
-
-:global(.theme-light) :deep(.side-scroll) {
-  scrollbar-color: #007acc #f2f2f2;
-}
-
-:global(.theme-light) :deep(.side-scroll::-webkit-scrollbar-track) {
-  background: #f2f2f2;
-}
-
-:global(.theme-light) :deep(.sidebar-tooltip) {
-  background: #2b2b2b;
-  color: #ffffff;
-  border-color: #1f1f1f;
-}
-
-:global(.theme-light) :deep(.side input),
-:global(.theme-light) :deep(.side select) {
-  color: #2b2b2b !important;
-}
-
-:global(.theme-light) :deep(.side select:focus) {
-  outline: 2px solid #007acc;
-  box-shadow: 0 0 0 2px #007acc;
-}
 </style>

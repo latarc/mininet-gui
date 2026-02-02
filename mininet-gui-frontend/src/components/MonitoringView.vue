@@ -1,5 +1,5 @@
 <template>
-  <div class="monitoring-view">
+  <div :class="['monitoring-view', themeClass]">
     <div class="monitoring-toolbar">
       <div class="monitoring-filters">
         <label class="monitoring-select">
@@ -143,6 +143,9 @@ export default {
     },
     isLightTheme() {
       return this.theme === "light";
+    },
+    themeClass() {
+      return this.isLightTheme ? "theme-light" : "theme-dark";
     },
   },
   watch: {
@@ -504,8 +507,8 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 10px;
-  border-bottom: 1px solid #2a2a2a;
-  background: #1a1a1a;
+  border-bottom: 1px solid var(--theme-monitoring-toolbar-border);
+  background: var(--theme-monitoring-toolbar-bg);
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -520,14 +523,14 @@ export default {
   display: flex;
   flex-direction: column;
   font-size: 0.75rem;
-  color: #c8c8c8;
+  color: var(--theme-monitoring-select-color);
 }
 
 .monitoring-select select {
   margin-top: 4px;
-  background: #0f0f0f;
-  color: #ececec;
-  border: 1px solid #333;
+  background: var(--theme-monitoring-select-bg);
+  color: var(--theme-monitoring-select-color);
+  border: 1px solid var(--theme-monitoring-select-border);
   padding: 6px 8px;
   border-radius: 4px;
   min-width: 140px;
@@ -553,19 +556,19 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--theme-monitoring-toggle-border);
   padding: 6px 12px;
-  background: #111;
-  color: #fff;
+  background: var(--theme-monitoring-toggle-bg);
+  color: var(--theme-monitoring-toggle-color);
   border-radius: 6px;
   font-size: 0.9rem;
   cursor: pointer;
 }
 
 .monitoring-toggle.active {
-  border-color: #07c6ef;
-  background: #043f5f;
-  color: #cff2ff;
+  border-color: var(--theme-monitoring-toggle-active-border);
+  background: var(--theme-monitoring-toggle-active-bg);
+  color: var(--theme-monitoring-toggle-active-color);
 }
 
 .monitoring-toggle:disabled {
@@ -577,10 +580,10 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--theme-monitoring-export-border);
   padding: 6px 12px;
-  background: #1a1a1a;
-  color: #fff;
+  background: var(--theme-monitoring-export-bg);
+  color: var(--theme-monitoring-toggle-color);
   border-radius: 6px;
   font-size: 0.9rem;
   cursor: pointer;
@@ -600,10 +603,10 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid #2a2a2a;
+  border: 1px solid var(--theme-monitoring-clear-border);
   padding: 6px 12px;
-  background: #1a1a1a;
-  color: #fff;
+  background: var(--theme-monitoring-clear-bg);
+  color: var(--theme-monitoring-toggle-color);
   border-radius: 6px;
   font-size: 0.9rem;
   cursor: pointer;
@@ -621,15 +624,15 @@ export default {
 
 .monitoring-status {
   font-size: 0.8rem;
-  color: #9da9b7;
+  color: var(--theme-monitoring-status-color);
 }
 
 .monitoring-status.monitoring {
-  color: #9be2a5;
+  color: var(--theme-monitoring-status-monitoring);
 }
 
 .monitoring-status.error {
-  color: #ff6b6b;
+  color: var(--theme-monitoring-status-error);
 }
 
 .monitoring-charts {
@@ -648,8 +651,8 @@ export default {
   min-width: 240px;
   min-height: 0;
   height: 100%;
-  background: #111;
-  border: 1px solid #222;
+  background: var(--theme-chart-card-bg);
+  border: 1px solid var(--theme-chart-card-border);
   border-radius: 8px;
   padding: 10px;
   display: flex;
@@ -659,7 +662,7 @@ export default {
 
 .chart-label {
   font-size: 0.8rem;
-  color: #9da9b7;
+  color: var(--theme-chart-label-color);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -675,63 +678,5 @@ export default {
   height: 100%;
 }
 
-:global(.theme-light) .monitoring-toolbar {
-  background: #f5f5f5;
-  border-bottom: 1px solid #d0d0d0;
-}
 
-:global(.theme-light) .monitoring-select {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .monitoring-select select {
-  background: #ffffff;
-  color: #2b2b2b;
-  border: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .monitoring-select select:focus {
-  outline: 2px solid #007acc;
-  box-shadow: 0 0 0 2px #007acc;
-}
-
-:global(.theme-light) .monitoring-toggle,
-:global(.theme-light) .monitoring-export,
-:global(.theme-light) .monitoring-clear {
-  border: 1px solid #d0d0d0;
-  background: #ffffff;
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .monitoring-toggle.active {
-  border-color: #007acc;
-  background: #e6f2ff;
-  color: #0b2b3b;
-}
-
-:global(.theme-light) .monitoring-export:not(:disabled):hover,
-:global(.theme-light) .monitoring-clear:not(:disabled):hover {
-  background: #efefef;
-}
-
-:global(.theme-light) .monitoring-status {
-  color: #6b6b6b;
-}
-
-:global(.theme-light) .monitoring-status.monitoring {
-  color: #2f7d46;
-}
-
-:global(.theme-light) .monitoring-status.error {
-  color: #c62828;
-}
-
-:global(.theme-light) .chart-card {
-  background: #ffffff;
-  border: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .chart-label {
-  color: #6b6b6b;
-}
 </style>

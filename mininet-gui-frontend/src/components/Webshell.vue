@@ -1,7 +1,6 @@
 <template>
   <div
-    class="webshell-container"
-    :class="{ minimized: isMinimized }"
+    :class="['webshell-container', themeClass, { minimized: isMinimized }]"
     :style="{ height: isMinimized ? minimizedHeight + 'px' : panelHeight + 'px' }"
   >
     <div v-show="!isMinimized" class="resize-handle-top" @mousedown.prevent="startResize"></div>
@@ -199,6 +198,9 @@ export default {
     },
     isLightTheme() {
       return this.theme === "light";
+    },
+    themeClass() {
+      return this.isLightTheme ? "theme-light" : "theme-dark";
     },
     terminalTheme() {
       if (this.isLightTheme) {
@@ -699,10 +701,10 @@ export default {
 .webshell-container {
   display: flex;
   flex-direction: column;
-  background-color: #1e1e1e;
-  color: #cccccc;
+  background-color: var(--theme-webshell-bg);
+  color: var(--theme-webshell-color);
   font-family: "Fira Code", Consolas, monospace;
-  border: 1px solid #333;
+  border: 1px solid var(--theme-webshell-border);
   border-radius: 4px;
   border-top: 3px solid #007acc;
   position: relative;
@@ -715,9 +717,9 @@ export default {
   align-items: center;
   justify-content: space-between;
   position: relative;
-  background-color: #2d2d2d;
+  background-color: var(--theme-webshell-header-bg);
   padding: 0.5rem 1rem;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--theme-webshell-header-border);
   min-height: 44px;
 }
 
@@ -757,7 +759,7 @@ export default {
 .view-tab {
   border: 1px solid transparent;
   background: transparent;
-  color: #cccccc;
+  color: var(--theme-webshell-tab-color);
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
@@ -765,13 +767,13 @@ export default {
 }
 
 .view-tab:hover {
-  background-color: #333333;
+  background-color: var(--theme-webshell-tab-hover);
 }
 
 .view-tab.active {
   border-color: #007acc;
-  background-color: #1e1e1e;
-  color: #ffffff;
+  background-color: var(--theme-webshell-tab-active-bg);
+  color: var(--theme-webshell-tab-active-color);
 }
 
 .icon-button {
@@ -782,7 +784,7 @@ export default {
   height: 28px;
   border: none;
   background: transparent;
-  color: #cccccc;
+  color: var(--theme-webshell-icon-color);
   cursor: pointer;
   border-radius: 4px;
 }
@@ -793,8 +795,8 @@ export default {
 
 .tabs {
   display: flex;
-  background-color: #2d2d2d;
-  border-bottom: 1px solid #333;
+  background-color: var(--theme-webshell-tabs-bg);
+  border-bottom: 1px solid var(--theme-webshell-header-border);
   overflow-x: auto;
   overflow-y: hidden;
   white-space: nowrap;
@@ -803,7 +805,7 @@ export default {
 .tab-button {
   padding: 0.5rem 1rem;
   background: transparent;
-  color: #cccccc;
+  color: var(--theme-webshell-tab-color);
   border: none;
   cursor: pointer;
   outline: none;
@@ -817,12 +819,12 @@ export default {
 }
 
 .tab-button.active {
-  background-color: #1e1e1e;
+  background-color: var(--theme-webshell-tab-active-bg);
   border-bottom: 2px solid #007acc;
 }
 
 .tab-button:hover {
-  background-color: #333333;
+  background-color: var(--theme-webshell-tab-hover);
 }
 
 .tab-label {
@@ -836,14 +838,14 @@ export default {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  color: #9aa0a6;
+  color: var(--theme-webshell-tab-color);
   font-size: 14px;
   line-height: 1;
 }
 
 .tab-close:hover {
-  background: #444;
-  color: #e6e6e6;
+  background: var(--theme-webshell-tab-hover);
+  color: var(--theme-webshell-tab-active-color);
 }
 
 .terminal-window {
@@ -894,7 +896,7 @@ export default {
 
 .terminal-empty {
   padding: 1rem;
-  color: #8a8a8a;
+  color: var(--theme-traffic-empty-color);
   font-size: 0.9rem;
 }
 
@@ -927,8 +929,8 @@ export default {
 }
 
 .chat-message {
-  background: #1f1f1f;
-  border: 1px solid #2d2d2d;
+  background: var(--theme-webshell-chat-bg);
+  border: 1px solid var(--theme-webshell-chat-border);
   padding: 8px 10px;
   border-radius: 8px;
 }
@@ -958,9 +960,9 @@ export default {
 
 .chat-input textarea {
   flex: 1;
-  background: #121212;
-  color: #e5e5e5;
-  border: 1px solid #333;
+  background: var(--theme-webshell-chat-input-bg);
+  color: var(--theme-webshell-chat-input-color);
+  border: 1px solid var(--theme-webshell-chat-input-border);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 0.85rem;
@@ -970,8 +972,8 @@ export default {
 }
 
 .chat-input button {
-  background: #007acc;
-  color: #fff;
+  background: var(--theme-webshell-chat-button-bg);
+  color: var(--theme-webshell-chat-button-color);
   border: none;
   border-radius: 6px;
   padding: 8px 12px;
@@ -984,7 +986,7 @@ export default {
 }
 
 .chat-error {
-  color: #f87171;
+  color: var(--theme-webshell-chat-error);
   font-size: 0.8rem;
 }
 
@@ -999,84 +1001,5 @@ export default {
   z-index: 2;
 }
 
-:global(.theme-light) .webshell-container {
-  background-color: #ffffff;
-  color: #2b2b2b;
-  border: 1px solid #d0d0d0;
-  border-top: 3px solid #007acc;
-}
 
-:global(.theme-light) .webshell-header {
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .view-tab {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .view-tab:hover {
-  background-color: #e6e6e6;
-}
-
-:global(.theme-light) .view-tab.active {
-  background-color: #ffffff;
-  color: #2b2b2b;
-  border-color: #007acc;
-}
-
-:global(.theme-light) .icon-button {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .icon-button:hover {
-  background-color: #e6e6e6;
-}
-
-:global(.theme-light) .tabs {
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .tab-button {
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .tab-button.active {
-  background-color: #ffffff;
-  border-bottom: 2px solid #007acc;
-}
-
-:global(.theme-light) .tab-button:hover {
-  background-color: #e6e6e6;
-}
-
-:global(.theme-light) .tab-close {
-  color: #6b6b6b;
-}
-
-:global(.theme-light) .tab-close:hover {
-  background: #e6e6e6;
-  color: #2b2b2b;
-}
-
-:global(.theme-light) .terminal-empty {
-  color: #6b6b6b;
-}
-
-:global(.theme-light) .chat-message {
-  background: #f5f5f5;
-  border: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .chat-input textarea {
-  background: #ffffff;
-  color: #2b2b2b;
-  border: 1px solid #d0d0d0;
-}
-
-:global(.theme-light) .chat-input button {
-  background: #007acc;
-  color: #ffffff;
-}
 </style>
