@@ -884,6 +884,16 @@ export default {
   height: 100%;
 }
 
+.webshell :deep(.xterm),
+.webshell :deep(.xterm-screen),
+.webshell :deep(.xterm-viewport) {
+  background-color: transparent !important;
+}
+
+.webshell :deep(.xterm .xterm-rows) {
+  color: var(--theme-webshell-color) !important;
+}
+
 .terminal-instance :deep(.xterm-viewport) {
   padding-bottom: 8px;
   box-sizing: border-box;
@@ -892,6 +902,7 @@ export default {
 .terminal-window :deep(.xterm-scrollable-element) {
   min-height: 100%;
   height: 100%;
+  background-color: transparent !important;
 }
 
 .terminal-empty {

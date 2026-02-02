@@ -747,8 +747,6 @@ export default {
       links: [],
       nodes: new DataSet(),
       edges: new DataSet(),
-      portLabelNodes: {},
-      portLabelListeners: null,
       addEdgeMode: false,
       networkStarted: false,
       networkCommandInFlight: false,
@@ -982,14 +980,7 @@ export default {
       const assets = this.currentAssets();
       if (this.nodes?.forEach) {
         this.nodes.forEach((node) => {
-          if (node.type === "portLabel") {
-            this.nodes.updateOnly({
-              id: node.id,
-              font: { ...(node.font || {}), color: this.portLabelFontColor() },
-            });
-            return;
-          }
-        if (node.type === "controller") {
+          if (node.type === "controller") {
             this.nodes.updateOnly({
               id: node.id,
               color: this.nodeBaseColor(),
@@ -1418,25 +1409,16 @@ export default {
         top: Math.min(topLeft.y, bottomRight.y),
         bottom: Math.max(topLeft.y, bottomRight.y),
       };
-      const selected = [];
-      const nodes = this.nodes?.get ? this.nodes.get() : [];
-      nodes.forEach((node) => {
-        if (node?.type === "portLabel") {
-          return;
-        }
-        const box = this.network.getBoundingBox?.(node.id);
-        if (!box) {
-          return;
-        }
-        if (
-          box.right >= rectCanvas.left &&
-          box.left <= rectCanvas.right &&
-          box.bottom >= rectCanvas.top &&
-          box.top <= rectCanvas.bottom
-        ) {
-          selected.push(node.id);
-        }
-      });
+      const positions = this.network.getPositions();
+      const selected = Object.entries(positions).reduce((acc, [nodeId, canvasPos]) => {
+        if (!canvasPos) return acc;
+        const { x, y } = canvasPos;
+        if (x < rectCanvas.left || x > rectCanvas.right) return acc;
+        if (y < rectCanvas.top || y > rectCanvas.bottom) return acc;
+        const nodeData = this.nodes?.get?.(nodeId);
+        if (nodeData) acc.push(nodeId);
+        return acc;
+      }, []);
       if (this.selectionBox.append) {
         const current = this.network.getSelectedNodes();
         const merged = new Set([...current, ...selected]);
@@ -1520,13 +1502,6 @@ export default {
     formatPortLabel(intfs) {
       if (!intfs?.from || !intfs?.to) return "";
       return `${intfs.from} ↔ ${intfs.to}`;
-    },
-    getPortLabelTexts(intfs) {
-      if (!intfs) return null;
-      const fromLabel = intfs.from || "";
-      const toLabel = intfs.to || "";
-      if (!fromLabel && !toLabel) return null;
-      return { fromLabel, toLabel };
     },
     hostLabel(host) {
       if (!host) return "";
@@ -1617,140 +1592,33 @@ export default {
       this.applyControllersVisibility();
     },
     applyPortLabels() {
-      if (!this.edges || !this.edges.forEach || !this.nodes) return;
+      if (!this.edges || !this.edges.forEach) return;
       const showLabels = !!this.settings.showPortLabels;
-      if (!showLabels) {
-        this.edges.forEach((edge) => {
-          this.edges.updateOnly({ id: edge.id, label: "" });
-        });
-        this.clearAllPortLabelNodes();
-        return;
-      }
+      const updates = [];
       this.edges.forEach((edge) => {
-        this.edges.updateOnly({ id: edge.id, label: "" });
-        this.ensurePortLabelNodes(edge);
+        const update = this.buildPortLabelUpdate(edge, showLabels);
+        if (update) {
+          updates.push(update);
+        }
       });
-      this.updateAllPortLabelPositions();
-    },
-    bindPortLabelListeners() {
-      if (!this.edges || !this.edges.on) return;
-      if (this.portLabelListeners?.dataset && this.portLabelListeners?.dataset.off) {
-        this.portLabelListeners.dataset.off("add", this.portLabelListeners.onAdd);
-        this.portLabelListeners.dataset.off("update", this.portLabelListeners.onUpdate);
-        this.portLabelListeners.dataset.off("remove", this.portLabelListeners.onRemove);
+      if (updates.length) {
+        this.edges.update(updates);
       }
-      const onAdd = (event) => {
-        if (!this.settings.showPortLabels) return;
-        event.items.forEach((id) => {
-          const edge = this.edges.get(id);
-          if (edge) this.ensurePortLabelNodes(edge);
-        });
-      };
-      const onUpdate = (event) => {
-        if (!this.settings.showPortLabels) return;
-        event.items.forEach((id) => {
-          const edge = this.edges.get(id);
-          if (edge) this.ensurePortLabelNodes(edge);
-        });
-      };
-      const onRemove = (event) => {
-        event.items.forEach((id) => this.removePortLabelNodes(id));
-      };
-      this.edges.on("add", onAdd);
-      this.edges.on("update", onUpdate);
-      this.edges.on("remove", onRemove);
-      this.portLabelListeners = { dataset: this.edges, onAdd, onUpdate, onRemove };
     },
-    clearAllPortLabelNodes() {
-      if (!this.portLabelNodes || !this.nodes) return;
-      Object.keys(this.portLabelNodes).forEach((edgeId) => this.removePortLabelNodes(edgeId));
-      this.portLabelNodes = {};
-    },
-    removePortLabelNodes(edgeId) {
-      if (!this.portLabelNodes?.[edgeId] || !this.nodes) return;
-      const { fromId, toId } = this.portLabelNodes[edgeId];
-      this.nodes.remove([fromId, toId]);
-      delete this.portLabelNodes[edgeId];
-    },
-    ensurePortLabelNodes(edge) {
-      if (!edge || !edge.id || !this.nodes) return;
-      const texts = this.getPortLabelTexts(edge.intfs);
-      if (!texts || !this.settings.showPortLabels) {
-        this.removePortLabelNodes(edge.id);
-        return;
-      }
-      const fromId = `port-label-from-${edge.id}`;
-      const toId = `port-label-to-${edge.id}`;
-      const labelNodes = this.portLabelNodes[edge.id] || { fromId, toId };
-      const baseNode = {
-        type: "portLabel",
-        shape: "text",
-        selectable: false,
-        physics: false,
-        fixed: true,
-        hidden: false,
-        font: {
-          size: 12,
-          color: this.portLabelFontColor(),
-          face: "Fira Sans",
-        },
+    buildPortLabelUpdate(edge, showLabels) {
+      if (!edge || !edge.id) return null;
+      const update = { id: edge.id, label: "" };
+      if (!showLabels) return update;
+      const label = this.formatPortLabel(edge.intfs);
+      if (!label) return update;
+      update.label = label;
+      update.font = {
+        ...(edge.font || {}),
+        align: "horizontal",
+        size: 10,
+        color: this.portLabelFontColor(),
       };
-      if (!this.nodes.get(fromId)) {
-        this.nodes.add({ id: fromId, label: texts.fromLabel, ...baseNode });
-      } else {
-        this.nodes.update({ id: fromId, label: texts.fromLabel, hidden: false });
-      }
-      if (!this.nodes.get(toId)) {
-        this.nodes.add({ id: toId, label: texts.toLabel, ...baseNode });
-      } else {
-        this.nodes.update({ id: toId, label: texts.toLabel, hidden: false });
-      }
-      this.portLabelNodes[edge.id] = labelNodes;
-      this.updatePortLabelPositionsForEdge(edge);
-    },
-    updatePortLabelPositionsForEdge(edgeOrId) {
-      if (!this.nodes || !this.network) return;
-      const edge = typeof edgeOrId === "string" ? this.edges.get(edgeOrId) : edgeOrId;
-      if (!edge?.from || !edge?.to) return;
-      const labelNodes = this.portLabelNodes?.[edge.id];
-      if (!labelNodes) return;
-      const fromNode = this.network?.body?.nodes?.[edge.from];
-      const toNode = this.network?.body?.nodes?.[edge.to];
-      const fromX = fromNode?.x ?? this.nodes.get(edge.from)?.x;
-      const fromY = fromNode?.y ?? this.nodes.get(edge.from)?.y;
-      const toX = toNode?.x ?? this.nodes.get(edge.to)?.x;
-      const toY = toNode?.y ?? this.nodes.get(edge.to)?.y;
-      if (fromX === undefined || toX === undefined) return;
-      const dx = toX - fromX;
-      const dy = toY - fromY;
-      const len = Math.hypot(dx, dy) || 1;
-      const ux = dx / len;
-      const uy = dy / len;
-      const px = -uy;
-      const py = ux;
-      const offset = 26;
-      const perp = 10;
-      const fromPos = {
-        x: fromX + ux * offset + px * perp,
-        y: fromY + uy * offset + py * perp,
-      };
-      const toPos = {
-        x: toX - ux * offset - px * perp,
-        y: toY - uy * offset - py * perp,
-      };
-      this.nodes.update([
-        { id: labelNodes.fromId, x: fromPos.x, y: fromPos.y },
-        { id: labelNodes.toId, x: toPos.x, y: toPos.y },
-      ]);
-    },
-    updatePortLabelPositionsForNode(nodeId) {
-      if (!this.settings.showPortLabels || !this.network) return;
-      const edges = this.network.getConnectedEdges(nodeId) || [];
-      edges.forEach((edgeId) => this.updatePortLabelPositionsForEdge(edgeId));
-    },
-    updateAllPortLabelPositions() {
-      if (!this.portLabelNodes) return;
-      Object.keys(this.portLabelNodes).forEach((edgeId) => this.updatePortLabelPositionsForEdge(edgeId));
+      return update;
     },
     showSettingsModal() {
       this.closeAllActiveModes();
@@ -1851,7 +1719,6 @@ export default {
       this.nodes.add(initialNodes);
       this.applyVisibilitySettings();
       this.selectInitialWebshell();
-      this.bindPortLabelListeners();
       this.applyPortLabels();
       console.log("network inside mounted, before setup:", this.network);
       this.network.setOptions({
@@ -1895,9 +1762,7 @@ export default {
             }
             callback(data);
             this.enterAddEdgeMode();
-            if (this.settings.showPortLabels && data.intfs) {
-              this.ensurePortLabelNodes(this.edges.get(data.id));
-            }
+            this.applyPortLabels();
           },
           deleteNode: async (data, callback) => {
             console.log("node deletion", data);
@@ -2066,7 +1931,6 @@ export default {
     openNodeStatsFromMenu() {
       const nodeId = this.contextMenu.nodeId;
       this.hideContextMenu();
-      if (nodeId && this.nodes.get(nodeId)?.type === "portLabel") return;
       if (nodeId) this.showStatsModal(nodeId);
     },
     handleCloseSession(sessionId) {
@@ -2095,9 +1959,7 @@ export default {
         options,
         intfs: link?.intfs || null,
       });
-      if (this.settings.showPortLabels) {
-        this.ensurePortLabelNodes(this.edges.get(edgeId));
-      }
+      this.applyPortLabels();
       return link;
     },
     async llmCreateHost({ nodes } = {}) {
@@ -2544,10 +2406,9 @@ export default {
     async handleNodeDragEnd(event) {
       event.nodes.forEach(async nodeId => {
         const nodeData = this.nodes.get(nodeId);
-        if (nodeData?.type === "portLabel") return;
+        if (!nodeData) return;
         let node = this.network.body.nodes[nodeId];
         await updateNodePosition(nodeId, [node.x, node.y]);
-        this.updatePortLabelPositionsForNode(nodeId);
       });
     },
     enterAddEdgeMode() {
@@ -2600,7 +2461,7 @@ export default {
     doSelectAll() {
       console.log("CTRL A PRESSED");
       this.closeAllActiveModes();
-      const ids = this.nodes.getIds().filter((id) => this.nodes.get(id)?.type !== "portLabel");
+      const ids = this.nodes.getIds();
       this.network.setSelection({nodes: ids});
     },
     async showPingallModal() {
@@ -2726,6 +2587,7 @@ export default {
       if (this.modalOption === "linkStats") {
         this.modalData = { ...this.modalData, options };
       }
+      this.applyPortLabels();
     },
     handleHostUpdated(updatedHost) {
       if (!updatedHost?.id) return;
@@ -2744,16 +2606,14 @@ export default {
       for (var i=0; i<nDevices; i++) {
         let newHost = await this.createHost({x: 200+i*90, y: 300});
         let link = await deployLink(newSw.id, newHost.id);
-        const [edgeId] = this.edges.add({
+        this.edges.add({
           from: newSw.id,
           to: newHost.id,
           color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
           intfs: link?.intfs || null,
         });
-        if (this.settings.showPortLabels) {
-          this.ensurePortLabelNodes(this.edges.get(edgeId));
-        }
       }
+      this.applyPortLabels();
     },
     async createLinearTopo(nDevices, nHosts, controller) {
       let prevSw = null;
@@ -2766,31 +2626,26 @@ export default {
           console.log("newHost", newHost);
 
           const link = await deployLink(newSw.id, newHost.id);
-          const [edgeId] = this.edges.add({
+          this.edges.add({
             from: newSw.id,
             to: newHost.id,
             color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
             intfs: link?.intfs || null,
           });
-          if (this.settings.showPortLabels) {
-            this.ensurePortLabelNodes(this.edges.get(edgeId));
-          }
         }
 
         if (prevSw) {
           const link = await deployLink(newSw.id, prevSw.id);
-          const [edgeId] = this.edges.add({
+          this.edges.add({
             from: newSw.id,
             to: prevSw.id,
             color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
             intfs: link?.intfs || null,
           });
-          if (this.settings.showPortLabels) {
-            this.ensurePortLabelNodes(this.edges.get(edgeId));
-          }
         }
         prevSw = newSw;
       }
+      this.applyPortLabels();
     },
     async createTreeTopo(depth, fanout, controller) {
       const nodes = [];
@@ -2813,21 +2668,19 @@ export default {
             for (let j = startIndex; j < endIndex && j < nodes[d + 1].length; j++) {
               const child = nodes[d + 1][j];
               const link = await deployLink(node.id, child.id);
-              const [edgeId] = this.edges.add({
+              this.edges.add({
                 from: node.id,
                 to: child.id,
                 color: this.networkStarted ? "#00aa00ff" : this.linkInactiveColor(),
                 intfs: link?.intfs || null,
               });
-              if (this.settings.showPortLabels) {
-                this.ensurePortLabelNodes(this.edges.get(edgeId));
-              }
             }
           }
           layer.push(node);
         }
         nodes[d] = layer;
       }
+      this.applyPortLabels();
     },
     async showTopologyFormModal() {
       this.modalHeader = this.$t("topology.createTitle");
@@ -2878,8 +2731,6 @@ export default {
       this.links = [];
       this.nodes = new DataSet();
       this.edges = new DataSet();
-      this.portLabelNodes = {};
-      this.bindPortLabelListeners();
       if (this.network) {
         this.network.setData({ nodes: this.nodes, edges: this.edges });
         this.network.redraw();
@@ -3135,9 +2986,7 @@ export default {
           if (node?.color && typeof node.color.color === "string") return node.color.color;
           return null;
         };
-        const nodesExport = nodes
-          .filter((node) => node?.type !== "portLabel")
-          .map((node) => {
+        const nodesExport = nodes.map((node) => {
             const base = baseNodeFields(node);
             if (node.type === "host") {
               return {
