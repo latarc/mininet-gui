@@ -3,18 +3,18 @@
     <div class="monitoring-toolbar">
       <div class="monitoring-filters">
         <label class="monitoring-select">
-          Node
+          {{ $t("monitoring.node") }}
           <select v-model="selectedNode">
-            <option disabled value="">Select node</option>
+            <option disabled value="">{{ $t("monitoring.selectNode") }}</option>
             <option v-for="node in nodeOptions" :key="node.id" :value="node.id">
               {{ node.label || node.id }}
             </option>
           </select>
         </label>
         <label class="monitoring-select">
-          Interface
+          {{ $t("monitoring.interface") }}
           <select v-model="selectedInterface" :disabled="!availableInterfaces.length">
-            <option disabled value="">Select interface</option>
+            <option disabled value="">{{ $t("monitoring.selectInterface") }}</option>
             <option v-for="intf in availableInterfaces" :key="intf" :value="intf">
               {{ intf }}
             </option>
@@ -30,7 +30,7 @@
           @click="toggleMonitoring"
         >
           <span class="material-symbols-outlined">monitoring</span>
-          <span>{{ isMonitoring ? "Stop Monitoring" : "Start Monitoring" }}</span>
+          <span>{{ isMonitoring ? $t("monitoring.stop") : $t("monitoring.start") }}</span>
         </button>
         <button
           class="monitoring-clear"
@@ -39,7 +39,7 @@
           @click="clearCharts"
         >
           <span class="material-symbols-outlined">delete_sweep</span>
-          <span>Clear graphs</span>
+          <span>{{ $t("monitoring.clearGraphs") }}</span>
         </button>
         <button
           class="monitoring-export"
@@ -48,7 +48,7 @@
           @click="exportChartsAsPNG"
         >
           <span class="material-symbols-outlined">download</span>
-          <span>{{ isExporting ? "Exportando…" : "Exportar gráficos" }}</span>
+          <span>{{ isExporting ? $t("monitoring.exporting") : $t("monitoring.exportCharts") }}</span>
         </button>
         <span class="monitoring-status" :class="status">
           {{ statusMessage }}
@@ -57,12 +57,12 @@
     </div>
 
     <div class="monitoring-charts">
-      <div class="chart-card">
-        <div class="chart-label">TX (Gbps)</div>
+        <div class="chart-card">
+        <div class="chart-label">{{ $t("monitoring.txLabel") }}</div>
         <div class="chart-container" ref="txChart"></div>
       </div>
       <div class="chart-card">
-        <div class="chart-label">RX (Gbps)</div>
+        <div class="chart-label">{{ $t("monitoring.rxLabel") }}</div>
         <div class="chart-container" ref="rxChart"></div>
       </div>
     </div>
@@ -85,7 +85,7 @@ export default {
       selectedInterface: "",
       socket: null,
       status: "idle",
-      statusMessage: "Select node and interface to begin monitoring.",
+      statusMessage: "",
       backendWsUrl: import.meta.env.VITE_BACKEND_WS_URL,
       txChart: null,
       rxChart: null,
@@ -163,6 +163,7 @@ export default {
     },
   },
   mounted() {
+    this.statusMessage = this.$t("monitoring.idleMessage");
     this.$nextTick(() => {
       this.initializeCharts();
     });
@@ -230,7 +231,7 @@ export default {
               x: [],
               y: [],
               mode: "lines",
-              name: "TX",
+              name: this.$t("monitoring.txShort"),
               line: { color: "#00b4d8" },
             },
           ],
@@ -249,7 +250,7 @@ export default {
               x: [],
               y: [],
               mode: "lines",
-              name: "RX",
+              name: this.$t("monitoring.rxShort"),
               line: { color: "#ffb703" },
             },
           ],
@@ -312,7 +313,7 @@ export default {
         return;
       }
       this.status = "connecting";
-      this.statusMessage = "Connecting to monitor...";
+      this.statusMessage = this.$t("monitoring.connecting");
       const params = new URLSearchParams({
         node: this.selectedNode,
         intf: this.selectedInterface,
@@ -322,7 +323,10 @@ export default {
 
       ws.onopen = () => {
         this.status = "monitoring";
-        this.statusMessage = `Streaming ${this.selectedNode} (${this.selectedInterface})`;
+        this.statusMessage = this.$t("monitoring.streaming", {
+          node: this.selectedNode,
+          intf: this.selectedInterface,
+        });
       };
 
       ws.onmessage = event => {
@@ -331,7 +335,7 @@ export default {
           parsed = JSON.parse(event.data);
         } catch (error) {
           this.status = "error";
-          this.statusMessage = event.data || "Monitoring connection dropped.";
+          this.statusMessage = event.data || this.$t("monitoring.connectionDropped");
           this.stopMonitoring();
           return;
         }
@@ -341,7 +345,7 @@ export default {
       ws.onerror = () => {
         if (this.status !== "error") {
           this.status = "error";
-          this.statusMessage = "Monitoring connection error.";
+          this.statusMessage = this.$t("monitoring.connectionError");
         }
       };
 
@@ -349,7 +353,7 @@ export default {
         this.socket = null;
         if (this.status !== "error") {
           this.status = "idle";
-          this.statusMessage = "Monitoring stopped.";
+          this.statusMessage = this.$t("monitoring.stopped");
         }
       };
     },
@@ -360,7 +364,7 @@ export default {
       this.socket = null;
       if (this.status !== "error") {
         this.status = "idle";
-        this.statusMessage = "Monitoring stopped.";
+        this.statusMessage = this.$t("monitoring.stopped");
       }
     },
     setupChartObserver() {

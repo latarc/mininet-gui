@@ -6,7 +6,7 @@
       </div>
       <div class="controller-form__fields">
         <template v-if="isRemote">
-          <label class="controller-form__label" for="ip">IP</label>
+          <label class="controller-form__label" for="ip">{{ $t("controller.ip") }}</label>
           <input
             id="ip"
             class="controller-form__input"
@@ -17,7 +17,7 @@
           />
         </template>
 
-        <label class="controller-form__label" for="port">Port</label>
+        <label class="controller-form__label" for="port">{{ $t("controller.port") }}</label>
         <input
           id="port"
           class="controller-form__input"
@@ -28,7 +28,7 @@
         />
 
         <template v-if="isRyu">
-          <label class="controller-form__label" for="ryu-app">Ryu app</label>
+          <label class="controller-form__label" for="ryu-app">{{ $t("controller.ryuApp") }}</label>
           <select
             id="ryu-app"
             class="controller-form__select"
@@ -36,12 +36,12 @@
             :disabled="isEditMode && !isEditing"
             required
           >
-            <option value="" disabled>Select ryu app</option>
+            <option value="" disabled>{{ $t("controller.selectRyuApp") }}</option>
             <option v-for="app in ryuApps" :key="app" :value="app">{{ app }}</option>
           </select>
         </template>
 
-        <label class="controller-form__label">Color</label>
+        <label class="controller-form__label">{{ $t("controller.color") }}</label>
         <div class="controller-form__colors">
           <button
             v-for="color in colorChoices"
@@ -64,13 +64,13 @@
           type="button"
           @click="startEdit"
         >
-          Edit
+          {{ $t("actions.edit") }}
         </button>
         <div v-else-if="isEditMode" class="controller-form__edit-actions">
-          <button class="controller-form__submit" type="submit">Save</button>
-          <button class="controller-form__cancel" type="button" @click="cancelEdit">Cancel</button>
+          <button class="controller-form__submit" type="submit">{{ $t("actions.save") }}</button>
+          <button class="controller-form__cancel" type="button" @click="cancelEdit">{{ $t("actions.cancel") }}</button>
         </div>
-        <button v-else class="controller-form__submit" type="submit">Create</button>
+        <button v-else class="controller-form__submit" type="submit">{{ $t("actions.create") }}</button>
       </div>
     </form>
   </div>
@@ -118,8 +118,8 @@ export default {
       return !!this.controller;
     },
     titleText() {
-      if (this.isEditMode) return "Controller";
-      return this.isRyu ? "Ryu Controller" : "Remote Controller";
+      if (this.isEditMode) return this.$t("controller.title");
+      return this.isRyu ? this.$t("controller.ryuTitle") : this.$t("controller.remoteTitle");
     },
   },
   watch: {

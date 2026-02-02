@@ -3,7 +3,7 @@
     <table class="pingall-table">
       <thead>
         <tr>
-          <th v-for="header in headers" :key="header">{{ header }}</th>
+          <th v-for="header in headers" :key="header">{{ $t(`pingall.headers.${header}`) }}</th>
         </tr>
       </thead>
       <tbody>
@@ -14,7 +14,7 @@
     </table>
   </div>
   <div v-else>
-    <p>No ping results available.</p>
+    <p>{{ $t("pingall.noResults") }}</p>
   </div>
 </template>
 

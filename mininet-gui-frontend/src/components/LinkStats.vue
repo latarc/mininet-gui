@@ -3,56 +3,56 @@
     <div class="link-header">
       <div class="link-title">{{ linkLabel }}</div>
       <button class="link-refresh" type="button" :disabled="statsBusy" @click="loadStats">
-        Refresh
+        {{ $t("actions.refresh") }}
       </button>
     </div>
 
     <div class="link-section">
-      <h4>Link Options</h4>
+      <h4>{{ $t("link.optionsTitle") }}</h4>
       <div class="link-form">
         <label>
-          Bandwidth (Mbps)
+          {{ $t("link.bandwidth") }}
           <input v-model="form.bw" type="number" min="0" step="1" />
         </label>
         <label>
-          Delay (ms)
+          {{ $t("link.delay") }}
           <input v-model="form.delay" type="number" min="0" step="1" />
         </label>
         <label>
-          Jitter (ms)
+          {{ $t("link.jitter") }}
           <input v-model="form.jitter" type="number" min="0" step="1" />
         </label>
         <label>
-          Loss (%)
+          {{ $t("link.loss") }}
           <input v-model="form.loss" type="number" min="0" max="100" step="0.1" />
         </label>
         <label>
-          Max Queue
+          {{ $t("link.maxQueue") }}
           <input v-model="form.max_queue_size" type="number" min="0" step="1" />
         </label>
         <label class="link-checkbox">
           <input v-model="form.use_htb" type="checkbox" />
-          Use HTB
+          {{ $t("link.useHtb") }}
         </label>
       </div>
       <div class="link-actions">
         <button type="button" class="link-save" :disabled="saveBusy" @click="saveOptions">
-          {{ saveBusy ? "Saving..." : "Save Options" }}
+          {{ saveBusy ? $t("actions.saving") : $t("link.saveOptions") }}
         </button>
         <span v-if="saveError" class="link-error">{{ saveError }}</span>
-        <span v-else-if="saveSuccess" class="link-success">Saved.</span>
+        <span v-else-if="saveSuccess" class="link-success">{{ $t("actions.saved") }}</span>
       </div>
     </div>
 
     <div class="link-section">
-      <h4>Link Stats</h4>
+      <h4>{{ $t("link.statsTitle") }}</h4>
       <div v-if="statsError" class="link-error">{{ statsError }}</div>
       <div v-else class="link-stats">
         <div v-if="stats?.intfs?.length" class="link-stats-table">
           <div class="link-stats-row header">
-            <span>Interface</span>
-            <span>TX</span>
-            <span>RX</span>
+            <span>{{ $t("link.interface") }}</span>
+            <span>{{ $t("link.tx") }}</span>
+            <span>{{ $t("link.rx") }}</span>
           </div>
           <div v-for="intf in stats.intfs" :key="intf.name" class="link-stats-row">
             <span>{{ intf.name }}</span>
@@ -60,9 +60,9 @@
             <span>{{ formatBytes(intf.rx_bytes) }}</span>
           </div>
         </div>
-        <div v-else class="link-empty">No link stats.</div>
+        <div v-else class="link-empty">{{ $t("link.noStats") }}</div>
         <div class="link-timestamp" v-if="stats?.timestamp">
-          Updated {{ formatTimestamp(stats.timestamp) }}
+          {{ $t("link.updatedAt", { time: formatTimestamp(stats.timestamp) }) }}
         </div>
       </div>
     </div>
@@ -142,7 +142,7 @@ export default {
           this.applyOptions(response.options);
         }
       } catch (error) {
-        this.statsError = "Failed to fetch link stats.";
+        this.statsError = this.$t("link.errorFetch");
       } finally {
         this.statsBusy = false;
       }
@@ -156,14 +156,14 @@ export default {
         const options = this.buildPayload();
         const response = await updateLinkOptions(this.link.from, this.link.to, options);
         if (!response) {
-          this.saveError = "Failed to update link.";
+          this.saveError = this.$t("link.errorUpdate");
           return;
         }
         this.saveSuccess = true;
         this.$emit("linkUpdated", response.options || options);
         await this.loadStats();
       } catch (error) {
-        this.saveError = "Failed to update link.";
+        this.saveError = this.$t("link.errorUpdate");
       } finally {
         this.saveBusy = false;
         setTimeout(() => {

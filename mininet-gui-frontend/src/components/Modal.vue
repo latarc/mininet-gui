@@ -43,7 +43,7 @@ const open = computed({
       >
         <div class="flex items-start justify-between gap-3 border-b bg-gradient-to-b from-slate-50 to-white px-6 py-5">
           <DialogTitle class="text-left text-lg font-semibold tracking-tight">
-            <slot name="header">default header</slot>
+            <slot name="header">{{ $t("modal.defaultHeader") }}</slot>
           </DialogTitle>
           <DialogClose
             class="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
@@ -58,7 +58,7 @@ const open = computed({
             bodyClass,
           ]"
         >
-          <slot name="body">default body</slot>
+          <slot name="body">{{ $t("modal.defaultBody") }}</slot>
         </div>
       </DialogContent>
     </DialogPortal>

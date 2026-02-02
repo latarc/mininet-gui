@@ -2,45 +2,45 @@
   <div>
     <form @submit.prevent="submitForm">
       <div>
-        <label for="type">Topology Type:</label>
+        <label for="type">{{ $t("topology.type") }}</label>
         <select id="type" v-model="topologyType">
-          <option value="Single" selected="selected">Single</option>
-          <option value="Linear">Linear</option>
-          <option value="Tree">Tree</option>
+          <option value="Single" selected="selected">{{ $t("topology.single") }}</option>
+          <option value="Linear">{{ $t("topology.linear") }}</option>
+          <option value="Tree">{{ $t("topology.tree") }}</option>
         </select>
       </div>
       <div>
-        <label for="controller">Controller:</label>
+        <label for="controller">{{ $t("topology.controller") }}</label>
         <select id="controller" v-model="controller">
-          <option value="" selected="selected">none</option>
+          <option value="" selected="selected">{{ $t("topology.none") }}</option>
           <option v-for="(v, k) of controllers" :key="k" :value="k">{{k}}</option>
         </select>
       </div>
       <div v-if="topologyType === 'Single'">
-        <label for="nDevices">Hosts:</label>
+        <label for="nDevices">{{ $t("topology.hosts") }}</label>
         <input id="nDevices" type="number" v-model="nDevices" required />
       </div>
       <div v-if="topologyType === 'Linear'" class="tree-options">
         <div>
-          <label for="nDevices">Switches:</label>
+          <label for="nDevices">{{ $t("topology.switches") }}</label>
           <input id="nDevices" type="number" v-model="nDevices" required />
         </div>
         <div>
-          <label for="nLayers">Hosts per switch:</label>
+          <label for="nLayers">{{ $t("topology.hostsPerSwitch") }}</label>
           <input id="nLayers" type="number" v-model="nLayers" required />
         </div>
       </div>
       <div v-if="topologyType === 'Tree'" class="tree-options">
         <div>
-          <label for="nLayers">Layers:</label>
+          <label for="nLayers">{{ $t("topology.layers") }}</label>
           <input id="nLayers" type="number" v-model="nLayers" required />
         </div>
         <div>
-          <label for="nDevices">Fanout:</label>
+          <label for="nDevices">{{ $t("topology.fanout") }}</label>
           <input id="nDevices" type="number" v-model="nDevices" required />
         </div>
       </div>
-      <button class="submit-button" type="submit">Submit</button>
+      <button class="submit-button" type="submit">{{ $t("actions.submit") }}</button>
     </form>
   </div>
 </template>

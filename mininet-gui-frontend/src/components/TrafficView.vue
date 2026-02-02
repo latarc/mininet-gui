@@ -8,23 +8,23 @@
         @click="$emit('toggleSniffer')"
       >
         <span class="material-symbols-outlined">radar</span>
-        <span>{{ enabled ? (connected ? "Stop Sniffer" : "Connecting...") : "Start Sniffer" }}</span>
+        <span>{{ enabled ? (connected ? $t("traffic.stopSniffer") : $t("traffic.connecting")) : $t("traffic.startSniffer") }}</span>
       </button>
       <div class="traffic-filters">
         <select v-model="selectedDevice" class="traffic-select">
-          <option value="all">All devices</option>
+          <option value="all">{{ $t("traffic.allDevices") }}</option>
           <option v-for="node in nodeOptions" :key="node.id" :value="node.id">
             {{ node.label || node.id }}
           </option>
         </select>
         <select v-model="selectedInterface" class="traffic-select">
-          <option value="all">All interfaces</option>
+          <option value="all">{{ $t("traffic.allInterfaces") }}</option>
           <option v-for="intf in availableInterfaces" :key="intf" :value="intf">
             {{ intf }}
           </option>
         </select>
         <select v-model="selectedProto" class="traffic-select">
-          <option value="all">All protocols</option>
+          <option value="all">{{ $t("traffic.allProtocols") }}</option>
           <option value="IP">IP</option>
           <option value="IP6">IP6</option>
           <option value="ARP">ARP</option>
@@ -39,26 +39,26 @@
           <option value="SSH">SSH</option>
           <option value="TLS">TLS</option>
           <option value="LLDP">LLDP</option>
-          <option value="OTHER">Other</option>
+          <option value="OTHER">{{ $t("traffic.other") }}</option>
         </select>
-        <input v-model="textFilter" class="traffic-input" placeholder="Filter (IP, port, text)" />
+        <input v-model="textFilter" class="traffic-input" :placeholder="$t('traffic.filterPlaceholder')" />
       </div>
       <div class="traffic-actions">
         <button class="traffic-button" type="button" @click="clearEvents" :disabled="events.length === 0">
-          Clear
+          {{ $t("actions.clear") }}
         </button>
       </div>
     </div>
     <div class="traffic-table">
       <div class="traffic-row header">
-        <span class="cell time">Time</span>
-        <span class="cell node">Device</span>
-        <span class="cell intf">Interface</span>
-        <span class="cell proto">Proto</span>
-        <span class="cell src">Source</span>
-        <span class="cell dst">Destination</span>
-        <span class="cell len">Len</span>
-        <span class="cell info">Info</span>
+        <span class="cell time">{{ $t("traffic.time") }}</span>
+        <span class="cell node">{{ $t("traffic.device") }}</span>
+        <span class="cell intf">{{ $t("traffic.interface") }}</span>
+        <span class="cell proto">{{ $t("traffic.proto") }}</span>
+        <span class="cell src">{{ $t("traffic.source") }}</span>
+        <span class="cell dst">{{ $t("traffic.destination") }}</span>
+        <span class="cell len">{{ $t("traffic.length") }}</span>
+        <span class="cell info">{{ $t("traffic.info") }}</span>
       </div>
       <div class="traffic-body" ref="list">
         <div v-for="(item, index) in filteredEvents" :key="index" class="traffic-row">
@@ -72,7 +72,7 @@
           <span class="cell info">{{ item.info || item.raw }}</span>
         </div>
         <div v-if="filteredEvents.length === 0" class="traffic-empty">
-          No network events.
+          {{ $t("traffic.noEvents") }}
         </div>
       </div>
     </div>

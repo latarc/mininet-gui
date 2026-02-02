@@ -8,7 +8,7 @@
     <div class="webshell-header">
       <div class="webshell-title">
         <i class="mdi mdi-console"></i>
-        <span class="title">Network Tools</span>
+        <span class="title">{{ $t("webshell.title") }}</span>
       </div>
       <div class="view-tabs">
         <button
@@ -17,7 +17,7 @@
           :class="{ active: activeView === 'terminal' }"
           @click="activeView = 'terminal'"
         >
-          Webshell
+          {{ $t("webshell.tabs.webshell") }}
         </button>
         <button
           type="button"
@@ -25,7 +25,7 @@
           :class="{ active: activeView === 'traffic' }"
           @click="activeView = 'traffic'"
         >
-          Sniffer
+          {{ $t("webshell.tabs.sniffer") }}
         </button>
         <button
           type="button"
@@ -33,7 +33,7 @@
           :class="{ active: activeView === 'monitor' }"
           @click="activeView = 'monitor'"
         >
-          Monitoring
+          {{ $t("webshell.tabs.monitoring") }}
         </button>
         <button
           type="button"
@@ -41,7 +41,7 @@
           :class="{ active: activeView === 'logs' }"
           @click="activeView = 'logs'"
         >
-          Logs
+          {{ $t("webshell.tabs.logs") }}
         </button>
         <button
           type="button"
@@ -49,7 +49,7 @@
           :class="{ active: activeView === 'chat' }"
           @click="activeView = 'chat'"
         >
-          Chat
+          {{ $t("webshell.tabs.chat") }}
         </button>
       </div>
       <div class="webshell-actions">
@@ -73,7 +73,7 @@
           class="tab-close"
           role="button"
           tabindex="0"
-          aria-label="Close terminal"
+          :aria-label="$t('webshell.closeTerminal')"
           @click.stop="closeSession(session.id)"
           @keydown.enter.stop.prevent="closeSession(session.id)"
           @keydown.space.stop.prevent="closeSession(session.id)"
@@ -92,7 +92,7 @@
           :class="['terminal-instance', { active: activeTab === session.id }]"
         ></div>
         <div v-if="getSessionList().length === 0" class="terminal-empty">
-          No webshells yet. Right-click a node and choose "Open Webshell".
+          {{ $t("webshell.noSessions") }}
         </div>
       </div>
     </div>
@@ -121,19 +121,19 @@
           class="chat-message"
           :class="`chat-${message.role}`"
         >
-          <strong>{{ message.role }}:</strong>
+          <strong>{{ $t(`webshell.roles.${message.role}`) }}:</strong>
           <span class="chat-content">{{ message.content }}</span>
         </div>
       </div>
       <div class="chat-input">
         <textarea
           v-model="chatInput"
-          placeholder="Ask the assistant to modify the topology..."
+          :placeholder="$t('webshell.chatPlaceholder')"
           @keydown.enter.exact.prevent="sendChat"
           :disabled="chatBusy"
           rows="2"
         ></textarea>
-        <button :disabled="chatBusy" @click="sendChat">Send</button>
+        <button :disabled="chatBusy" @click="sendChat">{{ $t("actions.send") }}</button>
       </div>
       <p v-if="chatError" class="chat-error">{{ chatError }}</p>
     </div>
@@ -181,9 +181,7 @@ export default {
       panelHeight: 320,
       isResizing: false,
       activeView: "terminal",
-      chatMessages: [
-        { role: "system", content: "You are a network assistant. Use tools to create nodes and links when needed." },
-      ],
+      chatMessages: [],
       chatInput: "",
       chatBusy: false,
       chatError: "",
@@ -244,6 +242,11 @@ export default {
     },
   },
   mounted() {
+    if (!this.chatMessages.length) {
+      this.chatMessages = [
+        { role: "system", content: this.$t("webshell.systemPrompt") },
+      ];
+    }
     this.isMinimized = !!this.minimized;
     this.syncNodes();
     if (this.preferredView) {
@@ -557,7 +560,7 @@ export default {
     async sendChat() {
       if (!this.chatInput.trim()) return;
       if (!this.openaiKey) {
-        this.chatError = "OpenAI API key is missing. Add it in Settings.";
+        this.chatError = this.$t("webshell.errors.missingKey");
         return;
       }
       const graphStateMessage = this.buildGraphContext();
@@ -575,7 +578,7 @@ export default {
         let response = await this.callOpenAI(this.chatMessages);
         console.log("[AI] response", response);
         let assistant = response?.choices?.[0]?.message;
-        if (!assistant) throw new Error("No assistant response.");
+        if (!assistant) throw new Error(this.$t("webshell.errors.noAssistant"));
         console.log("[AI] assistant message", assistant);
         this.chatMessages.push(assistant);
         this.$nextTick(this.scrollChatToBottom);
@@ -621,7 +624,7 @@ export default {
       });
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text || "OpenAI request failed.");
+        throw new Error(text || this.$t("webshell.errors.requestFailed"));
       }
       return response.json();
     },

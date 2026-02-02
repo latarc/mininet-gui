@@ -1,12 +1,12 @@
 <template>
   <header>
     <div class="header-menu">
-      <button>File</button>
-      <button>Edit</button>
-      <button>View</button>
-      <button>Run</button>
+      <button>{{ $t("menu.file") }}</button>
+      <button>{{ $t("header.edit") }}</button>
+      <button>{{ $t("menu.view") }}</button>
+      <button>{{ $t("menu.run") }}</button>
     </div>
-    <p class="header-logo">Mininet-GUI</p>
+    <p class="header-logo">{{ $t("app.title") }}</p>
   </header>
 </template>
 

@@ -22,9 +22,9 @@
           class="icon-button"
           type="button"
           @click="toggleSide()"
-          aria-label="Toggle sidebar"
+          :aria-label="$t('side.toggleSidebar')"
           :class="!sideIsActive ? 'w-full rounded-none' : ''"
-          @mouseenter="handleTooltipMouseEnter($event, 'Toggle sidebar')"
+          @mouseenter="handleTooltipMouseEnter($event, $t('side.toggleSidebar'))"
           @mousemove="handleTooltipMouseMove"
           @mouseleave="hideTooltip"
         >
@@ -38,117 +38,117 @@
     <!-- Core Actions Group -->
     <div class="sidebar-group flex flex-col gap-2">
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Actions
+        {{ $t("side.actions") }}
       </h2>
       <button
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
         id="button-create-topology"
         :disabled="!networkConnected"
-        @mouseenter="handleTooltipMouseEnter($event, 'Generate topology')"
+        @mouseenter="handleTooltipMouseEnter($event, $t('side.generateTopology'))"
         @mousemove="handleTooltipMouseMove($event)"
         @mouseleave="hideTooltip"
         @click="createTopology()"
       >
         <span class="material-symbols-outlined">scatter_plot</span>
-        <span class="label">Generate Topology</span>
+        <span class="label">{{ $t("side.generateTopology") }}</span>
       </button>
       <button
         id="button-pingall"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
         :class="pingallRunning ? 'opacity-60 cursor-not-allowed' : ''"
         :disabled="!networkConnected || pingallRunning"
-        data-tooltip="Run pingall"
-        @mouseenter="handleTooltipMouseEnter($event, 'Run pingall')"
+        :data-tooltip="$t('side.runPingall')"
+        @mouseenter="handleTooltipMouseEnter($event, $t('side.runPingall'))"
         @mousemove="handleTooltipMouseMove"
         @mouseleave="hideTooltip"
         @click="$emit('runPingall')"
       >
         <span class="material-symbols-outlined">network_check</span>
-        <span class="label">{{ pingallRunning ? "Pingall running..." : "Run Pingall Test" }}</span>
+        <span class="label">{{ pingallRunning ? $t("side.pingallRunning") : $t("side.runPingallTest") }}</span>
       </button>
       <button
         id="button-iperf"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
         :class="iperfRunning ? 'opacity-60 cursor-not-allowed' : ''"
         :disabled="!networkConnected || iperfRunning"
-        data-tooltip="Run iperf test"
-        @mouseenter="handleTooltipMouseEnter($event, 'Run iperf test')"
+        :data-tooltip="$t('side.runIperf')"
+        @mouseenter="handleTooltipMouseEnter($event, $t('side.runIperf'))"
         @mousemove="handleTooltipMouseMove"
         @mouseleave="hideTooltip"
         @click="$emit('runIperf')"
       >
         <span class="material-symbols-outlined">speed</span>
-        <span class="label">{{ iperfRunning ? "Iperf running..." : "Run Iperf" }}</span>
+        <span class="label">{{ iperfRunning ? $t("side.iperfRunning") : $t("side.runIperf") }}</span>
       </button>
       <button
         id="button-create-link"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
         :class="addEdgeMode ? 'border-[#007acc] bg-[#0b2b3b] text-[#e6f2ff] ring-1 ring-[#007acc]' : ''"
         :disabled="!networkConnected"
-        data-tooltip="Toggle connect mode"
-        @mouseenter="handleTooltipMouseEnter($event, addEdgeMode ? 'Cancel connect mode' : 'Toggle connect mode')"
+        :data-tooltip="$t('side.toggleConnectMode')"
+        @mouseenter="handleTooltipMouseEnter($event, addEdgeMode ? $t('side.cancelConnectMode') : $t('side.toggleConnectMode'))"
         @mousemove="handleTooltipMouseMove"
         @mouseleave="hideTooltip"
         @click="$emit('toggleAddEdgeMode')"
       >
         <span class="material-symbols-outlined">link</span>
-        <span class="label">{{ !addEdgeMode ? "Connect Nodes" : "Cancel Connect" }}</span>
+        <span class="label">{{ !addEdgeMode ? $t("side.connectNodes") : $t("side.cancelConnect") }}</span>
       </button>
       <button
         id="button-delete-selected"
         class="button-control-network flex items-center gap-2 rounded-md border border-[#333] bg-[#2d2d2d] px-2 py-1.5 text-[12px] font-medium text-[#cccccc] transition-colors hover:bg-[#3e3e3e] active:bg-[#007acc]"
         :disabled="!networkConnected"
-        data-tooltip="Delete selection"
-        @mouseenter="handleTooltipMouseEnter($event, 'Delete selection')"
+        :data-tooltip="$t('side.deleteSelection')"
+        @mouseenter="handleTooltipMouseEnter($event, $t('side.deleteSelection'))"
         @mousemove="handleTooltipMouseMove"
         @mouseleave="hideTooltip"
         @click="$emit('deleteSelected')"
       >
         <span class="material-symbols-outlined">delete</span>
-        <span class="label">Delete Selected</span>
+        <span class="label">{{ $t("side.deleteSelected") }}</span>
       </button>
     </div>
 
     <div class="sidebar-group flex flex-col gap-2">
       <h2 class="border-b border-[#333] pb-2 text-[13px] font-semibold tracking-wide text-[#cccccc]">
-        Nodes Palette
+        {{ $t("side.nodesPalette") }}
       </h2>
       <div class="draggable-container flex flex-col items-center gap-4 py-2">
         <div class="palette-group w-full">
-          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">Main Nodes</div>
+          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">{{ $t("side.mainNodes") }}</div>
           <div class="palette-items flex flex-col items-center gap-3 pt-2">
             <figure
               id="draggable-host"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="Host"
+              :data-tooltip="$t('nodes.host')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
               <img alt="host" class="h-10 w-10" src="@/assets/light-host.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Host</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.host") }}</figcaption>
             </figure>
             <figure
               id="draggable-switch"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="Switch"
+              :data-tooltip="$t('nodes.switch')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
               <img alt="switch" class="h-10 w-10" src="@/assets/light-switch.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Switch</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.switch") }}</figcaption>
             </figure>
             <figure
               id="draggable-controller-default"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="Controller"
+              :data-tooltip="$t('nodes.controller')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
@@ -159,14 +159,14 @@
                 src="@/assets/light-controller.svg"
                 draggable="false"
               />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Controller</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.controller") }}</figcaption>
             </figure>
             <figure
               id="draggable-nat"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="NAT"
+              :data-tooltip="$t('nodes.nat')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
@@ -177,76 +177,76 @@
                 src="@/assets/light-nat.svg"
                 draggable="false"
               />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NAT</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.nat") }}</figcaption>
             </figure>
             <figure
               id="draggable-router"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="Router"
+              :data-tooltip="$t('nodes.router')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
               <img alt="router" class="h-10 w-10" src="@/assets/light-router.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Router</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.router") }}</figcaption>
             </figure>
           </div>
         </div>
         <div v-if="showSpecialSwitches" class="palette-group w-full">
-          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">Special Switches</div>
+          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">{{ $t("side.specialSwitches") }}</div>
           <div class="palette-items flex flex-col items-center gap-3 pt-2">
             <figure
               id="draggable-switch-ovs"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="OVS Switch"
+              :data-tooltip="$t('nodes.ovsSwitch')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
               <img alt="switch ovs" class="h-10 w-10" src="@/assets/light-switch-ovs.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">OVS Switch</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ovsSwitch") }}</figcaption>
             </figure>
             <figure
               id="draggable-switch-user"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="User Switch"
+              :data-tooltip="$t('nodes.userSwitch')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
               <img alt="switch user" class="h-10 w-10" src="@/assets/light-switch-user.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">User Switch</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.userSwitch") }}</figcaption>
             </figure>
             <figure
               id="draggable-switch-ovsbridge"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="OVS Bridge"
+              :data-tooltip="$t('nodes.ovsBridge')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
             >
               <img alt="switch ovsbridge" class="h-10 w-10" src="@/assets/light-switch-ovsbridge.svg" draggable="false" />
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">OVS Bridge</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ovsBridge") }}</figcaption>
             </figure>
           </div>
         </div>
         <div v-if="showSpecialControllers" class="palette-group w-full">
-          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">Special Controllers</div>
+          <div class="palette-title text-[11px] uppercase tracking-wide text-[#9b9b9b]">{{ $t("side.specialControllers") }}</div>
           <div class="palette-items flex flex-col items-center gap-3 pt-2">
             <figure
               id="draggable-controller-remote"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="Remote Controller"
+              :data-tooltip="$t('nodes.remoteController')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
@@ -260,14 +260,14 @@
                 />
                 <span class="controller-badge controller-badge--remote">Rem</span>
               </div>
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Remote</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.remote") }}</figcaption>
             </figure>
             <figure
               id="draggable-controller-ryu"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="Ryu Controller"
+              :data-tooltip="$t('nodes.ryuController')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
@@ -281,14 +281,14 @@
                 />
                 <span class="controller-badge">Ryu</span>
               </div>
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">Ryu</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.ryu") }}</figcaption>
             </figure>
             <figure
               id="draggable-controller-nox"
               class="draggable-node flex w-14 flex-col items-center gap-2 text-center"
               draggable="true"
               @dragstart="handleDragStart"
-              data-tooltip="NOX Controller"
+              :data-tooltip="$t('nodes.noxController')"
               @mouseenter="handleTooltipMouseEnter($event)"
               @mousemove="handleTooltipMouseMove"
               @mouseleave="hideTooltip"
@@ -302,7 +302,7 @@
                 />
                 <span class="controller-badge">NOX</span>
               </div>
-              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">NOX</figcaption>
+              <figcaption class="text-[11px] text-[#cccccc] whitespace-nowrap">{{ $t("nodes.nox") }}</figcaption>
             </figure>
           </div>
         </div>
@@ -313,7 +313,7 @@
     <!-- Hotkeys Help Group
     <div class="sidebar-group hotkeys">
       <h2>Hotkeys</h2>
-      <p><strong>d</strong>: Delete selected nodes</p>
+      <p><strong>d</strong>: {{ $t("side.shortcutDelete") }}</p>
       <p><strong>ctrl + a</strong>: Select all nodes</p>
       <p><strong>h</strong>: Toggle hosts visibility</p>
       <p><strong>c</strong>: Toggle controllers visibility</p>

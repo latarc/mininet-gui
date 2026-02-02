@@ -8,7 +8,7 @@ export default {
     return {
       activeTab: "details",
       tabs: [
-        { key: "details", label: "Details" }
+        { key: "details", labelKey: "node.tabs.details" }
       ],
       localStats: this.stats,
       isEditingHost: false,
@@ -77,9 +77,9 @@ export default {
           this.isEditingHost = false;
           this.hostEditError = "";
         }
-        if (value?.type === "sw" || value?.type === "switch") {
-          this.refreshFlows();
-        }
+      if (value?.type === "sw" || value?.type === "switch") {
+        this.refreshFlows();
+      }
       },
     },
   },
@@ -122,7 +122,7 @@ export default {
         };
         const response = await updateHost(this.localStats.id, payload);
         if (!response?.host) {
-          this.hostEditError = "Failed to update host.";
+          this.hostEditError = this.$t("node.errors.updateHost");
           return;
         }
         const refreshed = await getNodeStats(this.localStats.id);
@@ -132,7 +132,7 @@ export default {
         }
         this.isEditingHost = false;
       } catch (error) {
-        this.hostEditError = "Failed to update host.";
+        this.hostEditError = this.$t("node.errors.updateHost");
       } finally {
         this.hostEditBusy = false;
       }
@@ -170,7 +170,7 @@ export default {
           this.localStats = refreshed;
         }
       } catch (error) {
-        this.flowError = "Failed to refresh flows.";
+        this.flowError = this.$t("node.errors.refreshFlows");
       } finally {
         this.flowBusy = false;
       }
@@ -181,7 +181,7 @@ export default {
       this.flowError = "";
       try {
         if (!this.flowForm.actions) {
-          this.flowError = "Actions is required.";
+          this.flowError = this.$t("node.errors.actionsRequired");
           return;
         }
         const payload = {
@@ -199,7 +199,7 @@ export default {
         await this.refreshFlows();
         this.showFlowForm = false;
       } catch (error) {
-        this.flowError = "Failed to add flow.";
+        this.flowError = this.$t("node.errors.addFlow");
       } finally {
         this.flowBusy = false;
       }
@@ -212,7 +212,7 @@ export default {
         await deleteFlowById(this.localStats.id, flowId);
         await this.refreshFlows();
       } catch (error) {
-        this.flowError = "Failed to delete flow.";
+        this.flowError = this.$t("node.errors.deleteFlow");
       } finally {
         this.flowBusy = false;
       }
@@ -220,10 +220,10 @@ export default {
   },
   created() {
     if (this.stats?.type === "sw" || this.stats?.type === "switch") {
-      this.tabs.push({ key: "flows", label: "Flow Table" });
+      this.tabs.push({ key: "flows", labelKey: "node.tabs.flowTable" });
     }
     if (this.stats?.type === "host") {
-      this.tabs.push({ key: "arp", label: "ARP Table" });
+      this.tabs.push({ key: "arp", labelKey: "node.tabs.arpTable" });
     }
   }
 };
@@ -231,47 +231,47 @@ export default {
 
 <template>
   <div class="tabs">
-    <button v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="setTab(tab.key)">
-      {{ tab.label }}
-    </button>
+      <button v-for="tab in tabs" :key="tab.key" :class="{ active: activeTab === tab.key }" @click="setTab(tab.key)">
+      {{ tab.labelKey ? $t(tab.labelKey) : tab.label }}
+      </button>
   </div>
 
   <div class="tab-content">
     <div v-if="isDetailsTab">
       <div v-if="isController" class="host-edit">
-        <button @click="triggerControllerEdit">Edit Controller</button>
+        <button @click="triggerControllerEdit">{{ $t("node.editController") }}</button>
       </div>
       <div v-if="isHost" class="host-edit">
-        <button v-if="!isEditingHost" @click="startHostEdit">Edit</button>
+        <button v-if="!isEditingHost" @click="startHostEdit">{{ $t("actions.edit") }}</button>
         <div v-else class="host-edit-actions">
-          <button :disabled="hostEditBusy" @click="saveHostEdit">Save</button>
-          <button :disabled="hostEditBusy" @click="cancelHostEdit">Cancel</button>
+          <button :disabled="hostEditBusy" @click="saveHostEdit">{{ $t("actions.save") }}</button>
+          <button :disabled="hostEditBusy" @click="cancelHostEdit">{{ $t("actions.cancel") }}</button>
         </div>
         <p v-if="hostEditError" class="flow-error">{{ hostEditError }}</p>
       </div>
       <div v-if="isHost && isEditingHost" class="host-edit-fields">
         <label>
-          Host IP
+          {{ $t("node.hostIp") }}
           <input v-model="hostEdit.ip" type="text" class="host-edit-input" />
         </label>
         <label>
-          Default Route Type
+          {{ $t("node.defaultRouteType") }}
           <select v-model="hostEdit.routeType" class="host-edit-select">
-            <option value="dev">Device</option>
-            <option value="ip">Gateway IP</option>
+            <option value="dev">{{ $t("node.routeDevice") }}</option>
+            <option value="ip">{{ $t("node.routeGateway") }}</option>
           </select>
         </label>
         <label v-if="hostEdit.routeType === 'dev'">
-          Interface
+          {{ $t("node.interface") }}
           <select v-model="hostEdit.routeDev" class="host-edit-select">
-            <option value="">Select interface</option>
+            <option value="">{{ $t("node.selectInterface") }}</option>
             <option v-for="intf in (localStats?.interfaces || [])" :key="intf" :value="intf">
               {{ intf }}
             </option>
           </select>
         </label>
         <label v-if="hostEdit.routeType === 'ip'">
-          Gateway IP
+          {{ $t("node.gatewayIp") }}
           <input v-model="hostEdit.routeIp" type="text" class="host-edit-input" placeholder="10.0.0.254" />
         </label>
       </div>
@@ -281,7 +281,7 @@ export default {
           <span>{{ value }}</span>
         </li>
         <li v-if="isHost && !isEditingHost">
-          <strong>default_route:</strong> {{ localStats?.default_route || "" }}
+          <strong>{{ $t("node.defaultRoute") }}:</strong> {{ localStats?.default_route || "" }}
         </li>
       </ul>
     </div>
@@ -289,44 +289,44 @@ export default {
     <div v-if="isFlowTableTab">
       <div class="flow-actions flow-actions-top">
         <button :disabled="flowBusy" @click="showFlowForm = !showFlowForm">
-          {{ showFlowForm ? "Hide Flow Form" : "Add Flow" }}
+          {{ showFlowForm ? $t("node.hideFlowForm") : $t("node.addFlow") }}
         </button>
-        <button :disabled="flowBusy" @click="refreshFlows">Refresh</button>
+        <button :disabled="flowBusy" @click="refreshFlows">{{ $t("actions.refresh") }}</button>
       </div>
       <div v-if="showFlowForm" class="flow-editor">
         <div class="flow-fields">
           <label>
-            Match
+            {{ $t("node.flow.match") }}
             <input v-model="flowForm.match" type="text" placeholder="ip,nw_src=10.0.0.1" />
           </label>
           <label>
-            Actions
+            {{ $t("node.flow.actions") }}
             <input v-model="flowForm.actions" type="text" placeholder="output:2" />
           </label>
           <label>
-            Priority
+            {{ $t("node.flow.priority") }}
             <input v-model="flowForm.priority" type="number" min="0" placeholder="100" />
           </label>
           <label>
-            Table
+            {{ $t("node.flow.table") }}
             <input v-model="flowForm.table" type="number" min="0" placeholder="0" />
           </label>
           <label>
-            Idle Timeout
+            {{ $t("node.flow.idleTimeout") }}
             <input v-model="flowForm.idle_timeout" type="number" min="0" placeholder="30" />
           </label>
           <label>
-            Hard Timeout
+            {{ $t("node.flow.hardTimeout") }}
             <input v-model="flowForm.hard_timeout" type="number" min="0" placeholder="0" />
           </label>
           <label>
-            Cookie
+            {{ $t("node.flow.cookie") }}
             <input v-model="flowForm.cookie" type="text" placeholder="0x1" />
           </label>
           <label>
-            OpenFlow
+            {{ $t("node.flow.openflow") }}
             <select v-model="flowForm.of_version">
-              <option value="">auto</option>
+              <option value="">{{ $t("node.flow.auto") }}</option>
               <option value="OpenFlow10">OpenFlow10</option>
               <option value="OpenFlow11">OpenFlow11</option>
               <option value="OpenFlow12">OpenFlow12</option>
@@ -337,7 +337,7 @@ export default {
           </label>
         </div>
         <div class="flow-actions">
-          <button :disabled="flowBusy" @click="submitFlow">Add Flow</button>
+          <button :disabled="flowBusy" @click="submitFlow">{{ $t("node.addFlow") }}</button>
         </div>
       </div>
       <p v-if="flowError" class="flow-error">{{ flowError }}</p>
@@ -345,17 +345,17 @@ export default {
         <table>
           <thead>
             <tr>
-              <th>Flow ID</th>
-              <th>Cookie</th>
-              <th>Duration</th>
-              <th>Table</th>
-              <th>Packets</th>
-              <th>Bytes</th>
-              <th>Idle Timeout</th>
-              <th>Priority</th>
-              <th>Match Fields</th>
-              <th>Actions</th>
-              <th>Delete</th>
+              <th>{{ $t("node.flow.headers.flowId") }}</th>
+              <th>{{ $t("node.flow.headers.cookie") }}</th>
+              <th>{{ $t("node.flow.headers.duration") }}</th>
+              <th>{{ $t("node.flow.headers.table") }}</th>
+              <th>{{ $t("node.flow.headers.packets") }}</th>
+              <th>{{ $t("node.flow.headers.bytes") }}</th>
+              <th>{{ $t("node.flow.headers.idleTimeout") }}</th>
+              <th>{{ $t("node.flow.headers.priority") }}</th>
+              <th>{{ $t("node.flow.headers.matchFields") }}</th>
+              <th>{{ $t("node.flow.headers.actions") }}</th>
+              <th>{{ $t("actions.delete") }}</th>
             </tr>
           </thead>
           <tbody>
@@ -380,7 +380,7 @@ export default {
         </table>
       </div>
       <div class="flow-dump">
-        <h4>Raw dump-flows</h4>
+        <h4>{{ $t("node.flow.rawDump") }}</h4>
         <pre>{{ flowDump }}</pre>
       </div>
     </div>
@@ -390,9 +390,9 @@ export default {
         <table>
           <thead>
             <tr>
-              <th>IP Address</th>
-              <th>MAC Address</th>
-              <th>Interface</th>
+              <th>{{ $t("node.arp.ip") }}</th>
+              <th>{{ $t("node.arp.mac") }}</th>
+              <th>{{ $t("node.arp.interface") }}</th>
             </tr>
           </thead>
           <tbody>

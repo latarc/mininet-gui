@@ -66,14 +66,14 @@ import logoImage from "@/assets/logo-mininet-gui.png";
   <div class="app-shell">
     <div v-if="!mininetConnected" class="health-overlay">
       <div class="health-overlay__card">
-        <p>Mininet backend is disconnected. Actions are disabled until the service recovers.</p>
+        <p>{{ $t("status.backendDisconnected") }}</p>
         <button type="button" class="menu-action health-overlay__retry" @click="refreshBackendHealth">
-          Retry
+          {{ $t("actions.retry") }}
         </button>
       </div>
     </div>
     <div ref="topbar" class="topbar">
-      <div class="topbar-title">Mininet GUI</div>
+      <div class="topbar-title">{{ $t("app.title") }}</div>
       <div class="menu-bar">
         <div class="menu-item-wrapper">
           <button
@@ -82,34 +82,34 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :class="{ open: fileMenuOpen }"
             @click.stop="toggleFileMenu"
           >
-            File
+            {{ $t("menu.file") }}
           </button>
           <div v-if="fileMenuOpen" class="menu-dropdown" @click.stop>
             <button type="button" class="menu-action" @click="handleNewTopology">
-              New Topology
+              {{ $t("menu.newTopology") }}
             </button>
             <button type="button" class="menu-action" @click="handleOpenTopology">
-              Open Topology...
+              {{ $t("menu.openTopology") }}
             </button>
             <button type="button" class="menu-action" @click="handleSaveTopology">
-              Save Topology As...
+              {{ $t("menu.saveTopology") }}
             </button>
             <div class="menu-separator"></div>
             <button type="button" class="menu-action" @click="handleExportScript">
-              Export Topology as Mininet Script
+              {{ $t("menu.exportScript") }}
             </button>
             <button type="button" class="menu-action" @click="handleExportSniffer">
-              Export Sniffer (PCAP)
+              {{ $t("menu.exportSniffer") }}
             </button>
             <button type="button" class="menu-action" @click="handleExportPng">
-              Export Topology as PNG
+              {{ $t("menu.exportPng") }}
             </button>
             <button type="button" class="menu-action" @click="handleExportAddressingPlan">
-              Export Addressing Plan (PDF)
+              {{ $t("menu.exportAddressing") }}
             </button>
             <div class="menu-separator"></div>
             <button type="button" class="menu-action" @click="handleOpenSettings">
-              Settings
+              {{ $t("menu.settings") }}
             </button>
           </div>
         </div>
@@ -120,43 +120,43 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :class="{ open: viewMenuOpen }"
             @click.stop="toggleViewMenu"
           >
-            View
+            {{ $t("menu.view") }}
           </button>
           <div v-if="viewMenuOpen" class="menu-dropdown" @click.stop>
             <button type="button" class="menu-action" @click="handleCollapseAllViews">
-              Collapse all views
+              {{ $t("menu.collapseViews") }}
             </button>
             <button type="button" class="menu-action" @click="handleExpandAllViews">
-              Expand all views
+              {{ $t("menu.expandViews") }}
             </button>
             <div class="menu-separator"></div>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showHosts" @change="handleShowHostsSetting" />
-              Show hosts
+              {{ $t("menu.showHosts") }}
             </label>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
-              Show controllers
+              {{ $t("menu.showControllers") }}
             </label>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showSpecialSwitches" @change="persistSettings" />
-              Show special switches
+              {{ $t("menu.showSpecialSwitches") }}
             </label>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showSpecialControllers" @change="persistSettings" />
-              Show special controllers
+              {{ $t("menu.showSpecialControllers") }}
             </label>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
-              Show host IP addresses
+              {{ $t("menu.showHostIp") }}
             </label>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showSwitchDpids" @change="persistSettings" />
-              Show switch DPIDs
+              {{ $t("menu.showSwitchDpids") }}
             </label>
             <label class="menu-checkbox">
               <input type="checkbox" v-model="settings.showPortLabels" @change="persistSettings" />
-              Show port labels
+              {{ $t("menu.showPortLabels") }}
             </label>
           </div>
         </div>
@@ -167,7 +167,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :class="{ open: runMenuOpen }"
             @click.stop="toggleRunMenu"
           >
-            Run
+            {{ $t("menu.run") }}
           </button>
           <div v-if="runMenuOpen" class="menu-dropdown" @click.stop>
             <button
@@ -176,7 +176,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               @click="handleStartNetwork"
               :disabled="networkStarted || networkCommandInFlight || !mininetConnected"
             >
-              Start Network
+              {{ $t("menu.startNetwork") }}
             </button>
             <button
               type="button"
@@ -184,7 +184,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               @click="handleStopNetwork"
               :disabled="!networkStarted || networkCommandInFlight || !mininetConnected"
             >
-              Stop Network
+              {{ $t("menu.stopNetwork") }}
             </button>
             <button
               type="button"
@@ -192,7 +192,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               @click="handleRestartNetwork"
               :disabled="networkCommandInFlight || !mininetConnected"
             >
-              Restart Network
+              {{ $t("menu.restartNetwork") }}
             </button>
           </div>
         </div>
@@ -203,24 +203,24 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :class="{ open: toolsMenuOpen }"
             @click.stop="toggleToolsMenu"
           >
-            Tools
+            {{ $t("menu.tools") }}
           </button>
           <div v-if="toolsMenuOpen" class="menu-dropdown" @click.stop>
             <button type="button" class="menu-action" @click="handleRunIperf">
-              Run Iperf
+              {{ $t("menu.runIperf") }}
             </button>
             <button type="button" class="menu-action" @click="handleRunPingall">
-              Run Pingall
+              {{ $t("menu.runPingall") }}
             </button>
             <button type="button" class="menu-action" @click="handleGenerateTopology">
-              Generate Topology
+              {{ $t("menu.generateTopology") }}
             </button>
             <div class="menu-separator"></div>
             <button type="button" class="menu-action" @click="handleStartSniffer">
-              Start Sniffer
+              {{ $t("menu.startSniffer") }}
             </button>
             <button type="button" class="menu-action" @click="handleStopSniffer">
-              Stop Sniffer
+              {{ $t("menu.stopSniffer") }}
             </button>
           </div>
         </div>
@@ -231,17 +231,17 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :class="{ open: helpMenuOpen }"
             @click.stop="toggleHelpMenu"
           >
-            Help
+            {{ $t("menu.help") }}
           </button>
           <div v-if="helpMenuOpen" class="menu-dropdown" @click.stop>
             <button type="button" class="menu-action" @click="handleOpenUsage">
-              Usage
+              {{ $t("menu.usage") }}
             </button>
             <button type="button" class="menu-action" @click="handleOpenDocumentation">
-              Open documentation
+              {{ $t("menu.openDocs") }}
             </button>
             <button type="button" class="menu-action" @click="handleOpenAbout">
-              About
+              {{ $t("menu.about") }}
             </button>
           </div>
         </div>
@@ -309,10 +309,10 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         @click.stop
       >
         <button type="button" class="node-context-item" @click="openWebshellFromMenu">
-          Open Webshell
+          {{ $t("context.openWebshell") }}
         </button>
         <button type="button" class="node-context-item" @click="openNodeStatsFromMenu">
-          View Node Stats
+          {{ $t("context.viewNodeStats") }}
         </button>
       </div>
 
@@ -343,17 +343,17 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         ></span>
         <div class="status-bar__text">
           <span class="status-bar__primary">
-            {{ mininetConnected ? "Connected to Mininet" : "Disconnected" }}
+            {{ mininetConnected ? $t("status.connected") : $t("status.disconnected") }}
           </span>
           <span class="status-bar__version">
-            Mininet {{ mininetVersion || "unknown" }}
+            {{ $t("status.mininetVersion", { version: mininetVersion || $t("status.unknown") }) }}
           </span>
           <span class="status-bar__network">
             <span class="network-state-dot" :class="networkStateIndicator"></span>
-            Network {{ networkStarted ? "Started" : "Stopped" }}
+            {{ $t("status.networkState", { state: networkStarted ? $t("status.started") : $t("status.stopped") }) }}
           </span>
           <span class="status-bar__counts">
-            Hosts {{ networkCounts.hosts }} · Controllers {{ networkCounts.controllers }} · Switches {{ networkCounts.switches }}
+            {{ $t("status.counts", { hosts: networkCounts.hosts, controllers: networkCounts.controllers, switches: networkCounts.switches }) }}
           </span>
         </div>
       </div>
@@ -380,26 +380,26 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         <pingall-results v-if="modalOption === 'pingall'" :pingResults="modalData" />
         <div v-if="modalOption === 'iperf'" class="iperf-modal">
           <div class="iperf-form">
-            <label class="iperf-label" for="iperf-client">Client</label>
+            <label class="iperf-label" for="iperf-client">{{ $t("iperf.client") }}</label>
             <select id="iperf-client" v-model="iperfForm.client" class="iperf-select">
-              <option value="" disabled>Select client host</option>
+              <option value="" disabled>{{ $t("iperf.selectClient") }}</option>
               <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
                 {{ host.id }}
               </option>
             </select>
-            <label class="iperf-label" for="iperf-server">Server</label>
+            <label class="iperf-label" for="iperf-server">{{ $t("iperf.server") }}</label>
             <select id="iperf-server" v-model="iperfForm.server" class="iperf-select">
-              <option value="" disabled>Select server host</option>
+              <option value="" disabled>{{ $t("iperf.selectServer") }}</option>
               <option v-for="host in Object.values(hosts)" :key="host.id" :value="host.id">
                 {{ host.id }}
               </option>
             </select>
-            <label class="iperf-label" for="iperf-proto">Protocol</label>
+            <label class="iperf-label" for="iperf-proto">{{ $t("iperf.protocol") }}</label>
             <select id="iperf-proto" v-model="iperfForm.l4_type" class="iperf-select">
               <option value="TCP">TCP</option>
               <option value="UDP">UDP</option>
             </select>
-            <label class="iperf-label" for="iperf-duration">Duration (s)</label>
+            <label class="iperf-label" for="iperf-duration">{{ $t("iperf.duration") }}</label>
             <input
               id="iperf-duration"
               v-model.number="iperfForm.seconds"
@@ -407,7 +407,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               type="number"
               min="1"
             />
-            <label class="iperf-label" for="iperf-udp-bw">UDP BW (e.g. 10M)</label>
+            <label class="iperf-label" for="iperf-udp-bw">{{ $t("iperf.udpBw") }}</label>
             <input
               id="iperf-udp-bw"
               v-model="iperfForm.udp_bw"
@@ -416,7 +416,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               :disabled="iperfForm.l4_type !== 'UDP'"
               placeholder="10M"
             />
-            <label class="iperf-label" for="iperf-format">Format (K/M/G)</label>
+            <label class="iperf-label" for="iperf-format">{{ $t("iperf.format") }}</label>
             <input
               id="iperf-format"
               v-model="iperfForm.fmt"
@@ -424,7 +424,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               type="text"
               placeholder="M"
             />
-            <label class="iperf-label" for="iperf-port">Port</label>
+            <label class="iperf-label" for="iperf-port">{{ $t("iperf.port") }}</label>
             <input
               id="iperf-port"
               v-model.number="iperfForm.port"
@@ -439,12 +439,12 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               :disabled="iperfBusy || !iperfForm.client || !iperfForm.server || iperfForm.client === iperfForm.server"
               @click="runIperfTest"
             >
-              {{ iperfBusy ? "Running..." : "Run Iperf" }}
+              {{ iperfBusy ? $t("iperf.running") : $t("menu.runIperf") }}
             </button>
             <p v-if="iperfError" class="iperf-error">{{ iperfError }}</p>
           </div>
           <div v-if="iperfResult" class="iperf-result">
-            <h4>Result</h4>
+            <h4>{{ $t("iperf.result") }}</h4>
             <pre>{{ formatIperfResult(iperfResult) }}</pre>
           </div>
         </div>
@@ -459,41 +459,41 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         <topology-form v-if="modalOption === 'topologyForm'" :controllers="controllers" @form-submit="handleTopologyFormSubmit" />
         <div v-if="modalOption === 'usage'" class="help-modal">
           <div class="help-modal__tabs">
-            <button type="button" :class="{ active: helpTab === 'welcome' }" @click="helpTab = 'welcome'">Welcome</button>
-            <button type="button" :class="{ active: helpTab === 'shortcuts' }" @click="helpTab = 'shortcuts'">Shortcuts</button>
-            <button type="button" :class="{ active: helpTab === 'devices' }" @click="helpTab = 'devices'">Devices</button>
+            <button type="button" :class="{ active: helpTab === 'welcome' }" @click="helpTab = 'welcome'">{{ $t("help.welcomeTab") }}</button>
+            <button type="button" :class="{ active: helpTab === 'shortcuts' }" @click="helpTab = 'shortcuts'">{{ $t("help.shortcutsTab") }}</button>
+            <button type="button" :class="{ active: helpTab === 'devices' }" @click="helpTab = 'devices'">{{ $t("help.devicesTab") }}</button>
           </div>
           <div v-if="helpTab === 'welcome'" class="help-tab">
-            <p>Drag hosts, switches, or controllers from the sidebar onto the canvas to add devices.</p>
-            <p>Use right/middle click to pan and the mouse wheel to zoom.</p>
-            <p>Right-click a node to open its web shell or view stats.</p>
-            <p>The Run menu starts, stops, or restarts Mininet without erasing the topology.</p>
+            <p>{{ $t("help.welcomeLine1") }}</p>
+            <p>{{ $t("help.welcomeLine2") }}</p>
+            <p>{{ $t("help.welcomeLine3") }}</p>
+            <p>{{ $t("help.welcomeLine4") }}</p>
           </div>
           <div v-if="helpTab === 'shortcuts'" class="help-tab">
-            <p>H – toggle host visibility.</p>
-            <p>C – toggle controllers.</p>
-            <p>E – enter edge mode (click two nodes to connect).</p>
-            <p>D/Delete – remove selection.</p>
-            <p>Ctrl+A – select all nodes.</p>
-            <p>Esc – cancel a mode or close the modal.</p>
+            <p>{{ $t("help.shortcuts1") }}</p>
+            <p>{{ $t("help.shortcuts2") }}</p>
+            <p>{{ $t("help.shortcuts3") }}</p>
+            <p>{{ $t("help.shortcuts4") }}</p>
+            <p>{{ $t("help.shortcuts5") }}</p>
+            <p>{{ $t("help.shortcuts6") }}</p>
           </div>
           <div v-if="helpTab === 'devices'" class="help-tab">
-            <p>Host – emulates a Linux host.</p>
-            <p>Switch – standard or special switch types (Ovskernel, OVS, user, bridge).</p>
-            <p>Controller – default controller or remote/Ryu-based ones.</p>
-            <p>Router – Linux router with IP forwarding.</p>
-            <p>NAT – network address translation box.</p>
+            <p>{{ $t("help.deviceHost") }}</p>
+            <p>{{ $t("help.deviceSwitch") }}</p>
+            <p>{{ $t("help.deviceController") }}</p>
+            <p>{{ $t("help.deviceRouter") }}</p>
+            <p>{{ $t("help.deviceNat") }}</p>
           </div>
         </div>
         <div v-if="modalOption === 'about'" class="help-modal">
           <img :src="logoImage" alt="Mininet GUI logo" class="help-modal__logo" />
-          <h4>Mininet GUI</h4>
-          <p>Frontend version: {{ frontendVersion }}</p>
-          <p>Backend version: {{ backendVersion }}</p>
-          <p>Mininet version: {{ mininetVersion }}</p>
-          <p>Authors: Lucas Schneider, Emidio Neto, Felipe Dantas</p>
+          <h4>{{ $t("about.title") }}</h4>
+          <p>{{ $t("about.frontendVersion", { version: frontendVersion }) }}</p>
+          <p>{{ $t("about.backendVersion", { version: backendVersion }) }}</p>
+          <p>{{ $t("about.mininetVersion", { version: mininetVersion }) }}</p>
+          <p>{{ $t("about.authors") }}</p>
           <p>
-            Repository:
+            {{ $t("about.repository") }}
             <a
               class="help-link"
               href="https://github.com/latarc/mininet-gui"
@@ -503,36 +503,43 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               https://github.com/latarc/mininet-gui
             </a>
           </p>
-          <p>License: MIT</p>
+          <p>{{ $t("about.license") }}</p>
         </div>
         <div v-if="modalOption === 'settings'" class="settings-modal">
           <div class="settings-group">
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showHosts" @change="handleShowHostsSetting" />
-              <span>Show hosts</span>
+              <span>{{ $t("menu.showHosts") }}</span>
             </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showControllers" @change="handleShowControllersSetting" />
-              <span>Show controllers</span>
+              <span>{{ $t("menu.showControllers") }}</span>
             </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showSpecialSwitches" @change="persistSettings" />
-              <span>Show special switches</span>
+              <span>{{ $t("menu.showSpecialSwitches") }}</span>
             </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showSpecialControllers" @change="persistSettings" />
-              <span>Show special controllers</span>
+              <span>{{ $t("menu.showSpecialControllers") }}</span>
             </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showHostIp" @change="persistSettings" />
-              <span>Show host IP addresses</span>
+              <span>{{ $t("menu.showHostIp") }}</span>
             </label>
             <label class="settings-toggle">
               <input type="checkbox" v-model="settings.showSwitchDpids" @change="persistSettings" />
-              <span>Show switch DPIDs</span>
+              <span>{{ $t("menu.showSwitchDpids") }}</span>
             </label>
             <label class="settings-input">
-              <span>OpenAI API Key</span>
+              <span>{{ $t("settings.language") }}</span>
+              <select v-model="settings.language" @change="handleLanguageChange">
+                <option value="en">{{ $t("language.english") }}</option>
+                <option value="pt">{{ $t("language.portuguese") }}</option>
+              </select>
+            </label>
+            <label class="settings-input">
+              <span>{{ $t("settings.openaiKey") }}</span>
               <input
                 type="password"
                 v-model="settings.openaiApiKey"
@@ -541,31 +548,31 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               />
             </label>
             <div class="settings-link">
-              <div class="settings-link-title">Default Link Attributes</div>
+              <div class="settings-link-title">{{ $t("settings.defaultLinkAttributes") }}</div>
               <div class="settings-link-grid">
                 <label>
-                  Bandwidth (Mbps)
+                  {{ $t("link.bandwidth") }}
                   <input type="number" v-model="settings.linkOptions.bw" @change="persistSettings" min="0" />
                 </label>
                 <label>
-                  Delay (ms)
+                  {{ $t("link.delay") }}
                   <input type="number" v-model="settings.linkOptions.delay" @change="persistSettings" min="0" />
                 </label>
                 <label>
-                  Jitter (ms)
+                  {{ $t("link.jitter") }}
                   <input type="number" v-model="settings.linkOptions.jitter" @change="persistSettings" min="0" />
                 </label>
                 <label>
-                  Loss (%)
+                  {{ $t("link.loss") }}
                   <input type="number" v-model="settings.linkOptions.loss" @change="persistSettings" min="0" max="100" />
                 </label>
                 <label>
-                  Max Queue
+                  {{ $t("link.maxQueue") }}
                   <input type="number" v-model="settings.linkOptions.max_queue_size" @change="persistSettings" min="0" />
                 </label>
                 <label class="settings-toggle settings-inline">
                   <input type="checkbox" v-model="settings.linkOptions.use_htb" @change="persistSettings" />
-                  <span>Use HTB</span>
+                  <span>{{ $t("link.useHtb") }}</span>
                 </label>
               </div>
             </div>
@@ -573,14 +580,14 @@ import logoImage from "@/assets/logo-mininet-gui.png";
         </div>
         <div v-if="modalOption === 'confirmReset'" class="confirm-reset">
           <p class="confirm-reset__text">
-            Are you sure you want to reset the topology? This action cannot be undone.
+            {{ $t("confirm.resetTopologyText") }}
           </p>
           <div class="confirm-reset__actions">
             <button class="confirm-reset__button confirm-reset__button--cancel" @click="closeModal">
-              Cancel
+              {{ $t("actions.cancel") }}
             </button>
             <button class="confirm-reset__button confirm-reset__button--danger" @click="confirmResetTopology">
-              Reset Topology
+              {{ $t("actions.resetTopology") }}
             </button>
           </div>
         </div>
@@ -696,6 +703,7 @@ export default {
       showHostIp: false,
       showSwitchDpids: false,
       showPortLabels: false,
+      language: "en",
         openaiApiKey: "",
         linkOptions: {
           bw: "",
@@ -981,7 +989,7 @@ export default {
     },
     handleOpenUsage() {
       this.closeHelpMenu();
-      this.modalHeader = "Usage";
+      this.modalHeader = this.$t("menu.usage");
       this.modalOption = "usage";
       this.modalData = null;
       this.helpTab = "welcome";
@@ -993,7 +1001,7 @@ export default {
     },
     handleOpenAbout() {
       this.closeHelpMenu();
-      this.modalHeader = "About";
+      this.modalHeader = this.$t("menu.about");
       this.modalOption = "about";
       this.modalData = null;
       this.showModal = true;
@@ -1189,6 +1197,7 @@ export default {
       } catch (error) {
         console.warn("Failed to load settings", error);
       }
+      this.applyLocaleSetting();
       this.applyVisibilitySettings();
       this.applyPortLabels();
     },
@@ -1211,6 +1220,16 @@ export default {
       this.applyControllersVisibility();
       this.persistSettings();
     },
+    applyLocaleSetting() {
+      const locale = this.settings.language || "en";
+      if (this.$i18n?.locale && this.$i18n.locale !== locale) {
+        this.$i18n.locale = locale;
+      }
+    },
+    handleLanguageChange() {
+      this.applyLocaleSetting();
+      this.persistSettings();
+    },
     getLinkOptionsPayload() {
       const opts = this.settings.linkOptions || {};
       const payload = {};
@@ -1225,7 +1244,7 @@ export default {
       return Object.keys(payload).length ? payload : null;
     },
     formatLinkTitle(options) {
-      if (!options) return "No link attributes";
+      if (!options) return this.$t("link.noAttributes");
       const parts = [];
       if (options.bw !== undefined) parts.push(`bw: ${options.bw} Mbps`);
       if (options.delay !== undefined) parts.push(`delay: ${options.delay} ms`);
@@ -1233,7 +1252,7 @@ export default {
       if (options.loss !== undefined) parts.push(`loss: ${options.loss} %`);
       if (options.max_queue_size !== undefined) parts.push(`queue: ${options.max_queue_size}`);
       if (options.use_htb) parts.push("htb: true");
-      return parts.length ? parts.join(" | ") : "No link attributes";
+      return parts.length ? parts.join(" | ") : this.$t("link.noAttributes");
     },
     formatPortLabel(intfs) {
       if (!intfs?.from || !intfs?.to) return "";
@@ -1469,7 +1488,7 @@ export default {
     },
     showSettingsModal() {
       this.closeAllActiveModes();
-      this.modalHeader = "Settings";
+      this.modalHeader = this.$t("menu.settings");
       this.modalOption = "settings";
       this.showModal = true;
     },
@@ -1588,24 +1607,24 @@ export default {
           enabled: false,
           addEdge: async (data, callback) => {
             if (data.from == data.to) {
-              confirm("Cannot connect node to itself");
+              alert(this.$t("errors.connectSelf"));
               return;
             }
             console.log("network", this.network);
             let from = this.nodes.get(data.from);
             let to = this.nodes.get(data.to);
             if (from.type === "controller" && to.type === "controller") {
-                alert("cannot connect controller with controller");
+                alert(this.$t("errors.controllerToController"));
                 return;
             } else if (from.type === "host" && this.hostHasLink(from.id)) {
-                alert("host already has a link");
+                alert(this.$t("errors.hostHasLink"));
                 return;
             } else if (to.type === "host" && this.hostHasLink(to.id)) {
-                alert("host already has a link");
+                alert(this.$t("errors.hostHasLink"));
                 return;
             } else if (from.type === "controller" || to.type === "controller") {
                 if (from.type === "host" || to.type === "host") {
-                    alert("cannot associate host with controller");
+                    alert(this.$t("errors.hostToController"));
                     return;
                 }
                 let [sw, ctl] = (from.type === "controller") ? [to, from] : [from, to];
@@ -2100,7 +2119,7 @@ export default {
       return sw;
     },
     async showControllerFormModal(position, presetType = null) {
-      this.modalHeader = "Controller Form";
+      this.modalHeader = this.$t("controller.formTitle");
       this.modalOption = "controllerForm";
       this.showModal = true;
       this.controllerFormPreset = presetType;
@@ -2125,7 +2144,7 @@ export default {
     showControllerEditModal(controllerId) {
       const controller = this.controllers?.[controllerId] || (this.modalData?.id === controllerId ? this.modalData : null);
       if (!controller) return;
-      this.modalHeader = `Edit Controller: ${controllerId}`;
+      this.modalHeader = this.$t("controller.editTitle", { id: controllerId });
       this.modalOption = "controllerForm";
       this.showModal = true;
       this.controllerFormPreset = null;
@@ -2353,7 +2372,7 @@ export default {
         this.pingallRunning = false;
         return;
       } else {
-        this.modalHeader = "Pingall Results";
+      this.modalHeader = this.$t("pingall.resultsTitle");
         this.modalOption = "pingall";
         this.modalData = pingallResults || null;
         this.showModal = true;
@@ -2373,14 +2392,14 @@ export default {
       this.iperfForm.port = "";
       this.iperfError = "";
       this.iperfResult = null;
-      this.modalHeader = "Run Iperf";
+      this.modalHeader = this.$t("menu.runIperf");
       this.modalOption = "iperf";
       this.showModal = true;
     },
     async runIperfTest() {
       if (!this.iperfForm.client || !this.iperfForm.server) return;
       if (this.iperfForm.client === this.iperfForm.server) {
-        this.iperfError = "Client and server must be different hosts.";
+        this.iperfError = this.$t("iperf.errorDifferentHosts");
         return;
       }
       this.closeModal();
@@ -2400,33 +2419,33 @@ export default {
       }
       const result = await runIperf(payload);
       if (result?.running) {
-        this.iperfError = "Iperf already running.";
+        this.iperfError = this.$t("iperf.errorAlreadyRunning");
         this.iperfBusy = false;
-        this.modalHeader = "Run Iperf";
+        this.modalHeader = this.$t("menu.runIperf");
         this.modalOption = "iperf";
         this.showModal = true;
         return;
       }
       if (!result) {
-        this.iperfError = "Failed to run iperf.";
+        this.iperfError = this.$t("iperf.errorFailed");
       } else {
         this.iperfResult = result;
       }
       this.iperfBusy = false;
-      this.modalHeader = "Iperf Results";
+      this.modalHeader = this.$t("iperf.resultsTitle");
       this.modalOption = "iperf";
       this.showModal = true;
     },
     formatIperfResult(result) {
       if (!result) return "";
       if (result.client && result.server) {
-        return `Client: ${result.client}\nServer: ${result.server}`;
+        return `${this.$t("iperf.client")}: ${result.client}\n${this.$t("iperf.server")}: ${result.server}`;
       }
       return JSON.stringify(result, null, 2);
     },
     async showStatsModal(nodeId) {
       this.closeAllActiveModes();
-      this.modalHeader = `Node Info: ${nodeId}`;
+      this.modalHeader = this.$t("node.infoTitle", { id: nodeId });
       this.modalOption = "nodeStats";
       let nodeStats = await getNodeStats(nodeId);
       console.log("nodeStats", nodeStats);
@@ -2443,7 +2462,7 @@ export default {
         return;
       }
       this.closeAllActiveModes();
-      this.modalHeader = `Link Info: ${link.from} ↔ ${link.to}`;
+      this.modalHeader = this.$t("link.infoTitle", { from: link.from, to: link.to });
       this.modalOption = "linkStats";
       this.modalData = {
         from: link.from,
@@ -2567,7 +2586,7 @@ export default {
       }
     },
     async showTopologyFormModal() {
-      this.modalHeader = "Create Topology";
+      this.modalHeader = this.$t("topology.createTitle");
       this.modalOption = "topologyForm";
       this.showModal = true;
 
@@ -2677,11 +2696,11 @@ export default {
         link.remove();
       } catch (error) {
         console.error("Failed to export topology PNG", error);
-        alert("Failed to export topology PNG.");
+        alert(this.$t("errors.exportPng"));
       }
     },
     showResetConfirmModal() {
-      this.modalHeader = "Reset Topology";
+      this.modalHeader = this.$t("confirm.resetTopologyTitle");
       this.modalOption = "confirmReset";
       this.modalData = null;
       this.showModal = true;
@@ -2739,11 +2758,11 @@ export default {
         const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
-        doc.text("Addressing Plan", 40, 40);
+        doc.text(this.$t("addressing.title"), 40, 40);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
-        doc.text(`Created in Mininet GUI – ${createdAt}`, 40, 60);
-        doc.text("Repository: https://github.com/latarc/mininet-gui", 40, 74);
+        doc.text(this.$t("addressing.createdIn", { date: createdAt }), 40, 60);
+        doc.text(this.$t("addressing.repository", { repo: "https://github.com/latarc/mininet-gui" }), 40, 74);
 
         const body = [];
         nodes.forEach((node) => {
@@ -2769,11 +2788,18 @@ export default {
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
-        doc.text("Nodes", 40, 86);
+        doc.text(this.$t("addressing.nodesTitle"), 40, 86);
         doc.setFont("helvetica", "normal");
         autoTable(doc, {
           startY: 90,
-          head: [["Node", "Type", "Interface", "MAC", "IPv4", "IPv6"]],
+          head: [[
+            this.$t("addressing.headers.node"),
+            this.$t("addressing.headers.type"),
+            this.$t("addressing.headers.interface"),
+            this.$t("addressing.headers.mac"),
+            this.$t("addressing.headers.ipv4"),
+            this.$t("addressing.headers.ipv6")
+          ]],
           body,
           styles: { fontSize: 8, cellPadding: 3, valign: "top" },
           headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
@@ -2792,12 +2818,12 @@ export default {
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
-        doc.text("Links", 40, afterNodes - 8);
+        doc.text(this.$t("addressing.linksTitle"), 40, afterNodes - 8);
         doc.setFont("helvetica", "normal");
         autoTable(doc, {
           startY: afterNodes,
-          head: [["From", "To", "Attributes"]],
-          body: linkRows.length ? linkRows : [["-", "-", "No links"]],
+          head: [[this.$t("addressing.links.from"), this.$t("addressing.links.to"), this.$t("addressing.links.attributes")]],
+          body: linkRows.length ? linkRows : [["-", "-", this.$t("addressing.links.none")]],
           styles: { fontSize: 8, cellPadding: 3, valign: "top" },
           headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
         });
@@ -2808,7 +2834,7 @@ export default {
           doc.addPage();
           doc.setFont("helvetica", "bold");
           doc.setFontSize(14);
-          doc.text("Network Graph", 40, 40);
+          doc.text(this.$t("addressing.networkGraph"), 40, 40);
           const pageWidth = doc.internal.pageSize.getWidth();
           const pageHeight = doc.internal.pageSize.getHeight();
           const maxWidth = pageWidth - 80;
@@ -2830,7 +2856,7 @@ export default {
         doc.save("addressing-plan.pdf");
       } catch (error) {
         console.error("Failed to export addressing plan", error);
-        alert("Failed to export addressing plan.");
+        alert(this.$t("errors.exportAddressing"));
       }
     },
     async importTopology(file) {
