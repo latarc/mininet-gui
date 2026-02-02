@@ -1,0 +1,677 @@
+{
+  "nodes": [
+    {
+      "id": "h1",
+      "type": "host",
+      "name": "h1",
+      "label": "h1\n10.0.0.1/8",
+      "x": -173.22222222222223,
+      "y": 231.88888888888886,
+      "ip": "10.0.0.1/8",
+      "mac": "000000000001"
+    },
+    {
+      "id": "h2",
+      "type": "host",
+      "name": "h2",
+      "label": "h2\n10.0.0.2/8",
+      "x": -70.8888888888889,
+      "y": 230.88888888888889,
+      "ip": "10.0.0.2/8",
+      "mac": "000000000002"
+    },
+    {
+      "id": "h3",
+      "type": "host",
+      "name": "h3",
+      "label": "h3\n10.0.0.3/8",
+      "x": 90,
+      "y": 241,
+      "ip": "10.0.0.3/8",
+      "mac": "000000000003"
+    },
+    {
+      "id": "h4",
+      "type": "host",
+      "name": "h4",
+      "label": "h4\n10.0.0.4/8",
+      "x": 212,
+      "y": 234,
+      "ip": "10.0.0.4/8",
+      "mac": "000000000004"
+    },
+    {
+      "id": "h5",
+      "type": "host",
+      "name": "h5",
+      "label": "h5\n10.0.0.5/8",
+      "x": 420.66666666666663,
+      "y": 101.55555555555559,
+      "ip": "10.0.0.5/8",
+      "mac": "000000000005"
+    },
+    {
+      "id": "h6",
+      "type": "host",
+      "name": "h6",
+      "label": "h6\n10.0.0.6/8",
+      "x": 510.8888888888889,
+      "y": 100.2222222222222,
+      "ip": "10.0.0.6/8",
+      "mac": "000000000006"
+    },
+    {
+      "id": "h7",
+      "type": "host",
+      "name": "h7",
+      "label": "h7\n10.0.0.7/8",
+      "x": 589,
+      "y": 98,
+      "ip": "10.0.0.7/8",
+      "mac": "000000000007"
+    },
+    {
+      "id": "h8",
+      "type": "host",
+      "name": "h8",
+      "label": "h8\n10.0.0.8/8",
+      "x": 686,
+      "y": 100,
+      "ip": "10.0.0.8/8",
+      "mac": "000000000008"
+    },
+    {
+      "id": "h9",
+      "type": "host",
+      "name": "h9",
+      "label": "h9\n10.0.0.9/8",
+      "x": 776,
+      "y": 104,
+      "ip": "10.0.0.9/8",
+      "mac": "000000000009"
+    },
+    {
+      "id": "h10",
+      "type": "host",
+      "name": "h10",
+      "label": "h10\n10.0.0.10/8",
+      "x": 865.888888888889,
+      "y": 105.66666666666669,
+      "ip": "10.0.0.10/8",
+      "mac": "00000000000A"
+    },
+    {
+      "id": "h11",
+      "type": "host",
+      "name": "h11",
+      "label": "h11\n10.0.0.11/8",
+      "x": 421.66666666666674,
+      "y": -98.44444444444447,
+      "ip": "10.0.0.11/8",
+      "mac": "00000000000B"
+    },
+    {
+      "id": "h12",
+      "type": "host",
+      "name": "h12",
+      "label": "h12\n10.0.0.12/8",
+      "x": 505.00000000000006,
+      "y": -96.11111111111111,
+      "ip": "10.0.0.12/8",
+      "mac": "00000000000C"
+    },
+    {
+      "id": "h13",
+      "type": "host",
+      "name": "h13",
+      "label": "h13\n10.0.0.13/8",
+      "x": 582,
+      "y": -98,
+      "ip": "10.0.0.13/8",
+      "mac": "00000000000D"
+    },
+    {
+      "id": "h14",
+      "type": "host",
+      "name": "h14",
+      "label": "h14\n10.0.0.14/8",
+      "x": 681,
+      "y": -99,
+      "ip": "10.0.0.14/8",
+      "mac": "00000000000E"
+    },
+    {
+      "id": "h15",
+      "type": "host",
+      "name": "h15",
+      "label": "h15\n10.0.0.15/8",
+      "x": 783,
+      "y": -99,
+      "ip": "10.0.0.15/8",
+      "mac": "00000000000F"
+    },
+    {
+      "id": "h16",
+      "type": "host",
+      "name": "h16",
+      "label": "h16\n10.0.0.16/8",
+      "x": 854.6666666666667,
+      "y": -99.1111111111111,
+      "ip": "10.0.0.16/8",
+      "mac": "000000000010"
+    },
+    {
+      "id": "h17",
+      "type": "host",
+      "name": "h17",
+      "label": "h17\n10.0.0.17/8",
+      "x": -229,
+      "y": -7.5,
+      "ip": "10.0.0.17/8",
+      "mac": "000000000011"
+    },
+    {
+      "id": "h18",
+      "type": "host",
+      "name": "h18",
+      "label": "h18\n10.0.0.18/8",
+      "x": -223,
+      "y": -134.5,
+      "ip": "10.0.0.18/8",
+      "mac": "000000000012"
+    },
+    {
+      "id": "h19",
+      "type": "host",
+      "name": "h19",
+      "label": "h19\n10.0.0.19/8",
+      "x": 238,
+      "y": -100.5,
+      "ip": "10.0.0.19/8",
+      "mac": "000000000013"
+    },
+    {
+      "id": "h20",
+      "type": "host",
+      "name": "h20",
+      "label": "h20\n10.0.0.20/8",
+      "x": 248,
+      "y": 26.5,
+      "ip": "10.0.0.20/8",
+      "mac": "000000000014"
+    },
+    {
+      "id": "h21",
+      "type": "host",
+      "name": "h21",
+      "label": "h21\n10.0.0.21/8",
+      "x": 1133.5555555555557,
+      "y": 59.1111111111111,
+      "ip": "10.0.0.21/8",
+      "mac": "000000000015"
+    },
+    {
+      "id": "h22",
+      "type": "host",
+      "name": "h22",
+      "label": "h22\n10.0.0.22/8",
+      "x": 1254.111111111111,
+      "y": 64.66666666666666,
+      "ip": "10.0.0.22/8",
+      "mac": "000000000016"
+    },
+    {
+      "id": "s1",
+      "type": "sw",
+      "name": "s1",
+      "label": "s1",
+      "x": -122.66666666666667,
+      "y": 138.11111111111111,
+      "ports": 4,
+      "controller": "c1",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "s2",
+      "type": "sw",
+      "name": "s2",
+      "label": "s2",
+      "x": 137.6666666666667,
+      "y": 133.88888888888889,
+      "ports": 4,
+      "controller": "c1",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "s3",
+      "type": "sw",
+      "name": "s3",
+      "label": "s3",
+      "x": 633,
+      "y": 11,
+      "ports": 4,
+      "controller": "c2",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "s4",
+      "type": "sw",
+      "name": "s4",
+      "label": "s4",
+      "x": 1220.3333333333333,
+      "y": -146.66666666666666,
+      "ports": 4,
+      "controller": "c2",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "s5",
+      "type": "sw",
+      "name": "s5",
+      "label": "s5",
+      "x": 1186.5555555555557,
+      "y": -29.77777777777779,
+      "ports": 4,
+      "controller": "c2",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "s6",
+      "type": "sw",
+      "name": "s6",
+      "label": "s6",
+      "x": -118,
+      "y": -9.5,
+      "ports": 4,
+      "controller": "c1",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "s7",
+      "type": "sw",
+      "name": "s7",
+      "label": "s7",
+      "x": 146,
+      "y": -5.5,
+      "ports": 4,
+      "controller": "c1",
+      "switch_type": "ovskernel",
+      "of_version": null
+    },
+    {
+      "id": "c1",
+      "type": "controller",
+      "name": "c1",
+      "label": "c1",
+      "x": 28,
+      "y": -231,
+      "controller_type": "default",
+      "remote": false,
+      "ip": "127.0.0.1",
+      "port": 6633,
+      "ryu_app": null,
+      "color": "#007acc"
+    },
+    {
+      "id": "c2",
+      "type": "controller",
+      "name": "c2",
+      "label": "c2",
+      "x": 572,
+      "y": -228,
+      "controller_type": "default",
+      "remote": false,
+      "ip": "127.0.0.1",
+      "port": 6634,
+      "ryu_app": null,
+      "color": "#f59e0b"
+    },
+    {
+      "id": "nat1",
+      "type": "nat",
+      "name": "nat1",
+      "label": "nat1",
+      "x": 1156.3333333333333,
+      "y": -258.3333333333333,
+      "ip": "10.0.0.201/8",
+      "mac": "0000000000C9"
+    },
+    {
+      "id": "r1",
+      "type": "router",
+      "name": "r1",
+      "label": "r1",
+      "x": 5,
+      "y": 64.5,
+      "ip": "10.0.0.101/8",
+      "mac": "000000000065"
+    }
+  ],
+  "edges": [
+    {
+      "id": "050404ed-15b4-45e2-9cd0-7376c7b1535d",
+      "from": "s1",
+      "to": "h1",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "49ce0850-f9f5-40dd-83da-c1069285972b",
+      "from": "s1",
+      "to": "h2",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "1b045e9d-297a-4a35-8294-28b66727a68c",
+      "from": "s2",
+      "to": "h3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "b65a9a2c-9634-44ec-8f71-0a8316dc885e",
+      "from": "s2",
+      "to": "h4",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "c49b0462-5680-4916-91d7-b5e34b323751",
+      "from": "h11",
+      "to": "s3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "21ab4238-d4fc-4f63-937b-b1e126144c3f",
+      "from": "h12",
+      "to": "s3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "23ae4825-0ff8-45a9-a65d-5672f7c482d5",
+      "from": "h13",
+      "to": "s3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "5713880c-f60b-4187-ab85-3d7e763d232a",
+      "from": "h14",
+      "to": "s3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "46e57540-458b-4e42-84b1-508a1d5338fb",
+      "from": "h15",
+      "to": "s3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "f68d2fd2-289d-4e3d-9a7d-f3bddc8048df",
+      "from": "h16",
+      "to": "s3",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "4bb6353f-9123-4073-8e38-944270cc84b3",
+      "from": "s3",
+      "to": "h5",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "c75c2ab1-b501-48d0-a3d4-69399a75c22e",
+      "from": "s3",
+      "to": "h6",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "2c169dfc-cb8a-4c78-a5d0-e6ebbc30117e",
+      "from": "s3",
+      "to": "h7",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "eb86b07f-6cef-4f45-af69-a849cacb62eb",
+      "from": "s3",
+      "to": "h8",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "42e89cee-315f-4ae6-b79a-22d50e870f5d",
+      "from": "s3",
+      "to": "h9",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "1b4cee5e-23e0-4fe6-b01c-764aa4f9bb19",
+      "from": "s3",
+      "to": "h10",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "effbfc7c-e903-4fc8-9eb3-a83ba6691e60",
+      "from": "s3",
+      "to": "s2",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "aab495e0-00f0-433b-b43b-57a2a08a68d2",
+      "from": "s3",
+      "to": "s5",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "3f72b6c0-e36f-4069-a0f8-bac8a4eaea9c",
+      "from": "s5",
+      "to": "s4",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "075cb2c3-9c6c-44f6-b0fe-923f5a2b440a",
+      "from": "s7",
+      "to": "r1",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "ef8ff97e-1801-45fb-b790-8a12f3958419",
+      "from": "r1",
+      "to": "s6",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "96f5de7b-674c-4373-87eb-4e43a1f21a39",
+      "from": "r1",
+      "to": "s2",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "0e1be0e3-b677-450a-93a4-8762f9c20589",
+      "from": "r1",
+      "to": "s1",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "26a15ee2-f8c9-4c48-8ecc-ea06c8f6bdeb",
+      "from": "s4",
+      "to": "nat1",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "098efe11-1699-412c-b961-d5c335b871a2",
+      "from": "s5",
+      "to": "h21",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "e40864a1-c034-4b6a-a206-4879272c815a",
+      "from": "s5",
+      "to": "h22",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "17b955b6-7f53-4379-a8a4-db7c89cc9cff",
+      "from": "s6",
+      "to": "h18",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "571b13cb-7440-416c-88c8-484cb3c8568f",
+      "from": "s6",
+      "to": "h17",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "e4e01bbd-310a-4386-9c43-eaf7e5a70bab",
+      "from": "s7",
+      "to": "h19",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "665ed385-59eb-40b7-996f-cdacf449e2b5",
+      "from": "s7",
+      "to": "h20",
+      "options": {
+        "loss": 0
+      },
+      "title": "loss: 0 %"
+    },
+    {
+      "id": "4e99ed1e-d7a9-4848-9045-3d23ee85f89d",
+      "from": "s1",
+      "to": "c1",
+      "options": null,
+      "title": null
+    },
+    {
+      "id": "ef23472e-4e75-4dc6-a395-4f7b18289940",
+      "from": "s2",
+      "to": "c1",
+      "options": null,
+      "title": null
+    },
+    {
+      "id": "8f188b2d-5bbc-4643-a40c-4cd05214ec5a",
+      "from": "s3",
+      "to": "c2",
+      "options": null,
+      "title": null
+    },
+    {
+      "id": "3a8ae950-9159-406c-b5a5-ecb94a870ad7",
+      "from": "s4",
+      "to": "c2",
+      "options": null,
+      "title": null
+    },
+    {
+      "id": "0524e506-8300-48d5-b0f9-e05418b53f3d",
+      "from": "s5",
+      "to": "c2",
+      "options": null,
+      "title": null
+    },
+    {
+      "id": "5182b254-a5ff-434e-8917-cd4fcf11dbfb",
+      "from": "s6",
+      "to": "c1",
+      "options": null,
+      "title": null
+    },
+    {
+      "id": "6a00ef85-56d2-47a9-b162-706272c81219",
+      "from": "s7",
+      "to": "c1",
+      "options": null,
+      "title": null
+    }
+  ]
+}
