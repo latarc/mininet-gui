@@ -1,0 +1,8 @@
+.git
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/.venv
+mininet-gui-backend/nohup.out
+mininet-gui-frontend/nohup.out
