@@ -83,7 +83,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
     <div ref="topbar" :class="['topbar', themeClass]">
       <div class="topbar-title">{{ $t("app.title") }}</div>
       <div class="menu-bar">
-        <div class="menu-item-wrapper">
+        <div class="menu-item-wrapper" @mouseenter="handleMenuHover('file')">
           <button
             type="button"
             class="menu-item"
@@ -131,7 +131,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             </button>
           </div>
         </div>
-        <div class="menu-item-wrapper">
+        <div class="menu-item-wrapper" @mouseenter="handleMenuHover('view')">
           <button
             type="button"
             class="menu-item"
@@ -189,7 +189,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             </label>
           </div>
         </div>
-        <div class="menu-item-wrapper">
+        <div class="menu-item-wrapper" @mouseenter="handleMenuHover('run')">
           <button
             type="button"
             class="menu-item"
@@ -225,7 +225,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             </button>
           </div>
         </div>
-        <div class="menu-item-wrapper">
+        <div class="menu-item-wrapper" @mouseenter="handleMenuHover('tools')">
           <button
             type="button"
             class="menu-item"
@@ -253,7 +253,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             </button>
           </div>
         </div>
-        <div class="menu-item-wrapper">
+        <div class="menu-item-wrapper" @mouseenter="handleMenuHover('help')">
           <button
             type="button"
             class="menu-item"
@@ -585,15 +585,18 @@ import logoImage from "@/assets/logo-mininet-gui.png";
           </div>
         </div>
         <div v-if="modalOption === 'settings'" class="modal-ui">
-          <div class="modal-tabs">
-            <button type="button" class="modal-tab" :class="{ 'is-active': settingsTab === 'view' }" @click="settingsTab = 'view'">{{ $t("settings.tabs.view") }}</button>
-            <button type="button" class="modal-tab" :class="{ 'is-active': settingsTab === 'defaults' }" @click="settingsTab = 'defaults'">{{ $t("settings.tabs.defaults") }}</button>
-            <button type="button" class="modal-tab" :class="{ 'is-active': settingsTab === 'integrations' }" @click="settingsTab = 'integrations'">{{ $t("settings.tabs.integrations") }}</button>
-          </div>
-          <div class="modal-tab-panels">
-            <div class="modal-section tab-panel" :class="{ 'is-hidden': settingsTab !== 'view' }">
+          <div class="modal-section">
             <div class="modal-section__header">
               <div class="modal-section__title">{{ $t("settings.viewTitle") }}</div>
+            </div>
+            <div class="modal-form-grid">
+              <label class="modal-field">
+                {{ $t("settings.language") }}
+                <select v-model="settings.language" class="modal-select" @change="handleLanguageChange">
+                  <option value="en">{{ $t("language.english") }}</option>
+                  <option value="pt">{{ $t("language.portuguese") }}</option>
+                </select>
+              </label>
             </div>
             <div class="settings-grid">
               <label class="settings-toggle">
@@ -631,8 +634,8 @@ import logoImage from "@/assets/logo-mininet-gui.png";
                 <span>{{ $t("menu.showSwitchDpids") }}</span>
               </label>
             </div>
-            </div>
-            <div class="modal-section tab-panel" :class="{ 'is-hidden': settingsTab !== 'defaults' }">
+          </div>
+          <div class="modal-section">
             <div class="modal-section__header">
               <div class="modal-section__title">{{ $t("settings.defaultsTitle") }}</div>
             </div>
@@ -678,19 +681,12 @@ import logoImage from "@/assets/logo-mininet-gui.png";
                 <span>{{ $t("link.useHtb") }}</span>
               </label>
             </div>
-            </div>
-            <div class="modal-section tab-panel" :class="{ 'is-hidden': settingsTab !== 'integrations' }">
+          </div>
+          <div class="modal-section">
             <div class="modal-section__header">
               <div class="modal-section__title">{{ $t("settings.integrationsTitle") }}</div>
             </div>
             <div class="modal-form-grid">
-              <label class="modal-field">
-                {{ $t("settings.language") }}
-                <select v-model="settings.language" class="modal-select" @change="handleLanguageChange">
-                  <option value="en">{{ $t("language.english") }}</option>
-                  <option value="pt">{{ $t("language.portuguese") }}</option>
-                </select>
-              </label>
               <label class="modal-field">
                 {{ $t("settings.openaiKey") }}
                 <input
@@ -701,7 +697,6 @@ import logoImage from "@/assets/logo-mininet-gui.png";
                   placeholder="sk-..."
                 />
               </label>
-            </div>
             </div>
           </div>
         </div>
@@ -780,7 +775,6 @@ export default {
       modalData: {},
       linkModalEdgeId: null,
       helpTab: "welcome",
-      settingsTab: "view",
       controllerFormPreset: null,
       controllerFormData: null,
       ryuApps: [],
@@ -1071,6 +1065,36 @@ export default {
       if (this.viewMenuOpen && !topbar.contains(event.target)) {
         this.viewMenuOpen = false;
       }
+    },
+    isAnyMenuOpen() {
+      return (
+        this.fileMenuOpen ||
+        this.helpMenuOpen ||
+        this.runMenuOpen ||
+        this.toolsMenuOpen ||
+        this.viewMenuOpen
+      );
+    },
+    openMenuByKey(menuKey) {
+      this.fileMenuOpen = false;
+      this.helpMenuOpen = false;
+      this.runMenuOpen = false;
+      this.toolsMenuOpen = false;
+      this.viewMenuOpen = false;
+      if (menuKey === "file") this.fileMenuOpen = true;
+      if (menuKey === "help") this.helpMenuOpen = true;
+      if (menuKey === "run") this.runMenuOpen = true;
+      if (menuKey === "tools") this.toolsMenuOpen = true;
+      if (menuKey === "view") this.viewMenuOpen = true;
+    },
+    handleMenuHover(menuKey) {
+      if (!this.isAnyMenuOpen()) return;
+      if (menuKey === "file" && this.fileMenuOpen) return;
+      if (menuKey === "help" && this.helpMenuOpen) return;
+      if (menuKey === "run" && this.runMenuOpen) return;
+      if (menuKey === "tools" && this.toolsMenuOpen) return;
+      if (menuKey === "view" && this.viewMenuOpen) return;
+      this.openMenuByKey(menuKey);
     },
     toggleFileMenu() {
       this.helpMenuOpen = false;
@@ -1622,7 +1646,6 @@ export default {
     },
     showSettingsModal() {
       this.closeAllActiveModes();
-      this.settingsTab = "view";
       this.modalHeader = this.$t("menu.settings");
       this.modalOption = "settings";
       this.showModal = true;
