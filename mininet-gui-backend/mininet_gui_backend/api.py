@@ -1270,6 +1270,67 @@ async def import_json(file: UploadFile = File(...)):
         data = json.loads(contents.decode("utf-8"))
         print("Received Topology JSON:", data)
 
+        if "nodes" in data and "edges" in data:
+            nodes = data.get("nodes") or []
+            edges = data.get("edges") or []
+            controllers = []
+            switches = []
+            hosts = []
+            routers = []
+            nats = []
+
+            for node in nodes:
+                node_type = (node.get("type") or "").lower()
+                if node_type in ("controller", "ctl", "c"):
+                    controllers.append(node)
+                elif node_type in ("sw", "switch"):
+                    switches.append(node)
+                elif node_type in ("host", "h"):
+                    hosts.append(node)
+                elif node_type == "router":
+                    routers.append(node)
+                elif node_type == "nat":
+                    nats.append(node)
+
+            controller_ids = {c.get("id") for c in controllers if c.get("id")}
+            switch_ids = {s.get("id") for s in switches if s.get("id")}
+            switch_index = {s.get("id"): s for s in switches if s.get("id")}
+
+            for edge in edges:
+                src = edge.get("from")
+                dst = edge.get("to")
+                if not src or not dst:
+                    continue
+                if src in switch_ids and dst in controller_ids:
+                    if not switch_index[src].get("controller"):
+                        switch_index[src]["controller"] = dst
+                elif dst in switch_ids and src in controller_ids:
+                    if not switch_index[dst].get("controller"):
+                        switch_index[dst]["controller"] = src
+
+            links = []
+            for edge in edges:
+                src = edge.get("from")
+                dst = edge.get("to")
+                if not src or not dst:
+                    continue
+                if src in controller_ids or dst in controller_ids:
+                    continue
+                options = edge.get("options")
+                if options is None:
+                    links.append([src, dst])
+                else:
+                    links.append({"src": src, "dst": dst, "options": options})
+
+            data = {
+                "controllers": controllers,
+                "switches": switches,
+                "hosts": hosts,
+                "routers": routers,
+                "nats": nats,
+                "links": links,
+            }
+
         for controller_data in data.get("controllers", []):
             controller = Controller(**controller_data)
             create_controller(controller)
@@ -1300,7 +1361,10 @@ async def import_json(file: UploadFile = File(...)):
         for link in data.get("links", []):
             debug("LINKS: ", data["links"])
             debug("LINK: ", link)
-            create_link(tuple(link))
+            if isinstance(link, dict):
+                create_link(LinkCreate(**link))
+            else:
+                create_link(tuple(link))
 
         return {"message": "Topology successfully imported"}
 

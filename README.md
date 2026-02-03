@@ -18,7 +18,7 @@ Official repository: <https://github.com/latarc/mininet-gui>
 
 ### Screenshot
 
-![mininet-gui screenshot](https://github.com/user-attachments/assets/1d5bfc10-859e-4385-96ac-f8f366e14b5a)
+![mininet-gui screenshot](docs/mininet-gui-screenshot.png)
 
 ## Requirements
 
