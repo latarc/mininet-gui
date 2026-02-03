@@ -992,7 +992,7 @@ export default {
             this.nodes.updateOnly({ id: node.id, color: this.nodeBaseColor(), image: assets.host });
             return;
           }
-          if (node.type === "switch") {
+          if (node.type === "switch" || node.type === "sw") {
             this.nodes.updateOnly({
               id: node.id,
               color: this.nodeBaseColor(),
