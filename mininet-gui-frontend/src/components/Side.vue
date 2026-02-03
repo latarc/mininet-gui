@@ -353,10 +353,11 @@ export default {
     pingallRunning: { type: Boolean, default: false },
     iperfRunning: { type: Boolean, default: false },
     theme: { type: String, default: "dark" },
+    collapsed: { type: Boolean, default: false },
   },
   data() {
     return {
-      sideIsActive: true,
+      sideIsActive: !this.collapsed,
       tooltip: {
         visible: false,
         text: "",
@@ -401,6 +402,11 @@ export default {
         switchUser: switchUserImgLight,
         switchOvsBridge: switchOvsBridgeImgLight,
       };
+    },
+  },
+  watch: {
+    collapsed(value) {
+      this.sideIsActive = !value;
     },
   },
   emits: [
@@ -468,6 +474,9 @@ export default {
     },
   },
   watch: {
+    collapsed(value) {
+      this.sideIsActive = !value;
+    },
     sideIsActive(value) {
       if (value) {
         this.hideTooltip();

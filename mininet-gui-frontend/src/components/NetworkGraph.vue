@@ -116,16 +116,6 @@ import logoImage from "@/assets/logo-mininet-gui.png";
               {{ $t("menu.exportAddressing") }}
             </button>
             <div class="menu-separator"></div>
-            <label class="menu-checkbox">
-              <input
-                type="checkbox"
-                v-model="settings.theme"
-                :true-value="'light'"
-                :false-value="'dark'"
-                @change="handleThemeSetting"
-              />
-              {{ $t("menu.lightTheme") }}
-            </label>
             <button type="button" class="menu-action" @click="handleOpenSettings">
               {{ $t("menu.settings") }}
             </button>
@@ -307,6 +297,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
             :pingallRunning="pingallRunning"
             :iperfRunning="iperfBusy"
             :theme="settings.theme"
+            :collapsed="sidebarCollapsed"
           />
         </div>
       
@@ -892,6 +883,7 @@ export default {
   },
   async mounted() {
     this.loadSettings();
+    this.maybeShowFirstRunHelp();
     await this.syncSnifferState();
     this.snifferStateTimer = setInterval(() => this.syncSnifferState(), 5000);
     await this.loadRyuApps();
@@ -1498,6 +1490,17 @@ export default {
     handleLanguageChange() {
       this.applyLocaleSetting();
       this.persistSettings();
+    },
+    maybeShowFirstRunHelp() {
+      try {
+        const key = "mininetGuiHelpShown";
+        const hasShown = localStorage.getItem(key);
+        if (hasShown) return;
+        localStorage.setItem(key, "true");
+      } catch (error) {
+        console.warn("Failed to persist first-run help flag", error);
+      }
+      this.handleOpenUsage();
     },
     getLinkOptionsPayload() {
       const opts = this.settings.linkOptions || {};

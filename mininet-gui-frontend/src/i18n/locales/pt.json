@@ -34,7 +34,7 @@
     "showSwitchDpids": "Mostrar DPIDs dos switches",
     "showPortLabels": "Mostrar rótulos de porta",
     "lightTheme": "Tema claro",
-    "usage": "Uso",
+    "usage": "Tutorial",
     "openDocs": "Abrir documentação",
     "about": "Sobre"
   },
@@ -78,7 +78,7 @@
       "defaults": "Padrões",
       "integrations": "Integrações"
     },
-    "viewTitle": "Visibilidade",
+    "viewTitle": "Interface",
     "defaultsTitle": "Padrões",
     "integrationsTitle": "Integrações"
   },
