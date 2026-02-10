@@ -17,7 +17,13 @@ class Ryu(Node):
     ):
         self.ip = ip
         self.port = int(port)
-        self.ryu_app = ryu_app
+        if isinstance(ryu_app, list):
+            self.ryu_app = [str(app) for app in ryu_app]
+        else:
+            self.ryu_app = [str(ryu_app)]
+        # TODO: Make OpenFlow version configurable; force OF13 for now.
+        self.ofp_version = "OpenFlow13"
+        self.protocol = "tcp"
         self.ryu_pid = None
         Node.__init__(self, name, inNamespace=inNamespace, ip=ip, **params)
         self.checkListening()
@@ -42,9 +48,10 @@ class Ryu(Node):
     def start(self):
         pathCheck("ryu")
         cout = "/tmp/" + self.name + ".log"
+        apps = " ".join(f"ryu.app.{app}" for app in self.ryu_app if app)
         cmd = (
-            "ryu run --ofp-tcp-listen-port %d ryu.app.%s"
-            % (self.port, self.ryu_app)
+            "ryu run --observe-links --ofp-tcp-listen-port %d %s"
+            % (self.port, apps)
         )
         pid = self.cmd(cmd + " 1>" + cout + " 2>" + cout + " & echo $!")
         try:
@@ -53,9 +60,18 @@ class Ryu(Node):
             self.ryu_pid = None
         self.execed = False
 
+    def IP(self, intf=None):
+        return self.ip
+
     def stop(self, *args, **kwargs):
         if self.ryu_pid:
-            self.cmd("kill %s" % self.ryu_pid)
-        else:
+            try:
+                import os
+                import signal
+                os.kill(self.ryu_pid, signal.SIGTERM)
+            except Exception:
+                pass
+        elif self.shell:
             self.cmd("kill %ryu")
-        super(Ryu, self).stop(*args, **kwargs)
+        if self.shell:
+            super(Ryu, self).stop(*args, **kwargs)

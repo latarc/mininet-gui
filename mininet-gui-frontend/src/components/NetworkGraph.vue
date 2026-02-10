@@ -386,6 +386,7 @@ import logoImage from "@/assets/logo-mininet-gui.png";
     <modal
       :show="showModal"
       :theme="settings.theme"
+      :size-class="modalSizeClass"
       @close="closeModal"
       @keydown.esc="closeModal"
     >
@@ -834,6 +835,18 @@ export default {
     };
   },
   computed: {
+    isRyuControllerModal() {
+      if (this.modalOption !== "controllerForm") return false;
+      const preset = (this.controllerFormPreset || "").toLowerCase();
+      const dataType = (this.controllerFormData?.controller_type || "").toLowerCase();
+      return preset === "ryu" || dataType === "ryu";
+    },
+    modalSizeClass() {
+      if (this.isRyuControllerModal) {
+        return "w-[560px] max-w-[95vw] max-h-[90vh]";
+      }
+      return undefined;
+    },
     isLightTheme() {
       return this.settings.theme === "light";
     },
@@ -1559,7 +1572,10 @@ export default {
         const target = targetParts.length ? ` <${targetParts.join(":")}>` : "";
         const parts = [`${ctl.name}${target}`];
         if (isRyu && ctl.ryu_app) {
-          parts.push(`[ryu:${ctl.ryu_app}]`);
+          const apps = Array.isArray(ctl.ryu_app) ? ctl.ryu_app : [ctl.ryu_app];
+          if (apps.length) {
+            parts.push(`[ryu:${apps.join(",")}]`);
+          }
         }
         return parts.join(" ");
       }
@@ -2312,7 +2328,7 @@ export default {
         color: this.controllerColor(),
       };
       merged.label = this.controllerLabel(merged);
-      merged.image = this.controllerImageForColor(colorCode);
+      merged.image = this.controllerImageForColor(this.controllerIconColor(merged));
       this.controllers[controllerId] = merged;
       this.nodes.update({
         id: controllerId,
@@ -2351,7 +2367,7 @@ export default {
       };
       if (isRyu) ctl.ryu_app = ryuApp;
       ctl.label = this.controllerLabel(ctl);
-      ctl.image = this.controllerImageForColor(color);
+      ctl.image = this.controllerImageForColor(this.controllerIconColor(ctl));
       ctl.hidden = !this.settings.showControllers;
       if (await deployController(ctl)) {
         this.nodes.add(ctl);

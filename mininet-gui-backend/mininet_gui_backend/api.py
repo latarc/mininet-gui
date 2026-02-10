@@ -85,7 +85,7 @@ class ControllerUpdate(BaseModel):
     remote: Optional[bool] = None
     ip: Optional[str] = None
     port: Optional[int] = None
-    ryu_app: Optional[str] = None
+    ryu_app: Optional[Union[str, list]] = None
     color: Optional[str] = None
 
 
@@ -204,12 +204,18 @@ def debug(msg, *args):
 def list_ryu_apps():
     apps = set()
     app_dirs = []
+    env_dirs = os.environ.get("RYU_APP_DIRS", "")
+    if env_dirs:
+        for entry in env_dirs.split(os.pathsep):
+            entry = entry.strip()
+            if entry:
+                app_dirs.append(entry)
     for app_dir in RYU_APP_DIRS:
         if os.path.isdir(app_dir):
             app_dirs.append(app_dir)
     try:
-        import ryu
-        app_pkg = getattr(ryu, "app", None)
+        import importlib
+        app_pkg = importlib.import_module("ryu.app")
         if app_pkg and hasattr(app_pkg, "__path__"):
             for _finder, name, _ispkg in pkgutil.iter_modules(app_pkg.__path__):
                 if name and not name.startswith("__"):
@@ -217,6 +223,25 @@ def list_ryu_apps():
             pkg_dir = os.path.dirname(app_pkg.__file__)
             if os.path.isdir(pkg_dir):
                 app_dirs.append(pkg_dir)
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["ryu-manager", "--app-list"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        if result.stdout:
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                token = line.split()[0]
+                if token.startswith("ryu.app."):
+                    apps.add(token[len("ryu.app."):])
     except Exception:
         pass
 
@@ -304,16 +329,30 @@ def add_controller_to_net(controller: Controller, start=True):
             raise HTTPException(status_code=400, detail="Ryu controller requires a port")
         if not controller.ryu_app:
             raise HTTPException(status_code=400, detail="Ryu controller requires an app")
+        ryu_apps = controller.ryu_app if isinstance(controller.ryu_app, list) else [controller.ryu_app]
         available_apps = list_ryu_apps()
-        if controller.ryu_app not in available_apps:
-            raise HTTPException(status_code=400, detail="Invalid ryu app")
+        if available_apps and any(app_name not in available_apps for app_name in ryu_apps):
+            try:
+                import importlib
+                for app_name in ryu_apps:
+                    importlib.import_module(f"ryu.app.{app_name}")
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid ryu app")
+        elif not available_apps:
+            try:
+                import importlib
+                for app_name in ryu_apps:
+                    importlib.import_module(f"ryu.app.{app_name}")
+            except Exception:
+                # If we cannot verify, allow creation to keep UI usable.
+                pass
         controller.ip = controller.ip or "127.0.0.1"
         controller_node = app.net.addController(
             controller.name,
             controller=Ryu,
             ip=controller.ip,
             port=controller.port,
-            ryu_app=controller.ryu_app,
+            ryu_app=ryu_apps,
         )
     elif controller_type == "nox":
         controller_node = app.net.addController(

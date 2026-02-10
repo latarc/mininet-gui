@@ -26,6 +26,7 @@
             class="modal-input"
             type="number"
             v-model="port"
+            :placeholder="isRyu ? '6633' : ''"
             :disabled="(isEditMode && !isEditing) || isDefault"
             required
           />
@@ -35,15 +36,27 @@
           <label class="modal-field" for="ryu-app">
             {{ $t("controller.ryuApp") }}
             <select
+              v-if="hasRyuApps"
               id="ryu-app"
-              class="modal-select"
+              class="modal-select controller-form__ryu-apps"
               v-model="ryuApp"
               :disabled="isEditMode && !isEditing"
+              multiple
+              size="8"
               required
             >
-              <option value="" disabled>{{ $t("controller.selectRyuApp") }}</option>
               <option v-for="app in ryuApps" :key="app" :value="app">{{ app }}</option>
             </select>
+            <input
+              v-else
+              id="ryu-app"
+              class="modal-input"
+              type="text"
+              v-model="ryuAppText"
+              :disabled="isEditMode && !isEditing"
+              placeholder="simple_switch_13"
+              required
+            />
           </label>
         </template>
 
@@ -106,7 +119,8 @@ export default {
       type: this.presetType || "remote",
       ip: "127.0.0.1",
       port: "",
-      ryuApp: "",
+      ryuApp: [],
+      ryuAppText: "",
       colorCode: "#ffffff",
       isEditing: false,
       colorChoices: ["#ffffff", "#007acc", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"],
@@ -124,6 +138,9 @@ export default {
     },
     isEditMode() {
       return !!this.controller;
+    },
+    hasRyuApps() {
+      return Array.isArray(this.ryuApps) && this.ryuApps.length > 0;
     },
     titleText() {
       if (this.isEditMode) return this.$t("controller.title");
@@ -145,14 +162,25 @@ export default {
         this.type = (value.controller_type || "").toLowerCase() || "remote";
         this.ip = value.ip || "127.0.0.1";
         this.port = value.port ?? "";
-        this.ryuApp = value.ryu_app || "";
+        const apps = Array.isArray(value.ryu_app)
+          ? value.ryu_app
+          : value.ryu_app
+          ? [value.ryu_app]
+          : [];
+        this.ryuApp = apps;
+        this.ryuAppText = apps.join(", ");
         this.colorCode = value.color || "#ffffff";
         this.isEditing = false;
       },
     },
     ryuApps() {
-      if (this.isRyu && !this.ryuApp && this.ryuApps.length) {
-        this.ryuApp = this.ryuApps[0];
+      if (!this.isRyu || (this.ryuApp && this.ryuApp.length)) return;
+      if (this.hasRyuApps) {
+        this.ryuApp = [this.ryuApps[0]];
+        this.ryuAppText = this.ryuApps[0];
+      } else {
+        this.ryuApp = ["simple_switch_13"];
+        this.ryuAppText = "simple_switch_13";
       }
     },
   },
@@ -160,7 +188,13 @@ export default {
     resetForm() {
       this.ip = "127.0.0.1";
       this.port = "";
-      this.ryuApp = this.ryuApps.length ? this.ryuApps[0] : "";
+      if (this.hasRyuApps) {
+        this.ryuApp = [this.ryuApps[0]];
+        this.ryuAppText = this.ryuApps[0];
+      } else {
+        this.ryuApp = ["simple_switch_13"];
+        this.ryuAppText = "simple_switch_13";
+      }
       this.colorCode = "#ffffff";
       this.isEditing = false;
     },
@@ -184,11 +218,17 @@ export default {
       this.isEditing = false;
     },
     submitForm() {
+      const normalizedRyuApp = this.hasRyuApps
+        ? (this.ryuApp || []).map((app) => String(app || "").trim()).filter(Boolean)
+        : String(this.ryuAppText || "")
+            .split(",")
+            .map((app) => app.trim())
+            .filter(Boolean);
       const formData = {
         type: this.type,
         ip: this.isRyu ? "127.0.0.1" : this.ip,
         port: Number(this.port),
-        ryu_app: this.isRyu ? this.ryuApp : null,
+        ryu_app: this.isRyu ? normalizedRyuApp : null,
         color: this.colorCode,
       };
       if (this.isEditMode) {
@@ -212,6 +252,7 @@ export default {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-bottom: 20px;
 }
 
 .controller-form__color {
@@ -238,5 +279,9 @@ export default {
 
 .controller-form__color-check {
   line-height: 1;
+}
+
+.controller-form__ryu-apps {
+  min-height: 200px;
 }
 </style>
