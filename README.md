@@ -10,7 +10,7 @@ The platform was designed to reduce the complexity of SDN experimentation, makin
 
 Contact: Lucas Schneider <lucasschneider.dev@gmail.com>
 
-Paper link: <https://1drv.ms/b/c/75254e252c7d0ebe/EWzabHAvMyFEoawJRxAa0fcBwRgmczsjGMxyTq2DMsi5-w?e=Wc0xK3>
+Paper link: <https://doi.org/10.5753/sbrc_estendido.2025.7448>
 
 Demo video: <https://youtu.be/YSsqHKsJlxY>
 
