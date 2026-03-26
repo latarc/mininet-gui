@@ -2,3 +2,4 @@ fastapi
 websockets
 uvicorn
 python-multipart
+pyshark
