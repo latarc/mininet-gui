@@ -21,4 +21,4 @@ nvm install 18.20.7
 echo "Installing frontend deps"
 (cd $FRONTEND_DIR ; npm install)
 
-echo "alias mininet_gui=$MININET_GUI_DIR/run.sh" >> $HOME/.bashrc
+echo "alias mininet_gui=$MININET_GUI_DIR/scripts/run.sh" >> $HOME/.bashrc
