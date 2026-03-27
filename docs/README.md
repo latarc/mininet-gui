@@ -1,55 +1,67 @@
-# Mininet-GUI: Uma Abordagem Visual e Interativa para Experimentação em Redes SDN
+# Mininet-GUI: Uma Abordagem Visual e Interativa para Experimentacao em Redes SDN
 
 ![mininet-gui logo](https://github.com/user-attachments/assets/c3c35610-1d7b-4458-a08e-2f9608816501)
 
-O Mininet é um emulador amplamente utilizado para a prototipação e experimentação de Redes Definidas por Software (SDN). No entanto, sua interface gráfica principal, o MiniEdit, oferece suporte limitado e baixa interatividade, dificultando sua adoção e restringindo experimentações avançadas. Embora diversas ferramentas tenham sido propostas, nenhuma se consolidou como alternativa definitiva devido à falta de integração de funcionalidades essenciais. 
-Neste trabalho, apresentamos o Mininet-GUI, uma ferramenta integrada que opera através de uma interface web para viabilizar a criação, edição e execução de topologias no Mininet em tempo real. O Mininet-GUI possibilita a manipulação dinâmica de hosts, switches, controladores e links, além da execução de comandos diretamente na interface. Diferentemente das abordagens existentes, o Mininet-GUI oferece edição interativa da topologia, acesso simplificado aos terminais via WebShell e suporte à exportação/importação de topologias nos formatos JSON e Python.  
-O Mininet-GUI visa tornar a experimentação com SDN mais acessível e eficiente, atendendo tanto a iniciantes quanto a pesquisadores avançados. Este trabalho descreve sua arquitetura, funcionalidades e aplicabilidade por meio de casos de uso recorrentes.
+O Mininet-GUI e uma interface web para criacao e execucao de experimentos no Mininet por meio de um grafo de topologia interativo. A aplicacao permite adicionar e configurar hosts, switches, controladores e enlaces, iniciar ou encerrar a emulacao e modificar a topologia em tempo real.
+Tambem oferece terminais integrados via WebShell, gerenciamento de regras OpenFlow, analisador de pacotes com Sniffer embutido, graficos de trafego em tempo real e uma interface de chat para interagir com a topologia usando IA.
 
-## Informações básicas
+## Informacoes do projeto
 
 Contato: Lucas Schneider <lucasschneider.dev@gmail.com>
 
-Link para o artigo: <https://1drv.ms/b/c/75254e252c7d0ebe/EWzabHAvMyFEoawJRxAa0fcBwRgmczsjGMxyTq2DMsi5-w?e=Wc0xK3>
+Artigo: <https://doi.org/10.5753/sbrc_estendido.2025.7448>
 
-Vídeo da demonstração: <https://youtu.be/YSsqHKsJlxY>
+Video de demonstracao: <https://youtu.be/YSsqHKsJlxY>
 
-Repositório oficial: <https://github.com/latarc/mininet-gui>
+Repositorio oficial: <https://github.com/latarc/mininet-gui>
 
-### Screenshot da aplicação
+Maquina virtual VirtualBox: <https://drive.google.com/file/d/1aDN72tvA3mvsEMomfyqbHUGZHaCtPSOH/view?usp=sharing>
 
-![mininet-gui screenshot](https://github.com/user-attachments/assets/1d5bfc10-859e-4385-96ac-f8f366e14b5a)
+### Screenshot
 
+![mininet-gui screenshot](mininet-gui-screenshot.png)
 
-## Dependências
+## Requisitos
 
-A execução do Mininet-GUI requer o Oracle VirtualBox (versão 7.1.6 r167084).
-Memória RAM: Mínimo de 8GB para a máquina virtual.
+A VM pronta para uso requer Oracle VirtualBox (versao 7.1.6 r167084).
+Memoria RAM: minimo de 8 GB para a VM.
 
+## Nota de seguranca
 
-## Preocupações com segurança
+A instalacao nativa do Mininet e invasiva e pode modificar ou remover arquivos importantes do sistema. Por seguranca, recomenda-se o uso da VM pronta do Mininet-GUI.
 
-A instalação nativa do Mininet é invasiva, e pode alterar ou remover arquivos importantes do sistema de arquivos. 
-Por isso, recomenda-se a utilização da VM do Mininet-GUI que disponibilizamos no repositório.
+## Instalacao
 
+### 1) Docker (recomendado para uso local)
 
-## Instalação
+Pre-requisitos:
+- Docker
+- Open vSwitch instalado e configurado no host
 
-### Máquina Virtual (recomendado)
+Build:
 
-Pré-requisitos: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
+```bash
+docker build -t mininet-gui \
+  --build-arg VITE_BACKEND_URL=http://localhost:8000 \
+  --build-arg VITE_BACKEND_WS_URL=ws://localhost:8000 \
+  .
+```
 
-Passo 1: Baixe o arquivo ova neste link: <https://drive.google.com/file/d/1HBqlTwEWnmkPjRFJVQhEn34itKNyzhg3/view?usp=sharing>
+Execucao:
 
-Passo 2: Abra o arquivo `Mininet-GUI-Desktop-VM-SBRC-2025.ova` no VirtualBox, para importar a máquina virtual
+```bash
+docker run --privileged --net=host \
+  -v /var/run/openvswitch:/var/run/openvswitch \
+  mininet-gui
+```
 
-Passo 3: Execute a máquina virtual (user `mininet`, senha `mininet`)
+Abra a interface em:
+`http://localhost:5173`
 
+### 2) Codigo-fonte
 
-### Instalação manual
-
-Atenção: os comandos abaixo irão modificar o kernel e outras configurações do seu sistema operacional, portanto use com cautela.
-Utilize os comandos abaixo para instalar manualmente (testado no ubuntu 20.04):
+Atencao: os comandos abaixo modificam o kernel e outras configuracoes do sistema operacional. Use com cautela.
+Testado em Ubuntu 20.04.
 
 ```bash
 git clone https://github.com/mininet/mininet
@@ -61,48 +73,55 @@ cd mininet-gui
 ./setup.sh
 ```
 
-Opcionalmente, para instalar o Ryu:
+Instalacao opcional do Ryu:
+
 ```bash
 pip3 install ryu eventlet==0.30.0 dnspython==1.16.0
 ```
 
-## Teste mínimo
+### 3) Maquina virtual pronta (recomendado)
 
-Passo 1: Execute a VM dentro do VirtualBox e faça login (usuário: `mininet`, senha: `mininet`)
+Pre-requisito: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
-Passo 2: Abra o terminal (Ctrl+Alt+T) e rode o seguinte comando: `mininet_gui` (ou alternativamente `/home/mininet/mininet-gui/run.sh`)
+Passo 1: Baixe o arquivo OVA: <https://drive.google.com/file/d/1aDN72tvA3mvsEMomfyqbHUGZHaCtPSOH/view?usp=sharing>
 
-Passo 3: A execução do comando do Passo 2 mostrará em sua saída do terminal uma URL (Exemplo: `http://10.0.2.15:5173`). Acesse essa URL em um navegador dentro da VM.
+Passo 2: Importe `Mininet-GUI-VM.ova` no VirtualBox
 
-Passo 4: Para criar um controlador, arraste o ícone rotulado "Controller", localizado na aba lateral esquerda, para o centro da tela. Em seguida, se abrirá uma caixa de diálogo, perguntando o tipo do controller. Nessa etapa, selecione a opção "Default" e em seguida pressione o botão "Submit" para criar o controller.
+Passo 3: Inicie a VM (usuario `mininet`, senha `mininet`)
 
-Passo 5: Clique no botão "Generate Topology" localizado na aba lateral esquerda. No modal, selecione o "Topology Type" Single, o "Controller" c1, e no campo "Hosts" insira o número 2. Em seguida, pressione o botão "Submit".
+## Teste minimo
 
-Passo 6: Execute um teste de pingall clicando no botão "Run Pingall Test" na aba lateral esquerda e aguarde os resultados aparecerem.
+Passo 1: Inicie a VM e faca login (usuario `mininet`, senha `mininet`)
 
-Passo 7 (opcional): Teste com iperf - selecione no webshell o terminal do node h1 e digite o comando `iperf -s`. Depois, abra o terminal do node h2 e digite o comando `iperf -c 10.0.0.1`. Aguarde 1 minuto para o teste completar-se.
+Passo 2: Abra um terminal (Ctrl+Alt+T) e execute `mininet_gui` (ou `/home/mininet/mininet-gui/scripts/run.sh`)
 
-Passo 8 (opcional): Multiplos controladores - arraste um novo "Controller" da barra lateral para o centro da tela, mas dessa vez mude o type para "Remote" e preencha o IP 127.0.0.1 e a porta 6633. Em seguida, gere uma topologia (com o "Generate Topology") do tipo Single e com 2 hosts, e também selecione o novo controlador criado (c2). Adicionalmente, clique no botão "Create Link" e conecte os switches das duas topologias, s1 e s2, clicando e arrastando de um para o outro (o sucesso dessa ação é indicado por uma linha verde conectando os dois nós). A seguir, selecione no webshell o terminal do novo controlador c2 e execute o comando: `ryu-manager --ofp-tcp-listen-port 6633 ryu.app.simple_switch_13` para iniciar o controlador SDN Ryu. Optamos por utilizar o Ryu nesse exemplo, pois ele é leve e não ocupa tanto espaço na VM quanto outros (ONOS, OpenDaylight, Floodlight). Para testar a conexão, execute um teste com o botão de Pingall.
+Passo 3: O comando exibira uma URL, por exemplo `http://10.0.2.15:5173`. Abra esse endereco no navegador dentro da VM.
 
-Passo 9: Finalmente, clique nos botões "Export Topology (JSON)" e "Export Mininet Script" para obter respectivamente o arquivo JSON com a configuração da topologia atual e o script do mininet para executar a topologia fora do Mininet-GUI, diretamente no Python.
+Passo 4: Crie um controlador arrastando o item "Controller" da barra lateral esquerda para o canvas. Quando o modal abrir, escolha "Default" e confirme.
 
+Passo 5: Clique em "Generate Topology" na barra lateral. No modal, selecione "Topology Type" = Single, "Controller" = c1, defina "Hosts" = 2 e confirme.
+
+Passo 6: Execute um teste de pingall clicando em "Run Pingall Test" e aguarde os resultados.
+
+Passo 7 (opcional): Teste com iperf. No WebShell, abra h1 e execute `iperf -s`. Depois abra h2 e execute `iperf -c 10.0.0.1`. Aguarde cerca de 1 minuto.
+
+Passo 8 (opcional): Multiplos controladores. Adicione um novo "Controller" com tipo "Remote", IP `127.0.0.1` e porta `6633`. Gere uma topologia Single com 2 hosts e selecione o novo controlador (c2). Conecte os switches `s1` e `s2` com "Create Link". No WebShell de `c2`, execute `ryu-manager --ofp-tcp-listen-port 6633 ryu.app.simple_switch_13` para iniciar o controlador Ryu. Em seguida, valide com Pingall.
+
+Passo 9: Use "Export Topology (JSON)" e "Export Mininet Script" para exportar a topologia atual em JSON e como script Python do Mininet.
 
 ## Experimentos
 
-A execução da VM requer no mínimo 2GB de RAM e um core de CPU reservado à VM.
+A VM requer pelo menos 2 GB de RAM e um nucleo de CPU dedicado.
 
-### Reivindicação "Geração automatizada de topologias, incluindo diversos modelos amplamente utilizados"
+### Reivindicacao: geracao automatizada de topologias comuns
 
-Após inicializar o mininet_gui e acessar a interface web do frontend, clique no botão "Generate Topology". Selecione o tipo de topologia (Single, Linear ou Tree), 
-e o número de dispositivos, então clique em OK.
+Depois de iniciar o `mininet_gui` e abrir o frontend, clique em "Generate Topology". Selecione o tipo de topologia (Single, Linear ou Tree), o numero de dispositivos e confirme.
 
-### Reivindicação "Terminal integrado dos nós via WebShell"
+### Reivindicacao: terminal integrado dos nos via WebShell
 
-Após inicializar o mininet_gui e acessar a interface web do frontend, crie ao menos um nó (seja pelo Gerador de Topologias ou clicando e arrastando) e na aba inferior titulada "Webshell"
-selecione a aba com o nome desse nó, clicando nela.
-Em seguida, utilize o terminal bash para executar comandos diretamente no namespace daquele nó.
+Depois de iniciar o `mininet_gui` e abrir o frontend, crie ao menos um no pela geracao automatica ou por arrastar e soltar. Na aba inferior "WebShell", selecione o terminal do no e execute comandos diretamente no namespace correspondente.
 
-## LICENSE
+## Licenca
 
 BSD 3-Clause License
 
