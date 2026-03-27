@@ -16,6 +16,8 @@ Demo video: <https://youtu.be/YSsqHKsJlxY>
 
 Official repository: <https://github.com/latarc/mininet-gui>
 
+VirtualBox VM: <https://drive.google.com/file/d/1aDN72tvA3mvsEMomfyqbHUGZHaCtPSOH/view?usp=sharing>
+
 ### Screenshot
 
 ![mininet-gui screenshot](docs/mininet-gui-screenshot.png)
@@ -82,9 +84,9 @@ pip3 install ryu eventlet==0.30.0 dnspython==1.16.0
 
 Prerequisites: Oracle VirtualBox (<https://www.virtualbox.org/wiki/Downloads>)
 
-Step 1: Download the OVA file here: <https://drive.google.com/file/d/1HBqlTwEWnmkPjRFJVQhEn34itKNyzhg3/view?usp=sharing>
+Step 1: Download the OVA file here: <https://drive.google.com/file/d/1aDN72tvA3mvsEMomfyqbHUGZHaCtPSOH/view?usp=sharing>
 
-Step 2: Import `Mininet-GUI-Desktop-VM-SBRC-2025.ova` into VirtualBox
+Step 2: Import `Mininet-GUI-VM.ova` into VirtualBox
 
 Step 3: Start the VM (user `mininet`, password `mininet`)
 
@@ -92,7 +94,7 @@ Step 3: Start the VM (user `mininet`, password `mininet`)
 
 Step 1: Start the VM and log in (user `mininet`, password `mininet`)
 
-Step 2: Open a terminal (Ctrl+Alt+T) and run: `mininet_gui` (or `/home/mininet/mininet-gui/run.sh`)
+Step 2: Open a terminal (Ctrl+Alt+T) and run: `mininet_gui` (or `/home/mininet/mininet-gui/scripts/run.sh`)
 
 Step 3: The command prints a URL (example: `http://10.0.2.15:5173`). Open it in a browser inside the VM.
 
